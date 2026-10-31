@@ -502,6 +502,10 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         <p class="row-desc" id="t-scopeDesc">В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.</p></div>
         <div class="scope" id="scopeBoxes"></div>
       </div>
+      <div class="row">
+        <div><p class="row-title" id="t-variants">Искать с разночтениями</p><p class="row-desc" id="t-variantsDesc">Варианты чтения других изданий: Буддха Джаянти, Чаттха Сангаяна, Сиам Рат, PTS. Выключите, чтобы искать только по тексту Махасангити — быстрее.</p></div>
+        <div class="row-control"><span class="switch"><input type="checkbox" id="searchVariants" checked><span class="track"></span><span class="thumb"></span></span></div>
+      </div>
 
       <!-- Раньше это были ДВА заголовка-строки подряд ("Языки для поиска" + отдельная вложенная
            строка "Так же, как для чтения") — жалоба владельца "лишний пункт, объединить".
@@ -1016,6 +1020,9 @@ $('#scriptDevOnly').onchange = e=> {
    показывает переключатель — сама причина жалобы "обозначение переключателя обманчиво". */
 $('#punct').checked = localStorage.getItem('removePunct') !== 'true';
 $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked ? 'false' : 'true');
+// Variant readings in search: on by default; off = the Mahāsaṅgīti text only (index.html adds "novariants" to the scope)
+$('#searchVariants').checked = localStorage.getItem('dhammaSearchVariants') !== 'off';
+$('#searchVariants').onchange = e=> e.target.checked ? localStorage.removeItem('dhammaSearchVariants') : localStorage.setItem('dhammaSearchVariants', 'off');
 // Same key/semantics as home.js's tileDescEnabled() (localStorage.dgTileDesc — 'off' hides,
 // anything else shows) — this row is the only place left to change it, moved here from the
 // burger drawer's quick-settings (owner: "очень неважная настройка").
@@ -1458,6 +1465,7 @@ const STR = {
     size:'Размер текста', punct:'Показывать пунктуацию в пали', punctDesc:'Выключите, чтобы убрать запятые/кавычки и заменить точки, ? и ! вертикальной чертой — ближе к виду рукописей.',
     gSearch:'Поиск', scope:'Где искать по умолчанию',
     scopeDesc:'В самом поиске область можно менять для одного запроса — здесь только значение по умолчанию.',
+    variants:'Искать с разночтениями', variantsDesc:'Варианты чтения других изданий: Буддха Джаянти, Чаттха Сангаяна, Сиам Рат, PTS. Выключите, чтобы искать только по тексту Махасангити — быстрее.',
     searchLangs:'Языки для поиска', searchLangsDesc:'Порядок — это порядок отображения переводов в результатах.',
     sameAsRead:'Так же, как для чтения',
     ctx:'Строк контекста', ctxDesc:'Сколько строк показывать вокруг совпадения.', ctxBefore:'до', ctxAfter:'после',
@@ -1497,6 +1505,7 @@ const STR = {
     size:'Text size', punct:'Show Pali punctuation', punctDesc:'Turn off to drop commas/quotes and replace periods, ? and ! with a vertical bar — closer to the look of manuscripts.',
     gSearch:'Search', scope:'Default search scope',
     scopeDesc:'The scope can still be changed per search — this is only the default.',
+    variants:'Search with variant readings', variantsDesc:'Readings of the other editions: Buddha Jayanti, Chaṭṭha Saṅgāyana, Siam Rath, PTS. Turn off to search the Mahāsaṅgīti text only — faster.',
     searchLangs:'Search languages', searchLangsDesc:'Order controls how translations are displayed in results.',
     sameAsRead:'Same as reading',
     ctx:'Context lines', ctxDesc:'How many lines to show around a match.', ctxBefore:'before', ctxAfter:'after',
@@ -1531,7 +1540,7 @@ function applyLang(){
    ['t-script','script'],['t-scriptDesc','scriptDesc'],
    ['t-scriptDevOnly','scriptDevOnly'],['t-scriptDevOnlyDesc','scriptDevOnlyDesc'],
    ['t-size','size'],['t-punct','punct'],['t-punctDesc','punctDesc'],
-   ['t-g-search','gSearch'],['t-scope','scope'],['t-scopeDesc','scopeDesc'],
+   ['t-g-search','gSearch'],['t-scope','scope'],['t-scopeDesc','scopeDesc'],['t-variants','variants'],['t-variantsDesc','variantsDesc'],
    ['t-searchLangs','searchLangs'],['t-searchLangsDesc','searchLangsDesc'],['t-sameAsRead','sameAsRead'],
    ['t-ctx','ctx'],['t-ctxDesc','ctxDesc'],['t-ctxBefore','ctxBefore'],['t-ctxAfter','ctxAfter'],
    ['t-anydist','anydist'],['t-anydistDesc','anydistDesc'],['t-soon','soon'],

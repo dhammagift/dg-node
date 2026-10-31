@@ -2496,6 +2496,12 @@
         // главной/выдаче. Показываем всегда.
         host.appendChild(groupTitle(t('quick.where', 'Где искать')));
         host.appendChild(scopePicker());
+        // Variant readings of the other editions: searched by default, off = the Mahāsaṅgīti text only (owner 2026-10-31)
+        host.appendChild(toggleRow(t('quick.searchVariants', 'С разночтениями'), localStorage.getItem('dhammaSearchVariants') !== 'off', function (on) {
+            if (on) localStorage.removeItem('dhammaSearchVariants'); else localStorage.setItem('dhammaSearchVariants', 'off');
+            window.dgShownQuery = null;
+            notifySaved();
+        }));
 
         // Several words (dg-node#26): the search form writes the choice into the query as an operator
         // (index.html, #form submit) — "a && b" one paragraph, "a & b" one text — so a link keeps it.

@@ -106,6 +106,7 @@
   "quick": {
     "title": "Quick settings",
     "where": "Where to search",
+    "searchVariants": "With variant readings",
     "dictMode": "Dictionary",
     "context": "Context lines",
     "ctx0": "Line only",

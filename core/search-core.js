@@ -721,7 +721,15 @@ const DEFAULT_SCOPE_PREFIXES = ['dn', 'mn', 'sn', 'an', 'ud', 'snp', 'dhp', 'tha
 // Разрешает scope-параметр в список "allowedPrefixes" — category-имена ('dhamma'/'khudakka'/…)
 // или id-префиксы ('dn'/'an'/…) для матчинга через matchesScope(). Чистая функция от searchScope,
 // без обращения к skeletonDB.
+// "novariants" in the scope (?scope=default,novariants): the Mahāsaṅgīti text only, without the variant readings
+// (owner 2026-10-31: a switch in settings, on = with variants by default). A scope token rather than a parameter of
+// its own because the scope already reaches every layer: the workers, the caches, MCP and the apps' offline shim.
+const NO_VARIANTS = 'novariants';
+function wantsNoVariants(searchScope) {
+    return String(searchScope || '').split(',').some(p => p.trim() === NO_VARIANTS);
+}
 function resolveAllowedPrefixes(searchScope) {
+    if (wantsNoVariants(searchScope)) searchScope = String(searchScope).split(',').map(p => p.trim()).filter(p => p && p !== NO_VARIANTS).join(',');
     if (!searchScope || searchScope === 'default') return DEFAULT_SCOPE_PREFIXES;
     if (searchScope === 'all') return ['all'];
     const prefixes = [];
@@ -799,8 +807,10 @@ async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs,
     // of searchResults because that object is serialised straight into the response.
     const segIndex = new Map();
     let anyMatch = false;
+    const noVariants = wantsNoVariants(searchScope);
 
     for (const row of sqlMatchRows(keyword, exactMatch)) {
+        if (noVariants && row.kind === 'variant') continue;
         const suttaMeta = skeletonDB[row.sutta_id];
         if (!suttaMeta) continue;
         if (restrict ? !restrict.has(row.sutta_id) : !matchesScope(suttaMeta, row.sutta_id, allowedPrefixes)) continue;
@@ -1134,7 +1144,7 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
         searchResults[id].count = searchResults[id].segments.length; // approximate — exact count arrives with enrichment
         totalMatches += searchResults[id].count;
     }
-    const variantSegments = await findVariantSegments(keyword, exactMatch);
+    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
     addTranslatedTitles(searchResults, targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0])));
 
     const wordReport = buildWordReportFast(searchResults, keyword);
@@ -1181,6 +1191,7 @@ const GREP_CMDLINE_BUDGET = 24000;
 // the text of the result window (matches plus their lb/la context plus titles). A segment id
 // already names its own sutta ("sn35.240:1.6"), so that window is one `segment_id IN (...)`.
 async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb = 0, la = 0) {
+    const noVariants = wantsNoVariants(searchScope);
     // A regex keyword is matched against the raw text exactly as grep -E did. A plain keyword is
     // matched against folded text, so that a query typed without diacritics ("kacchapanam") still
     // counts the real form ("kacchapānaṁ") — the same folding the index itself applies.
@@ -1263,7 +1274,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
             segObj.translations = segObj.translations || {};
             for (const row of bySegment.get(segObj.segment) || []) {
                 if (row.kind === 'root') { if (!segObj.root_text) segObj.root_text = row.txt; }
-                else if (row.kind === 'variant') segObj.variant = row.txt;
+                else if (row.kind === 'variant') { if (!noVariants) segObj.variant = row.txt; }
                 else {
                     const key = `${row.lang}_${row.translator}`;
                     if (!chosen || chosen.has(key)) segObj.translations[key] = row.txt;
@@ -1350,7 +1361,7 @@ async function buildSearchResponse(keyword, searchScope, exactMatch, targetLangs
     const { globalTotalMatches } = await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb, la);
     const wordReport = buildWordReport(searchResults);
     const sortedData = sortSuttaResults(searchResults);
-    const variantSegments = await findVariantSegments(keyword, exactMatch);
+    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
 
     return {
         metadata: {
@@ -1569,7 +1580,7 @@ async function enrichResponse(keyword, searchScope, exactMatch, targetLangs, lb,
     const sortedData = sortSuttaResults(searchResults);
     let totalMatches = 0;
     for (const id of suttaIds) totalMatches += sortedData[id].count;
-    const variantSegments = await findVariantSegments(keyword, exactMatch);
+    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
 
     return {
         data: sortedData,

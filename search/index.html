@@ -4855,6 +4855,9 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         // Область поиска и контекст — сначала явный параметр в адресе, затем сохранённое в
         // мастер-настройках значение по умолчанию (см. settings/), иначе прежнее поведение.
         scope = urlParams.get('scope') || localStorage.getItem('dhammaSearchScope') || 'default';
+        // Variant readings are searched unless switched off in settings (dhammaSearchVariants=off, owner 2026-10-31):
+        // the server reads "novariants" in the scope. An explicit ?scope= in the address is taken as it is.
+        if (!urlParams.get('scope') && localStorage.getItem('dhammaSearchVariants') === 'off') scope += ',novariants';
         lb = urlParams.get('lb') || localStorage.getItem('dhammaSearchContextBefore') || 0;
         la = urlParams.get('la') || localStorage.getItem('dhammaSearchContextAfter') || 0;
         // Язык контента (не UI-хром — тот отдельно, через siteLanguage/dhamma-i18n.js, lang=) —
