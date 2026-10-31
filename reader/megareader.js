@@ -264,6 +264,37 @@ function setEditions(list) {
 }
 window.getEditions = getEditions;
 window.setEditions = setEditions;
+// "Show differences" (owner 2026-10-31: «подсветить разницу… по большинству»): a word of an edition line that most of the
+// shown texts of that segment do not have is highlighted; with two texts every difference. One edition alone is
+// compared with the Mahāsaṅgīti. Case, punctuation, quotes and ṁ/ṃ are not differences (core/edition-diff.js foldWords).
+window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDiff') === 'on'; } catch (e) { return false; } };
+const foldWord = w => w.normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[^\p{L}]+/gu, '');
+function lcsKept(a, b) {   // which words of a are in a longest common subsequence with b
+    const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const keep = new Array(n).fill(false);
+    for (let i = 0, j = 0; i < n && j < m;) {
+        if (a[i] === b[j]) { keep[i] = true; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+    }
+    return keep;
+}
+// texts: one line per text (undefined = no line). Returns the texts with the minority words in <mark>; a line with
+// markup of its own (a search hit's <b>) is left as it is.
+function markEditionDiffs(texts) {
+    const toks = texts.map(t => (typeof t === 'string' && !t.includes('<')) ? t.trim().split(/\s+/) : null);
+    const keys = toks.map(ws => ws && ws.map(foldWord));
+    const n = texts.filter(t => typeof t === 'string' && t.trim()).length;
+    if (n < 2) return texts;
+    return texts.map((t, i) => {
+        if (!toks[i]) return t;
+        const support = keys[i].map(() => 1);
+        keys.forEach((other, j) => {
+            if (j === i || !other) return;
+            lcsKept(keys[i], other).forEach((k, w) => { if (k) support[w]++; });
+        });
+        return toks[i].map((w, x) => keys[i][x] && support[x] <= n / 2 ? `<mark class="dg-ed-diff">${w}</mark>` : w).join(' ');
+    });
+}
 // The pinned column header (.dg-cols-head, column view with 3+ texts) sits outside the article, which scrolls sideways
 // on a phone: it follows that scroll. Scroll events do not bubble, so one capturing listener for every render.
 document.addEventListener('scroll', e => {
@@ -1794,16 +1825,19 @@ window.buildSutta = async function(rawSlug, opts) {
     // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
     // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
+    const edDiff = window.dgEditionsDiff();
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         if (!edSingle && !edMulti) return msText;
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
-            if (t !== undefined) return t.trim();
+            if (t !== undefined) return edDiff && !heading ? markEditionDiffs([t, msText])[0].trim() : t.trim();
             return heading ? msText : `<span class="dg-ed-fill" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
         }
+        let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
+        if (edDiff && !heading) texts = markEditionDiffs(texts);
         return shownEds.map((e, k) => {
-            const t = e === 'ms' ? msText : (edMaps[e] || {})[segment];
+            const t = texts[k];
             const tag = heading ? '' : ` data-tag="${edInfo(e).tag}"`;
             if (t === undefined) return `<span class="dg-ed-line is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
             return `<span class="dg-ed-line" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;

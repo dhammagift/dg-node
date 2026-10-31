@@ -431,6 +431,8 @@
     color: var(--dg-text-muted, #808086);
   }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
+  /* "Show differences": the words most of the shown texts do not have (megareader.js markEditionDiffs) */
+  mark.dg-ed-diff { background: color-mix(in srgb, #e3a008 30%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
 
   /* Column view with three texts or more (megareader.js useGrid): one grid column per text - editions first, then
      each translation - a header with the full names pinned under the site header, and on a phone the text scrolls

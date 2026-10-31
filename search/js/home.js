@@ -1832,7 +1832,8 @@
         edLabel:  { ru: 'Пали', en: 'Pāḷi' },
         trnLabel: { ru: 'Переводы', en: 'Translations' },
         edMissing:{ ru: 'нет текста', en: 'no text' },
-        edMain:   { ru: 'основное: читается и озвучивается', en: 'main: read and voiced' }
+        edMain:   { ru: 'основное: читается и озвучивается', en: 'main: read and voiced' },
+        edDiff:   { ru: 'Подсветить отличия', en: 'Highlight differences' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -2053,6 +2054,8 @@
                         '<button type="button" class="dg-ts-star' + (i === 0 ? ' is-main' : '') + '" title="' + esc(tsStr('edMain')) + '">' + (i === 0 ? '★' : '☆') + '</button>' +
                         '</div>';
                 }).join('') + '</div>';
+            paliHost.insertAdjacentHTML('beforeend', '<div class="dg-ts-diff" data-ts-diff><button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' +
+                window.dgEditionsDiff() + '"></button><span>' + esc(tsStr('edDiff')) + '</span></div>');
             var edRows = paliHost.querySelector('.dg-ts-edrows'), ey = 0;
             edRows.querySelectorAll('.dg-ts-row').forEach(function (r) { tsSetY(r, ey); ey += TS_ROW; });
             edRows.style.height = ey + 'px';
@@ -2243,6 +2246,11 @@
                 var key = tsPriorityKey(l);
                 if (key) tsApply(cur.concat([key]));
             }
+            return;
+        }
+        if (e.target.closest('[data-ts-diff]')) {
+            try { window.dgEditionsDiff() ? localStorage.removeItem('dgEditionsDiff') : localStorage.setItem('dgEditionsDiff', 'on'); } catch (x) { /* private mode */ }
+            tsApplyEditions(window.getEditions());
             return;
         }
         if (!row) return;
@@ -2740,6 +2748,11 @@
                     }
                 });
                 host.appendChild(edRow);
+                host.appendChild(toggleRow(t('quick.editionsDiff', 'Подсветить отличия'), window.dgEditionsDiff(), function (on) {
+                    try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (x) { /* private mode */ }
+                    notifySaved();
+                    if (typeof window.buildSutta === 'function' && window._currentSlug) window.buildSutta(window._currentSlug);
+                }));
             }
         }
 

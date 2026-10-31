@@ -106,6 +106,7 @@
   "quick": {
     "title": "Быстрые настройки",
     "where": "Где искать",
+    "editionsDiff": "Подсветить отличия",
     "editions": "Издания пали",
     "searchVariants": "С разночтениями",
     "dictMode": "Словарь",
