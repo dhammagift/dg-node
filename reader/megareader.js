@@ -2208,7 +2208,13 @@ window.buildSutta = async function(rawSlug, opts) {
         // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
         // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
+    // a redraw of the same text keeps the columns' sideways scroll (owner 2026-10-31: "−" threw the view back to the first
+    // column); the browser clamps it when a column has gone, which lands on the new last one
+    const prevArticle = suttaArea.querySelector(':scope > article');
+    const keepLeft = prevArticle && suttaArea.dataset.slug === slug ? prevArticle.scrollLeft : 0;
+    suttaArea.dataset.slug = slug;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
+    if (keepLeft) { const a = suttaArea.querySelector(':scope > article'); if (a) a.scrollLeft = keepLeft; }
     followHeader();   // the column header's place under the site header (placeColsHead)
     document.documentElement.classList.remove('dg-eds-loading');   // the editions are drawn (search/index.html)
     // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus

@@ -1978,7 +1978,9 @@
     function tsRender() {
         var host = tsHost();
         if (host.hidden) return;
-        var stack = tsStack(), keys = tsVisibleKeys(), rows = host.querySelector('.dg-ts-rows');
+        // the translators' rows: the Pali section has a .dg-ts-rows of its own before them (it took these rows and the
+        // translators' ticks stayed as first drawn - owner 2026-10-31: «тексты добавляются, но галочки не ставятся»)
+        var stack = tsStack(), keys = tsVisibleKeys(), rows = host.querySelector('.dg-ts-body > .dg-ts-rows');
         host.querySelector('.dg-ts-title').textContent = tsStr('title');
         host.querySelector('.dg-ts-count').textContent = stack.length
             ? '· ' + stack.length + ' ' + tsStr('onNow') : '· ' + tsStr('pali');
