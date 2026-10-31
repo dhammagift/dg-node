@@ -118,8 +118,7 @@ function addIconsTo01() {
             : (window.isRuPath ? 'Слушать перевод' : 'Listen to the translation');
         playBtn.innerHTML = '<img src="/assets/svg/volume-solid-full.svg" class="title-svg-icon" alt="" aria-hidden="true">';
 
-        playBtn.addEventListener('click', (e) => {
-            e.stopPropagation();
+        const play = () => {
             if (typeof window.activateSegmentForTTS === 'function') {
                 // force=true: this is an explicit "play THIS" command, not a passive text click —
                 // must always (re)target the dynamic-tts-btn at this segment, never just resume/
@@ -140,13 +139,29 @@ function addIconsTo01() {
                     if (dynamicBtn) dynamicBtn.click();
                 }
             }
-        });
+        };
+        playBtn.addEventListener('click', (e) => { e.stopPropagation(); play(); });
 
         // Several Pali editions (megareader.js .dg-ed-line, display:block): the speaker goes inside the first line that has
         // text, on the title's line - before them it stood alone on a line of its own (owner 2026-10-31)
         const firstEdLine = Array.from(span.querySelectorAll(':scope > .dg-ed-line')).find(l => !l.classList.contains('is-empty') && l.textContent.trim());
         if (firstEdLine) firstEdLine.insertBefore(playBtn, firstEdLine.firstChild);
         else span.insertBefore(playBtn, span.firstChild);
+        // ...and every other edition gets a speaker of its own here, plated with its name (owner 2026-10-31: «нажали пали 2 -
+        // пали 2»): the reading then goes down that edition (megareader.js dgLastEdLine, voice.js). Its title line is empty
+        // in most editions, so the line holds only the plate and the speaker.
+        if (index === 0 && firstEdLine) Array.from(span.querySelectorAll(':scope > .dg-ed-line')).filter(l => l !== firstEdLine).forEach(l => {
+            const ed = (window.DG_EDITIONS || []).find(x => x.id === l.dataset.ed);
+            if (!ed) return;
+            const b = playBtn.cloneNode(true);   // no listeners in a clone
+            b.title = (window.isRuPath ? 'Слушать ' : 'Listen: ') + ed[window.isRuPath ? 'ru' : 'en'];
+            b.addEventListener('click', (e) => { e.stopPropagation(); window.dgLastEdLine = l; play(); });
+            l.classList.remove('is-empty');
+            l.classList.add('dg-tag', 'dg-ed-speaker');
+            l.dataset.tag = ed.tag;
+            if (!l.textContent.trim()) l.textContent = '';
+            l.insertBefore(b, l.firstChild);
+        });
     });
 }
 
