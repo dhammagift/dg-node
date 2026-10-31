@@ -106,6 +106,7 @@
   "quick": {
     "title": "Quick settings",
     "where": "Where to search",
+    "editions": "Pāḷi editions",
     "searchVariants": "With variant readings",
     "dictMode": "Dictionary",
     "context": "Context lines",

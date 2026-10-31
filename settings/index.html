@@ -595,14 +595,8 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
     <h2 id="t-g-root">Коренной текст пали</h2>
     <div class="rows">
       <div class="row">
-        <div><p class="row-title" id="edLbl">Издание</p><p class="row-desc" id="t-edDesc">В результатах — текст Mahāsaṅgīti, а разночтения — по всем изданиям. Выбор издания в ридере — скоро.</p></div>
-        <div class="row-control"><div class="seg" role="group" aria-labelledby="edLbl">
-          <button type="button" aria-pressed="true">MS</button>
-          <button type="button" disabled title="Готовится">BJT<span class="badge">скоро</span></button>
-          <button type="button" disabled title="Готовится">VRI<span class="badge">скоро</span></button>
-          <button type="button" disabled title="Готовится">SIAM<span class="badge">скоро</span></button>
-          <button type="button" disabled title="Готовится">PTS<span class="badge">скоро</span></button>
-        </div></div>
+        <div><p class="row-title" id="edLbl">Издания в ридере</p><p class="row-desc" id="t-edDesc">Одно издание — текст читается в нём, недостающие строки берутся из Mahāsaṅgīti с пометкой MS. Несколько — каждая строка во всех выбранных, а в режиме колонок по колонке на издание. Есть для DN, MN, SN, AN, только онлайн. В поиске — всегда текст Mahāsaṅgīti с разночтениями всех изданий.</p></div>
+        <div class="row-control"><div class="seg" role="group" aria-labelledby="edLbl" id="edSeg"></div></div>
       </div>
     </div>
   </section>
@@ -1023,6 +1017,21 @@ $('#punct').onchange = e=> localStorage.setItem('removePunct', e.target.checked 
 // Variant readings in search: on by default; off = the Mahāsaṅgīti text only (index.html adds "novariants" to the scope)
 $('#searchVariants').checked = localStorage.getItem('dhammaSearchVariants') !== 'off';
 $('#searchVariants').onchange = e=> e.target.checked ? localStorage.removeItem('dhammaSearchVariants') : localStorage.setItem('dhammaSearchVariants', 'off');
+// Pali editions in the reader: the ordered list megareader.js getEditions() reads (localStorage dgEditions, none = MS)
+const EDITIONS = [['ms','MS','Mahāsaṅgīti'],['bjt','BJT','Buddha Jayanti'],['my','VRI','Chaṭṭha Saṅgāyana'],['th','SR','Siam Rath'],['mso','MS05','Mahāsaṅgīti 2005'],['pts','PTS','Pali Text Society']];
+function readEditions(){ try { const v = JSON.parse(localStorage.getItem('dgEditions')); return Array.isArray(v) && v.length ? v : ['ms']; } catch(e) { return ['ms']; } }
+function paintEditions(){
+  const on = readEditions();
+  $('#edSeg').innerHTML = EDITIONS.map(([id, tag, name]) => `<button type="button" data-ed="${id}" title="${name}" aria-pressed="${on.includes(id)}">${tag}</button>`).join('');
+}
+$('#edSeg').onclick = e => {
+  const b = e.target.closest('[data-ed]'); if (!b) return;
+  let on = readEditions(); const id = b.dataset.ed;
+  on = on.includes(id) ? on.filter(x => x !== id) : on.concat([id]);
+  if (!on.length || (on.length === 1 && on[0] === 'ms')) localStorage.removeItem('dgEditions'); else localStorage.setItem('dgEditions', JSON.stringify(on));
+  paintEditions();
+};
+paintEditions();
 // Same key/semantics as home.js's tileDescEnabled() (localStorage.dgTileDesc — 'off' hides,
 // anything else shows) — this row is the only place left to change it, moved here from the
 // burger drawer's quick-settings (owner: "очень неважная настройка").
@@ -1473,8 +1482,8 @@ const STR = {
     gDict:'Словарь', dictOnDesc:'Сводный словарь, включает DPD и другие источники.', dictMode:'Режим',
     autoLookup:'Мульти-селект', autoLookupDesc:'Искать выделенный текст автоматически. То же самое, что кнопка мультивыбора в ридере.',
     delay:'Задержка',
-    gRoot:'Коренной текст пали', edLbl:'Издание',
-    edDesc:'В результатах — текст Mahāsaṅgīti, а разночтения — по всем изданиям. Выбор издания в ридере — скоро.', badgeSoon:'скоро',
+    gRoot:'Коренной текст пали', edLbl:'Издания в ридере',
+    edDesc:'Одно издание — текст читается в нём, недостающие строки берутся из Mahāsaṅgīti с пометкой MS. Несколько — каждая строка во всех выбранных, а в режиме колонок по колонке на издание. Есть для DN, MN, SN, AN, только онлайн. В поиске — всегда текст Mahāsaṅgīti с разночтениями всех изданий.', badgeSoon:'скоро',
     gVoice:'Озвучка', voiceKey:'Ключ Google Cloud API',
     voiceKeyDesc:'Нужен для более качественной озвучки. Хранится только на этом устройстве.',
     voiceKeyShow:'Показать', voiceKeyHide:'Скрыть',
@@ -1513,8 +1522,8 @@ const STR = {
     gDict:'Dictionary', dictOnDesc:'Combined dictionary, includes DPD and other sources.', dictMode:'Mode',
     autoLookup:'Multi-select', autoLookupDesc:'Auto-look-up selected text. Same as the multi-select button in the reader.',
     delay:'Delay',
-    gRoot:'Pali root text', edLbl:'Edition',
-    edDesc:'Results show the Mahāsaṅgīti text, with variant readings from all editions. Choosing the edition in the reader — soon.', badgeSoon:'soon',
+    gRoot:'Pali root text', edLbl:'Editions in the reader',
+    edDesc:'One edition: the text is read in it, a line it lacks comes from the Mahāsaṅgīti, marked MS. Several: every line in each chosen one, and one column per edition in the column view. Available for DN, MN, SN, AN, online only. Search always uses the Mahāsaṅgīti text with the variant readings of all editions.', badgeSoon:'soon',
     gVoice:'Voice / TTS', voiceKey:'Google Cloud API key',
     voiceKeyDesc:'Needed for higher-quality voices. Stored only on this device.',
     voiceKeyShow:'Show', voiceKeyHide:'Hide',

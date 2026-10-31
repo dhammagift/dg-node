@@ -141,7 +141,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // preloaded response is simply unused. Skipped when the address carries reader params of its own.
   (function () {
     try {
-      if (window.Capacitor || /[?&](mode|lang|langs|script|translators|q)=/.test(location.search)) return;
+      if (window.Capacitor || /[?&](mode|lang|langs|script|translators|editions|q)=/.test(location.search)) return;
       var m = location.pathname.match(/^\/((?:dn|mn|sn|an|ud|iti|snp|dhp|thag|thig)\d[\w.-]*)(?::|\/|$)/i);
       var q = localStorage.getItem('dgReaderApiQuery');
       if (!m || !q) return;

@@ -984,6 +984,12 @@
             return langs.some(function (l) { return OFFLINE_LANGS.indexOf(l) === -1; });
         }
 
+        // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS) are online only: the offline
+        // library carries the Mahāsaṅgīti text alone.
+        function editionNeedsOnline(qs) {
+            return String(qs.get('editions') || '').split(',').some(function (e) { return e.trim() && e.trim() !== 'ms'; });
+        }
+
         // 'isopali' is the default the client already omits (search/index.html only adds ?script=
         // when it is something else) — treated the same as absent.
         function scriptRequested(qs) {
@@ -1034,7 +1040,9 @@
             return realFetch(target).catch(function (e) {
                 if (typeof window.showBubbleNotification === 'function') {
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
-                    window.showBubbleNotification(ru
+                    window.showBubbleNotification(why === 'edition'
+                        ? (ru ? 'Другие издания пали — только онлайн' : 'The other Pali editions are online only')
+                        : ru
                         ? 'Нужен интернет: эта система письма или язык не входят в офлайн-библиотеку'
                         : 'Needs internet: this script or language isn’t in the offline library', 5000);
                 }
@@ -1229,6 +1237,7 @@
 
             if (p.indexOf('/api/text/') === 0) {
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (editionNeedsOnline(qs)) return toServer(input, init, 'edition');
                 var textId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
                 return withLoadingEvent(function () {
                     return call('text', {

@@ -620,14 +620,19 @@ async function fetchSegmentsData(slug) {
   }
   
   try {
-    const response = await fetch(makeJsonUrl(slug));
+    // The edition the reader chose (owner: TTS reads it, megareader.js dgReadEdition); a line it lacks is read from MS.
+    const ed = window.dgReadEdition ? window.dgReadEdition() : 'ms';
+    const response = await fetch(makeJsonUrl(slug) + (ed && ed !== 'ms' ? `?editions=${encodeURIComponent(ed)}` : ''));
     if (!response.ok) return null;
     const data = await response.json();
     // { segments: [{segment, root_text, ...}] } -> { "sn1.8:1.1": "root text" }, the shape the
     // caller already expects (segment id -> Pali string).
     if (!data || !Array.isArray(data.segments)) return null;
     const map = {};
-    data.segments.forEach(seg => { if (seg && seg.segment && seg.root_text) map[seg.segment] = seg.root_text; });
+    data.segments.forEach(seg => {
+        const text = (seg && seg.editions && seg.editions[ed]) || (seg && seg.root_text);
+        if (seg && seg.segment && text) map[seg.segment] = text;
+    });
     return Object.keys(map).length ? map : null;
   } catch (e) { 
     console.warn(`Не удалось загрузить JSON для ${slug}`, e);

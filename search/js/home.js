@@ -1828,7 +1828,9 @@
         multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
         keepIt:   { ru: 'Оставить себе', en: 'Keep this' },
         reset:    { ru: 'По умолчанию', en: 'Default' },
-        resetHint:{ ru: 'Языки, переводчики, их порядок и режим чтения — как при первом заходе', en: 'Languages, translators, their order and the reading mode as on a first visit' }
+        resetHint:{ ru: 'Языки, переводчики, их порядок и режим чтения — как при первом заходе', en: 'Languages, translators, their order and the reading mode as on a first visit' },
+        edLabel:  { ru: 'Пали', en: 'Pāḷi' },
+        edMissing:{ ru: 'Этого текста нет в издании', en: 'This text is not in this edition' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -1933,7 +1935,7 @@
             '<span class="dg-ts-mode"></span>' +
             '<button type="button" class="dg-ts-reset" data-ts-reset></button>' +
             '<button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
-            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
+            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div><div class="dg-ts-chips dg-ts-eds"></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
         document.body.appendChild(host);
         host.addEventListener('click', tsClick);
@@ -2023,6 +2025,21 @@
                 return '<button type="button" class="dg-ts-add-row" data-ts-newlang="' + esc(l) + '">' +
                     '<span>' + esc(LANG_FULL_NAME[l] || l) + '</span><span class="dg-ts-add-n">' + n + '</span></button>';
             }).join('');
+
+        // The Pali editions (reader only, megareader.js READER_EDITIONS): MS and the others this text is in. One chosen =
+        // the text read in it; several = a line (or a column) per edition. Applied at once, saved for every text.
+        var edHost = host.querySelector('.dg-ts-eds');
+        var eds = currentState() === 'reader' && window.DG_EDITIONS && window.getEditions ? window.getEditions() : null;
+        edHost.hidden = !eds;
+        if (eds) {
+            var edAvail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
+            edHost.innerHTML = '<span class="dg-ts-eds-cap">' + esc(tsStr('edLabel')) + '</span>' + window.DG_EDITIONS.map(function (ed) {
+                var missing = edAvail.indexOf(ed.id) === -1;
+                return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ts-ed="' + ed.id + '"' +
+                    (missing ? ' disabled' : '') + ' title="' + esc(missing ? tsStr('edMissing') : ed[menuLang() === 'ru' ? 'ru' : 'en']) + '"' +
+                    ' aria-pressed="' + (eds.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + '</button>';
+            }).join('');
+        }
 
         rows.innerHTML = keys.map(function (key) {
             var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1;
@@ -2162,12 +2179,12 @@
         // reloaded without the reading parameters, so the server's defaults draw it.
         if (e.target.closest('[data-ts-reset]')) {
             try {
-                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode']
+                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions']
                     .forEach(function (k) { localStorage.removeItem(k); });
                 sessionStorage.removeItem('dgReadingStackLocal');
             } catch (x) { /* private mode */ }
             var u = new URL(location.href);
-            ['mode', 'langs', 'translators'].forEach(function (k) { u.searchParams.delete(k); });
+            ['mode', 'langs', 'translators', 'editions'].forEach(function (k) { u.searchParams.delete(k); });
             location.replace(u.toString());
             return;
         }
@@ -2177,6 +2194,22 @@
             return;
         }
         if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
+        var edChip = e.target.closest('[data-ts-ed]');
+        if (edChip) {
+            var eds = window.getEditions(), ed = edChip.dataset.tsEd;
+            eds = eds.indexOf(ed) !== -1 ? eds.filter(function (x) { return x !== ed; }) : eds.concat([ed]);
+            window.setEditions(eds);   // nothing left = MS
+            tsRender();
+            var slug = window._currentSlug;
+            if (slug && typeof window.buildSutta === 'function') {
+                var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+                window.buildSutta(slug).then(function () {
+                    if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+                    tsRender();
+                });
+            }
+            return;
+        }
         var newLang = e.target.closest('[data-ts-newlang]');
         if (newLang) {
             tsAddOpen = false;
@@ -2600,6 +2633,37 @@
                     window.DgSearchRender.redraw();
                 }
             }, 'Alt+G'));
+            // The Pali editions (megareader.js READER_EDITIONS), the same choice as the Translations window and /settings/
+            if (state === 'reader' && window.DG_EDITIONS && window.getEditions) {
+                host.appendChild(groupTitle(t('quick.editions', 'Издания пали')));
+                var edRow = document.createElement('div');
+                edRow.className = 'dg-ts-chips dg-qs-eds';
+                var paintEds = function () {
+                    var on = window.getEditions(), avail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
+                    edRow.innerHTML = window.DG_EDITIONS.map(function (ed) {
+                        var missing = avail.indexOf(ed.id) === -1;
+                        return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ed="' + ed.id + '"' +
+                            ' title="' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en']) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + '</button>';
+                    }).join('');
+                };
+                paintEds();
+                edRow.addEventListener('click', function (e) {
+                    var b = e.target.closest('[data-ed]');
+                    if (!b) return;
+                    var eds = window.getEditions(), ed = b.dataset.ed;
+                    window.setEditions(eds.indexOf(ed) !== -1 ? eds.filter(function (x) { return x !== ed; }) : eds.concat([ed]));
+                    paintEds();
+                    notifySaved();
+                    if (typeof window.buildSutta === 'function' && window._currentSlug) {
+                        var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+                        window.buildSutta(window._currentSlug).then(function () {
+                            if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+                            paintEds();
+                        });
+                    }
+                });
+                host.appendChild(edRow);
+            }
         }
 
         // Devanagari mode's script — body.dg-mode-dev is set by megareader.js only while that

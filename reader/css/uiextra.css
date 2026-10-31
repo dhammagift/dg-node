@@ -411,6 +411,78 @@
     display: none;
   }
 
+  /* Pali editions (megareader.js editionLines, owner 2026-10-29..31). Lines: one line per chosen edition, a small
+     quiet plate with its short name at the start, "—" where the edition lacks the line, no plates on headings.
+     One other edition: its text, a line it lacks taken from Mahāsaṅgīti and plated "MS". */
+  .dg-ed-line { display: block; }
+  .dg-ed-line + .dg-ed-line { margin-top: .2em; }
+  .dg-ed-line.is-empty { display: none; }
+  .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
+  .dg-ed-line[data-tag]::before, .dg-ed-fill[data-tag]::before {
+    content: attr(data-tag);
+    display: inline-block;
+    font: 600 .62em/1.6 var(--dg-font, Lato, system-ui, sans-serif);
+    letter-spacing: .03em;
+    padding: 0 .45em;
+    margin-right: .55em;
+    border-radius: 4px;
+    vertical-align: .15em;
+    background: color-mix(in srgb, var(--dg-text-muted, #808086) 14%, transparent);
+    color: var(--dg-text-muted, #808086);
+  }
+  .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
+
+  /* Column view with three texts or more (megareader.js useGrid): one grid column per text - editions first, then
+     each translation - a header with the full names pinned under the site header, and on a phone the text scrolls
+     sideways inside the article (the page itself and the header stay screen-wide; edge swipes keep working). The
+     header lives outside the article and follows its scroll (megareader.js, the capturing scroll listener). */
+  #sutta.column-view.dg-grid {
+    max-width: none;
+    --dg-colw: min(16rem, 78vw);
+    --dg-colgap: 1.4rem;
+    --dg-gridw: calc(var(--dg-ncols) * var(--dg-colw) + (var(--dg-ncols) - 1) * var(--dg-colgap));
+  }
+  #sutta.column-view.dg-grid > article { overflow-x: auto; overscroll-behavior-x: contain; }
+  /* content-visibility:auto on the paragraphs (home.css) clips painting to their own box: the columns past the screen
+     width stayed blank while scrolled to */
+  #sutta.column-view.dg-grid > article * { content-visibility: visible; }
+  #sutta.column-view.dg-grid span[id],
+  #sutta.column-view.dg-grid .dg-cols-head-in {
+    display: grid;
+    grid-template-columns: repeat(var(--dg-ncols), minmax(var(--dg-colw), 1fr));
+    column-gap: var(--dg-colgap);
+    min-width: var(--dg-gridw);
+    align-items: start;
+  }
+  #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: 1; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang { display: contents; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > a.copyLink { display: none; }
+  #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); margin: 0; }
+  #sutta.column-view.dg-grid .dg-ed-line::before { display: none; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; order: 99; font-size: .85em; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant > br:first-child { display: none; }
+  #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }
+  #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); width: auto; margin: 0; padding: 0; }
+  .dg-cols-head { display: none; }
+  #sutta.column-view.dg-grid > .dg-cols-head {
+    display: block;
+    position: sticky;
+    top: var(--dg-stack-height, 65px);
+    z-index: 3;
+    overflow: hidden;
+    background: var(--dg-page, #fff);
+    border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
+    margin-bottom: .6rem;
+  }
+  body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { top: 0; }
+  #sutta.column-view.dg-grid .dg-cols-head-in {
+    font: 700 .72rem/1.35 var(--dg-font, Lato, system-ui, sans-serif);
+    letter-spacing: .03em;
+    color: var(--dg-text-muted, #808086);
+    padding: .4rem 0;
+  }
+  .dg-cols-head-in > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
   /* Ширина контейнера — #sutta.column-view (ID+класс, специфичность 110), НЕ .sutta.column-view
      (только классы, 20): index.css/rus-multi.css задают базовую ширину через #sutta{max-width:
      45rem} (специфичность 100, тот же приём, что и на проде) — чисто классовый селектор здесь

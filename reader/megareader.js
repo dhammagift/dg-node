@@ -226,6 +226,55 @@ function setStack(keys, opts) {
 window.getReadingStack = getStack;
 window.setReadingStack = setStack;
 
+/* Pali editions (owner 2026-10-29..31). MS is the Mahāsaṅgīti, the root text every segment has; the others come from
+   /api/text?editions= cut into the same segments (dg.db table editions, DN MN SN AN). The choice is an ordered list:
+   ['ms'] = as always; one other edition = the text read in it, a line it lacks taken from MS and plated "MS"; several
+   = each line in every chosen edition (plates in lines, one column each in the column view). ?editions= in the
+   address wins (a shared link), else the saved choice (settings, quick settings, the Translations window). */
+const EDITIONS_KEY = 'dgEditions';
+const READER_EDITIONS = [
+    { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
+    { id: 'bjt', tag: 'BJT', ru: 'Buddha Jayanti (Шри-Ланка)', en: 'Buddha Jayanti (Sri Lanka)' },
+    { id: 'my', tag: 'VRI', ru: 'Chaṭṭha Saṅgāyana (VRI, Мьянма)', en: 'Chaṭṭha Saṅgāyana (VRI, Myanmar)' },
+    { id: 'th', tag: 'SR', ru: 'Siam Rath (Таиланд, 1927)', en: 'Siam Rath (Thailand, 1927)' },
+    { id: 'mso', tag: 'MS05', ru: 'Mahāsaṅgīti 2005 (печатная)', en: 'Mahāsaṅgīti 2005 (printed)' },
+    { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society' },
+];
+window.DG_EDITIONS = READER_EDITIONS;
+function cleanEditions(list) {
+    const ids = READER_EDITIONS.map(e => e.id);
+    const out = (Array.isArray(list) ? list : []).filter((e, i, a) => ids.includes(e) && a.indexOf(e) === i);
+    return out.length ? out : ['ms'];
+}
+function getEditions() {
+    const fromUrl = new URLSearchParams(location.search).get('editions');
+    if (fromUrl) return cleanEditions(fromUrl.split(','));
+    try { return cleanEditions(JSON.parse(localStorage.getItem(EDITIONS_KEY))); } catch (e) { return ['ms']; }
+}
+function setEditions(list) {
+    list = cleanEditions(list);
+    try {
+        if (list.length === 1 && list[0] === 'ms') localStorage.removeItem(EDITIONS_KEY);
+        else localStorage.setItem(EDITIONS_KEY, JSON.stringify(list));
+    } catch (e) { /* private mode */ }
+    // the address must not keep overriding the choice just made
+    const u = new URL(location.href);
+    if (u.searchParams.has('editions')) { u.searchParams.delete('editions'); history.replaceState(history.state, '', u); }
+    return list;
+}
+window.getEditions = getEditions;
+window.setEditions = setEditions;
+// The pinned column header (.dg-cols-head, column view with 3+ texts) sits outside the article, which scrolls sideways
+// on a phone: it follows that scroll. Scroll events do not bubble, so one capturing listener for every render.
+document.addEventListener('scroll', e => {
+    const a = e.target;
+    if (!a || a.tagName !== 'ARTICLE' || !a.parentElement || !a.parentElement.classList.contains('dg-grid')) return;
+    const head = a.parentElement.querySelector(':scope > .dg-cols-head > .dg-cols-head-in');
+    if (head) head.style.transform = `translateX(${-a.scrollLeft}px)`;
+}, true);
+// The edition TTS reads (voice.js): the first chosen one; its missing lines fall back to MS there too.
+window.dgReadEdition = () => getEditions()[0];
+
 const TRANSLATORS_KEY = 'dgReadingTranslators';
 function getTranslatorChoice() {
     try { const v = JSON.parse(localStorage.getItem(TRANSLATORS_KEY)); return (v && typeof v === 'object') ? v : {}; }
@@ -977,7 +1026,7 @@ function buildCleanSuttaUrl(slug, params) {
 function carriedReaderParams() {
     const from = new URLSearchParams(document.location.search);
     const out = new URLSearchParams();
-    ['s', 'mode', 'lang', 'langs'].forEach(k => {
+    ['s', 'mode', 'lang', 'langs', 'editions'].forEach(k => {
         if (from.has(k)) out.set(k, k === 's' ? from.get(k).replace(/ṃ/g, 'ṁ') : from.get(k));
     });
     return [out.toString()];
@@ -1461,7 +1510,11 @@ window.buildSutta = async function(rawSlug, opts) {
             || localStorage.getItem('selectedScript')
             || (dualScriptModeActive ? 'devanagari' : '')).toLowerCase();
         const scriptQuery = (scriptParam && scriptParam !== 'isopali') ? `&script=${encodeURIComponent(scriptParam)}` : '';
-        const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}${scriptQuery}`;
+        // Other Pali editions: not in memorize/devanagari (their lines are drills/scripts of the MS text).
+        const otherEds = (isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey)) ? []
+            : getEditions().filter(e => e !== 'ms');
+        const editionsQuery = otherEds.length ? `&editions=${otherEds.join(',')}` : '';
+        const apiUrl = `/api/text/${encodeURIComponent(slug)}?${langsQuery}${scriptQuery}${editionsQuery}`;
         // Remembered for the next cold load: the <head> script in search/index.html preloads this
         // very URL before any reader code has run (the query only depends on the user's settings).
         try { localStorage.setItem('dgReaderApiQuery', apiUrl.slice(apiUrl.indexOf('?') + 1)); } catch (e) { /* private mode */ }
@@ -1512,6 +1565,7 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
+    READER_MODE.availableEditions = ['ms'].concat(Array.isArray(suttaData.availableEditions) ? suttaData.availableEditions : []); // the Pali editions THIS text is in (the Translations window marks the rest)
     // Owner: "показывать доп кнопку [языковой пилюли] во всех режимах... раз языки уже
     // активированы" — home.js's dgRenderLangPill reads LANG_ORDER_KEY to decide whether to show
     // its "more languages" dots button outside multi too (single/results/etc, where only ONE
@@ -1532,6 +1586,7 @@ window.buildSutta = async function(rawSlug, opts) {
     let params = new URLSearchParams(document.location.search);
 
     let htmlData = {}, paliData = {}, varData = {}, paliIsoData = {};
+    const edMaps = {};   // edition -> { segment: text } for the other Pali editions in the answer (see READER_EDITIONS)
     // transEntriesByLang.ru = [{translatorId, data:{segmentId: text, ...}}, ...] — сервер сам
     // решает сколько переводчиков вернуть на язык (обычно один, несколько для multi),
     // клиент просто перечисляет реально пришедшие ключи "${lang}_*" по всем
@@ -1627,6 +1682,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // dualScript mode only (dev/dev_en) — the original ISO/Latin Pali line, kept alongside
         // the script-converted paliData above (see dg-light.js's root_text_iso stash).
         paliIsoData[seg.segment] = seg.root_text_iso || undefined;
+        if (seg.editions) for (const ed in seg.editions) (edMaps[ed] ||= {})[seg.segment] = seg.editions[ed];
 
         columns.forEach(lang => {
             transEntriesByLang[lang].forEach(entry => {
@@ -1697,6 +1753,61 @@ window.buildSutta = async function(rawSlug, opts) {
         localStorage.setItem('removePunct', 'true');
     }
 
+    // The Pali texts this render shows: the chosen editions this text has, in the chosen order. An edition without the
+    // text (they cover DN MN SN AN) is left out and named in a quiet note; nothing left = MS as always.
+    const chosenEds = (isMemModeRender || isDevModeRender) ? ['ms'] : getEditions();
+    const edPresent = ['ms'].concat(Array.isArray(suttaData.editions) ? suttaData.editions : []);
+    let shownEds = chosenEds.filter(e => edPresent.includes(e));
+    const absentEds = chosenEds.filter(e => !edPresent.includes(e));
+    if (!shownEds.length) shownEds = ['ms'];
+    const edSingle = shownEds.length === 1 && shownEds[0] !== 'ms';   // the text read in one other edition
+    const edMulti = shownEds.length > 1;                              // a line per edition / a column per edition
+    const edInfo = id => READER_EDITIONS.find(e => e.id === id);
+    const uiRu = window.isRu !== undefined ? !!window.isRu : READER_MODE.lang === 'ru';
+    // Column view with three texts or more (editions + translations): one grid column per text, a pinned header with
+    // the full names, sideways scrolling on a phone (reader/css/uiextra.css .dg-grid). Two texts keep the old halves.
+    const gridCols = (edMulti ? shownEds.length : 1) + orderedEntries.length;
+    const useGrid = gridCols >= 3 && !isMemModeRender && !isDevModeRender;
+    const colOf = {};   // translation key -> its grid column
+    orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = (edMulti ? shownEds.length : 1) + k + 1; });
+    let editionsHead = '';
+    if (useGrid) {
+        const names = (edMulti ? shownEds : [shownEds[0]]).map(e => edInfo(e)[uiRu ? 'ru' : 'en'])
+            .concat(orderedEntries.map(({ lang, entry }) => {
+                const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
+                return String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang;
+            }));
+        editionsHead = `<div class="dg-cols-head" aria-hidden="true"><div class="dg-cols-head-in">${names.map(n => `<span>${n}</span>`).join('')}</div></div>`;
+    }
+    if (absentEds.length && absentEds.some(e => e !== 'ms')) {
+        const tags = absentEds.map(e => edInfo(e).tag).join(', ');
+        editionsHead += `<p class="dg-ed-note">${uiRu ? `Этого текста нет в издании ${tags}.` : `This text is not in ${tags}.`}</p>`;
+    }
+    if (suttaArea) {
+        suttaArea.classList.toggle('dg-grid', useGrid);
+        suttaArea.classList.toggle('dg-eds', edMulti);
+        suttaArea.style.setProperty('--dg-ncols', gridCols);
+    }
+
+    // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
+    // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
+    // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
+    function editionLines(segment, msText) {
+        if (!edSingle && !edMulti) return msText;
+        const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
+        if (edSingle) {
+            const t = (edMaps[shownEds[0]] || {})[segment];
+            if (t !== undefined) return t.trim();
+            return heading ? msText : `<span class="dg-ed-fill" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
+        }
+        return shownEds.map((e, k) => {
+            const t = e === 'ms' ? msText : (edMaps[e] || {})[segment];
+            const tag = heading ? '' : ` data-tag="${edInfo(e).tag}"`;
+            if (t === undefined) return `<span class="dg-ed-line is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
+            return `<span class="dg-ed-line" data-ed="${e}" style="--c:${k + 1}"${tag}>${typeof t === 'string' ? t.trim() : t}</span>`;
+        }).join('');
+    }
+
     for (let i = 0; i < segments.length; i++) {
         let segment = segments[i];
 
@@ -1720,6 +1831,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
         // second line gets the same punctuation-removal treatment as the converted-script line.
         window.applyRemovePunct(paliIsoData, segment);
+        for (const ed in edMaps) window.applyRemovePunct(edMaps[ed], segment);
         // Captured BEFORE the search-highlight block below wraps matches in <b> tags — the
         // mnemonic transform (transformToMnemonic) splits on punctuation/whitespace and would
         // shred an HTML tag into garbage "words". Same ordering as prod's memorize.js (its copy
@@ -1740,6 +1852,7 @@ window.buildSutta = async function(rawSlug, opts) {
                 allTransData.forEach(data => {
                     if (data[segment]) data[segment] = highlightFinder(data[segment]);
                 });
+                for (const ed in edMaps) if (edMaps[ed][segment]) edMaps[ed][segment] = highlightFinder(edMaps[ed][segment]);
             } catch (error) {}
         }
 
@@ -1758,10 +1871,11 @@ window.buildSutta = async function(rawSlug, opts) {
                 ? transformToMnemonic(memRawPali.trim())
                 : paliData[segment].trim();
             const pliSpanClass = isMemMode ? pliClass + ' dict-ignore' : pliClass;
-            inner += `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${pliContent}${linkToCopy}`;
+            inner += `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${editionLines(segment, pliContent)}${linkToCopy}`;
             // dualScript mode (dev/dev_en): variant stays attached to the ISO/Latin line below
-            // (matches prod's devanagari.js), not the script-converted main line here.
-            if (!isMemMode && !isDevMode && varData[segment] !== undefined && varData[segment] !== '') {
+            // (matches prod's devanagari.js), not the script-converted main line here. The variant line belongs to the
+            // MS text: gone when MS itself is not shown.
+            if (!isMemMode && !isDevMode && shownEds.includes('ms') && varData[segment] !== undefined && varData[segment] !== '') {
                 inner += `<font class="variant"><br>${linkToCopyStart}${varData[segment].trim()}${linkToCopy}</font>`;
             }
             inner += `</span>`;
@@ -1811,7 +1925,7 @@ window.buildSutta = async function(rawSlug, opts) {
                     // A second translation of the SAME language is the only case the text itself
                     // can't disambiguate — mark just those, and only the extra ones (see
                     // dupLangs below). Everything else prints clean, no translator name per line.
-                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}${useGrid ? ` style="--c:${colOf[entry.key]}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
                     transIndex++;
                 }
             });
@@ -1858,7 +1972,9 @@ window.buildSutta = async function(rawSlug, opts) {
         ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
         : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline">
-    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>
+    <p><span class="pli-lang" lang="pi">Pāḷi ${shownEds.map(e => e === 'ms'
+        ? '<a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a>'
+        : `<span title="${edInfo(e)[uiRu ? 'ru' : 'en']}">${edInfo(e).tag}</span>`).join(' · ')}</span>
     <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;
@@ -1918,6 +2034,7 @@ window.buildSutta = async function(rawSlug, opts) {
         `<div id="top-links-container" class="min-h-24"></div>` +
         (!isWarningClosed ? warning : '') +
         translatorByline + 
+        editionsHead +
         html + 
         // the "Listen in MP3" line, ready-made by the server (dg-fastify.js audioLineHtml) - the same string its own text carries
         (suttaData.audioHtml || '') +

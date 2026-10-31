@@ -1224,7 +1224,34 @@ function textRoster(suttaId) {
     textRosterStmt = textRosterStmt || searchDb.prepare(
         "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'");
     const roster = textRosterStmt.all(suttaId);
-    return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`) };
+    return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`),
+        availableEditions: textEditions(suttaId) };
+}
+// The other Pali editions (dg.db table editions, build-search-db.js) that have this text: the reader's Pali chips mark
+// the rest "нет в издании". ?editions=bjt,th adds their lines to every segment (seg.editions), cut into the same segments.
+const EDITION_KEYS = ['bjt', 'my', 'th', 'mso', 'pts'];
+let editionListStmt, editionRowsStmt;
+function textEditions(suttaId) {
+    try {
+        editionListStmt = editionListStmt || searchDb.prepare('SELECT DISTINCT edition FROM editions WHERE sutta_id = ?');
+        const have = new Set(editionListStmt.all(suttaId).map(r => r.edition));
+        return EDITION_KEYS.filter(e => have.has(e));
+    } catch { return []; }   // a dg.db built before the editions table
+}
+function addEditions(data, suttaId, wanted) {
+    const eds = [...new Set(String(wanted || '').split(',').map(e => e.trim()))].filter(e => EDITION_KEYS.includes(e));
+    if (!eds.length) return;
+    const byEd = {};
+    try {
+        editionRowsStmt = editionRowsStmt || searchDb.prepare('SELECT segment_id, txt FROM editions WHERE sutta_id = ? AND edition = ?');
+        for (const ed of eds) byEd[ed] = new Map(editionRowsStmt.all(suttaId, ed).map(r => [r.segment_id, r.txt]));
+    } catch { return; }
+    for (const seg of data.segments) {
+        const row = {};
+        for (const ed of eds) { const t = byEd[ed].get(seg.segment); if (t !== undefined) row[ed] = t; }
+        if (Object.keys(row).length) seg.editions = row;
+    }
+    data.editions = eds.filter(ed => byEd[ed].size);   // asked for and present in this text
 }
 // The parts of /api/text the apps' own SQLite cannot give (it is a ru+en slice with no audio index): the audio line and
 // the text's languages and translators in the whole corpus (a Thai text, the popover's "нет перевода"). The apps ask
@@ -2561,6 +2588,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
         // the reason spelled out in translatorsForSutta() — and it is what keeps a language whose
         // ONLY translation is the AI draft (9 such (sutta, lang) pairs) out of availableLangs.
         Object.assign(data, textRoster(suttaId));
+        addEditions(data, suttaId, req.query.editions);
 
         // Конвертация системы письма пали (?script=Devanagari/Thai/... — любой ключ
         // Aksharamukha.Scripts, см. akshConvert/resolveScriptKey выше). Только root_text/variant —
@@ -2582,6 +2610,7 @@ app.get('/api/text/:suttaId', async (req, res) => {
                 if (dualScript) seg.root_text_iso = seg.root_text;
                 if (seg.root_text) seg.root_text = await convertPaliScript(seg.root_text, req.query.script);
                 if (!dualScript && seg.variant) seg.variant = await convertPaliScript(seg.variant, req.query.script);
+                if (seg.editions) for (const ed in seg.editions) seg.editions[ed] = await convertPaliScript(seg.editions[ed], req.query.script);
             }));
         }
 
