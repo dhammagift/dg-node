@@ -415,11 +415,16 @@
      quiet plate with its short name at the start, "—" where the edition lacks the line, no plates on headings.
      One other edition: its text, a line it lacks taken from Mahāsaṅgīti and plated "MS". The plates are the
      translators' .dg-tag (search/css/home.css), one look for both. */
-  .dg-ed-line { display: block; }
+  .dg-ed-line { display: block; position: relative; }   /* relative: each line's copy marker (.copyLink-start, left:-1em) sits at its own line */
   .dg-ed-line + .dg-ed-line { margin-top: .2em; }
   .dg-ed-line.is-empty { display: none; }
   .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
+  /* "Differences" between prev and next (megareader.js) */
+  #dg-diff-btn { flex: none; margin: 0 auto; align-self: center; border: 1px solid var(--dg-border-strong, rgba(127,127,127,.4)); background: transparent;
+    color: var(--dg-text, inherit); border-radius: 999px; padding: 3px 12px; font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); cursor: pointer; }
+  #dg-diff-btn[aria-pressed="true"] { background: color-mix(in srgb, #e3a008 30%, transparent); border-color: #c98d07; }
+  #dg-diff-btn[hidden] { display: none; }
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
   /* "Show differences": the words most of the shown texts do not have (megareader.js markEditionDiffs) */
@@ -435,7 +440,8 @@
     --dg-colgap: 1.4rem;
     --dg-gridw: calc(var(--dg-ncols) * var(--dg-colw) + (var(--dg-ncols) - 1) * var(--dg-colgap));
   }
-  #sutta.column-view.dg-grid > article { overflow-x: auto; overscroll-behavior-x: contain; }
+  /* the scroll box reaches 1.1em into the left margin: the first column's copy markers (left:-1em) are not cut off */
+  #sutta.column-view.dg-grid > article { overflow-x: auto; overscroll-behavior-x: contain; padding-left: 1.1em; margin-left: -1.1em; }
   /* content-visibility:auto on the paragraphs (home.css) clips painting to their own box: the columns past the screen
      width stayed blank while scrolled to */
   #sutta.column-view.dg-grid > article * { content-visibility: visible; }
@@ -459,22 +465,18 @@
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; grid-row: 2; font-size: .85em; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant > br:first-child { display: none; }
   #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }
-  #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); grid-row: 1; width: auto; margin: 0; padding: 0; }
+  #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); grid-row: 1; width: auto; margin: 0; padding: 0; position: relative; }
   .dg-cols-head { display: none; }
   #sutta.column-view.dg-grid > .dg-cols-head {
     display: block;
     position: sticky;
-    top: var(--dg-stack-height, 65px);
+    top: var(--dg-cols-top, var(--dg-stack-height, 65px));   /* megareader.js placeColsHead */
     z-index: 3;
     overflow: hidden;
     background: var(--dg-page, #fff);
     border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
     margin-bottom: .6rem;
-    /* moves with the site header's own slide (search/index.html: transform .25s): it jumped to its place under the
-       header before the header was back, and showed in the middle of the text for a moment (owner's video 2026-10-31) */
-    transition: top .25s ease;
   }
-  body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { top: 0; }
   #sutta.column-view.dg-grid .dg-cols-head-in {
     font: 700 .72rem/1.35 var(--dg-font, Lato, system-ui, sans-serif);
     letter-spacing: .03em;

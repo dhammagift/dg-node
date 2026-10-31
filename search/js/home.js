@@ -516,7 +516,7 @@
             if (shouldClose) close();
         }
         sheet.addEventListener('touchstart', function (e) {
-            tracking = e.touches.length === 1;
+            tracking = e.touches.length === 1 && !e.target.closest('[data-ts-drag]');   // a row's drag handle moves the row, not the sheet
             dragging = false;
             if (!tracking) return;
             startX = e.touches[0].clientX;
@@ -1941,6 +1941,8 @@
             '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-pali"></div><div class="dg-ts-sec dg-ts-sec-trn"></div><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
         document.body.appendChild(host);
+        // Swipe down closes it on a phone, like every other bottom sheet (owner 2026-10-31: the apps expect it)
+        enableSwipeDown(host, tsClose);
         host.addEventListener('click', tsClick);
         host.querySelector('.dg-ts-x').addEventListener('click', function () { tsClose(); });
         // Клик мимо = «всё, читаю дальше»: применять нечего, всё уже применено.

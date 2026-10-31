@@ -313,6 +313,33 @@ function markEditionDiffs(texts) {
         return toks[i].map((w, x) => keys[i][x] && support[x] <= n / 2 ? `<mark class="dg-ed-diff">${w}</mark>` : w).join(' ');
     });
 }
+// The pinned column header sits right under the site header's real bottom (the lowest of the fixed stack's rows, which
+// slide away together when the header hides), frame by frame while the header
+// slides. A CSS top switched between the two places ran ahead of the slide and the header showed in the middle of the
+// text for a moment, twice per hide (owner's video 2026-10-31).
+function placeColsHead() {
+    const s = document.querySelector('#sutta.dg-grid.column-view');
+    if (!s) return;
+    let bottom = 0;
+    for (const id of ['dg-hero-band', 'reader-toolbar', 'navigation', 'top-links-container']) {
+        const el = document.getElementById(id);
+        if (el && getComputedStyle(el).position === 'fixed' && el.offsetHeight) bottom = Math.max(bottom, el.getBoundingClientRect().bottom);
+    }
+    // the text is zoomed (the reader's text size, CSS zoom): a CSS top is in its own pixels, the rects are the screen's
+    const head = s.querySelector(':scope > .dg-cols-head');
+    const zoom = head && head.offsetHeight ? head.getBoundingClientRect().height / head.offsetHeight : 1;
+    s.style.setProperty('--dg-cols-top', (bottom / (zoom || 1)).toFixed(1) + 'px');
+}
+let colsRaf = 0, colsUntil = 0;
+function followHeader() {
+    colsUntil = performance.now() + 400;   // the slide is .25s (search/index.html)
+    if (!colsRaf) colsRaf = requestAnimationFrame(function tick() {
+        placeColsHead();
+        colsRaf = performance.now() < colsUntil ? requestAnimationFrame(tick) : 0;
+    });
+}
+window.addEventListener('scroll', followHeader, { passive: true });
+window.addEventListener('resize', followHeader);
 // The pinned column header (.dg-cols-head, column view with 3+ texts) sits outside the article, which scrolls sideways
 // on a phone: it follows that scroll. Scroll events do not bubble, so one capturing listener for every render.
 document.addEventListener('scroll', e => {
@@ -1835,6 +1862,27 @@ window.buildSutta = async function(rawSlug, opts) {
         const tags = absentEds.map(e => edInfo(e).tag).join(', ');
         editionsHead += `<p class="dg-ed-note">${uiRu ? `Этого текста нет в издании ${tags}.` : `This text is not in ${tags}.`}</p>`;
     }
+    // "Differences" in the free middle of the prev/next row (owner 2026-10-31: «на видное место… большую кнопку»),
+    // there whenever two Pali texts are compared (several editions, or one edition against the Mahāsaṅgīti)
+    const navRow = document.getElementById('navigation');
+    let diffBtn = document.getElementById('dg-diff-btn');
+    if (navRow && !diffBtn) {
+        diffBtn = document.createElement('button');
+        diffBtn.type = 'button';
+        diffBtn.id = 'dg-diff-btn';
+        diffBtn.addEventListener('click', () => {
+            try { window.dgEditionsDiff() ? localStorage.removeItem('dgEditionsDiff') : localStorage.setItem('dgEditionsDiff', 'on'); } catch (e) { /* private mode */ }
+            const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+            window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); });
+        });
+        navRow.insertBefore(diffBtn, document.getElementById('next'));
+    }
+    if (diffBtn) {
+        diffBtn.hidden = !(edMulti || edSingle);
+        diffBtn.textContent = uiRu ? 'Отличия' : 'Differences';
+        diffBtn.setAttribute('aria-pressed', String(window.dgEditionsDiff()));
+        diffBtn.title = uiRu ? 'Подсветить отличия изданий' : 'Highlight where the editions differ';
+    }
     if (suttaArea) {
         suttaArea.classList.toggle('dg-grid', useGrid);
         suttaArea.classList.toggle('dg-eds', edMulti);
@@ -2102,6 +2150,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // tools → legal, no second copy of the byline and the warning under the text.
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
+    followHeader();   // the column header's place under the site header (placeColsHead)
     // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus
     // come after it (public/offline/app.js dgTextOnline) and take the library's Principles line's place. Asked once the
     // page is drawn and the browser is idle, so the request never competes with the text's own loading (owner 2026-10-26).
