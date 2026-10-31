@@ -984,10 +984,15 @@
             return langs.some(function (l) { return OFFLINE_LANGS.indexOf(l) === -1; });
         }
 
-        // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS) are online only: the offline
-        // library carries the Mahāsaṅgīti text alone.
+        // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS): offline only those whose pack
+        // (ed-bjt, …) is on this device; any other asked edition sends the request to the server.
         function editionNeedsOnline(qs) {
-            return String(qs.get('editions') || '').split(',').some(function (e) { return e.trim() && e.trim() !== 'ms'; });
+            var held = [];
+            try { held = (JSON.parse(localStorage.getItem(STATE_KEY) || '{}').packs || []); } catch (e) { /* none */ }
+            return String(qs.get('editions') || '').split(',').some(function (e) {
+                e = e.trim();
+                return e && e !== 'ms' && held.indexOf('ed-' + e) === -1;
+            });
         }
 
         // 'isopali' is the default the client already omits (search/index.html only adds ?script=
@@ -1247,6 +1252,7 @@
                         langs: qs.get('langs'),
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
+                        editions: qs.get('editions'),
                     }).then(function (r) { return withOnlineParts(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }

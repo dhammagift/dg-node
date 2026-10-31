@@ -1631,8 +1631,58 @@ function principlesLineHtml(ru, top) {
     return `<p class="dg-principles" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:${top} 0 .5em">${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(' · ')}</p>`;
 }
 
+// ---------- other Pali editions (moved from dg-fastify.js, 2026-11-01) ----------
+// The other Pali editions (dg.db table editions, build-search-db.js; offline the ed-* packs through the worker's TEMP VIEW
+// editions) that have this text: the reader's Pali chips mark
+// the rest "нет в издании". ?editions=bjt,th adds their lines to every segment (seg.editions), cut into the same segments.
+const EDITION_KEYS = ['bjt', 'my', 'th', 'mso', 'pts'];
+const editionStmts = new WeakMap();   // per db handle: the worker opens a new one at each (re)open
+function editionStmt(sql) {
+    let m = editionStmts.get(searchDb);
+    if (!m) editionStmts.set(searchDb, m = {});
+    return m[sql] || (m[sql] = searchDb.prepare(sql));
+}
+function textEditions(suttaId) {
+    try {
+        const have = new Set(editionStmt('SELECT DISTINCT edition FROM editions WHERE sutta_id = ?').all(suttaId).map(r => r.edition));
+        return EDITION_KEYS.filter(e => have.has(e));
+    } catch { return []; }   // a dg.db built before the editions table
+}
+// A line that swallowed the lines after it (f3-ultra's review, 2026-10-31: BJT sn24.5:1.3 holds the whole sutta from 1.3
+// on, 2421 chars against MS's 160, and the lines it swallowed are missing, so the reader showed that text twice). Many
+// times longer than the Mahāsaṅgīti line while the Mahāsaṅgīti does not abbreviate there (…pe…: an edition spelling the
+// passage out is right) - left out, so the reader treats it like a missing line. The table keeps it (MCP compares raw).
+function shiftedLine(edTxt, msTxt) {
+    msTxt = msTxt || '';
+    return edTxt.length > 4 * msTxt.length + 300 && !/…|(^|[^\p{L}])(pe|pa|peyyāla)([^\p{L}]|$)/u.test(msTxt);   // \b would split at ā, ṭ
+}
+// PTS lines end with the edition's paragraph marks and numbers ("…migadāye || || 2."): not text (f3-ultra's review).
+// The single "||" inside a line is its sentence stop and stays.
+const ptsClean = t => t.replace(/(\s*\|\|)+\s*(\d+\s*\.)?\s*$/, ' ');
+function addEditions(data, suttaId, wanted) {
+    const eds = [...new Set(String(wanted || '').split(',').map(e => e.trim()))].filter(e => EDITION_KEYS.includes(e));
+    if (!eds.length) return;
+    const byEd = {};
+    try {
+        const rows = editionStmt('SELECT segment_id, txt FROM editions WHERE sutta_id = ? AND edition = ?');
+        for (const ed of eds) byEd[ed] = new Map(rows.all(suttaId, ed).map(r => [r.segment_id, r.txt]));
+    } catch { return; }
+    for (const seg of data.segments) {
+        const row = {};
+        for (const ed of eds) {
+            const t = byEd[ed].get(seg.segment);
+            if (t !== undefined && !shiftedLine(t, seg.root_text)) row[ed] = ed === 'pts' ? ptsClean(t) : t;
+        }
+        if (Object.keys(row).length) seg.editions = row;
+    }
+    data.editions = eds.filter(ed => byEd[ed].size);   // asked for and present in this text
+}
+
 module.exports = {
     principlesLineHtml,
+    EDITION_KEYS,
+    textEditions,
+    addEditions,
     init,
     suttaTitleIndex,
     setSkeleton,

@@ -203,7 +203,8 @@
         var EDITIONS = { ms: 'Mahāsaṅgīti', th: isRu ? 'Сиам Рат (Таиланд)' : 'Siam Rath (Thailand)', bjt: isRu ? 'BJT (Шри-Ланка)' : 'BJT (Sri Lanka)', vri: isRu ? 'VRI (Мьянма)' : 'VRI (Myanmar)' };
         var packs = manifest.packs;
         var main = packs.filter(function (p) { return p.main; })[0];
-        var isRoot = function (p) { return p.kind === 'root'; };
+        // The other Pali editions (ed-bjt, …, kind 'edition') are listed with the root texts, under the Mahāsaṅgīti.
+        var isRoot = function (p) { return p.kind === 'root' || p.kind === 'edition'; };
         var langOf = function (p) { return p.lang || (/^tr-([a-z]{2,3})$/.exec(p.id) || [])[1] || null; };
         // Fixed self-names, as in the mockup: a browser's own data may lack some (Pablo's phone showed "Gsw", headless
         // Chromium "Lao", "Georgian"). Intl only for a language not listed here.
@@ -228,7 +229,9 @@
             var bits = [];
             if (p === main) bits.push(esc(L.core));
             if (p.langs && p.langs.length > 1) bits.push(p.langs.map(function (l) { return '<span style="white-space:nowrap">' + esc(nativeName(l)) + '</span>'; }).join(' · '));
-            if (p.texts) bits.push(esc(p.texts.toLocaleString(isRu ? 'ru' : 'en') + L.texts));
+            // "6 991 текст", "7 284 текста", "7 605 текстов": the Russian plural by the last digits, not one suffix for all.
+            var tw = function (n) { var d = n % 10, h = n % 100; return d === 1 && h !== 11 ? ' текст' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? ' текста' : ' текстов'; };
+            if (p.texts) bits.push(esc(p.texts.toLocaleString(isRu ? 'ru' : 'en') + (isRu ? tw(p.texts) : L.texts)));
             return bits.join(' · ');
         }
         var mbOf = function (b) { return Math.max(1, Math.round((b || 0) / 1048576)); };

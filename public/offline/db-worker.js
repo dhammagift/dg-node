@@ -933,7 +933,8 @@ function inspectPack(pool, name, build, expectedBytes) {
         for (const row of handle.selectObjects('SELECT key, value FROM meta')) meta[row.key] = row.value;
         if (meta.schema_version && Number(meta.schema_version) !== SCHEMA_VERSION) return { ok: false, reason: `schema ${meta.schema_version} != ${SCHEMA_VERSION}` };
         if (meta.build_id !== build) return { ok: false, reason: 'incomplete download' };
-        handle.selectObject('SELECT 1 FROM texts LIMIT 1');   // not count(*): that walks the whole table on every load
+        // not count(*): that walks the whole table on every load. An edition pack (ed-bjt, …) has no texts, only editions.
+        try { handle.selectObject('SELECT 1 FROM texts LIMIT 1'); } catch (e) { handle.selectObject('SELECT 1 FROM editions LIMIT 1'); }
         if (expectedBytes) {
             const pages = handle.selectObject('PRAGMA page_count'), size = handle.selectObject('PRAGMA page_size');
             const bytes = (pages && pages.page_count || 0) * (size && size.page_size || 0);
@@ -956,8 +957,16 @@ function openPacks(pool, packs) {
     try {
         handle.exec('PRAGMA temp_store = memory');
         for (const p of packs.slice(1)) handle.exec(`ATTACH 'file:${p.name}?vfs=${POOL_NAME}' AS "${p.id}"`);
-        const from = ['main', ...packs.slice(1).map(p => p.id)];
+        // Which schema has which table: a translation pack has texts + fts, an edition pack (ed-bjt, …) only editions. Each
+        // TEMP VIEW, and the per-pack fts rewrite (packedQuery), runs over the schemas that have that table.
+        const schemasWith = (table) => ['main', ...packs.slice(1).map(p => p.id)].filter(s =>
+            handle.selectObject(`SELECT 1 AS x FROM "${s}".sqlite_master WHERE type = 'table' AND name = ?`, [table]));
+        const from = schemasWith('texts');
         if (from.length > 1) handle.exec(`CREATE TEMP VIEW texts AS ${from.map(s => `SELECT * FROM "${s}".texts`).join(' UNION ALL ')}`);
+        const eds = schemasWith('editions');
+        if (eds.length && !(eds.length === 1 && eds[0] === 'main')) {
+            handle.exec(`CREATE TEMP VIEW editions AS ${eds.map(s => `SELECT * FROM "${s}".editions`).join(' UNION ALL ')}`);
+        }
         const meta = {};
         for (const row of handle.selectObjects('SELECT key, value FROM main.meta')) meta[row.key] = row.value;
         if (db) { try { db.close(); } catch (_) {} }
@@ -1380,7 +1389,7 @@ const OPS = {
     // behaviour flags (dualScript/mnemonic); and a language with no translation at all falls back
     // to English, which changes the columns it reports. issue #6: ?multiFor= убран и здесь —
     // несколько переводчиков одного языка теперь приходят только по явному ?translators=.
-    async text({ suttaId, mode, langs, lang, translators }) {
+    async text({ suttaId, mode, langs, lang, translators, editions }) {
         const targetLangs = langs ? langs.split(',').map(l => l.trim())
             : lang ? [lang]
             // Same as dg-fastify.js: a real ?mode= with no lang is one language, not "ru,en".
@@ -1421,6 +1430,13 @@ const OPS = {
         data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
         // dg-fastify.js's audioLineHtml without the audio (no index here): app.js swaps in the site's line when online.
         data.audioHtml = core.principlesLineHtml(data.lang === 'ru', '2em');
+        // The other Pali editions from the ed-* packs on this device (the same core code as the server's ?editions=), and which
+        // of them this device holds for this text: the reader tells "online only" from "no text" with it (availableEditions
+        // is the corpus list, from /api/text-online when online).
+        if (data && !data.__status) {
+            core.addEditions(data, suttaId, editions);
+            data.downloadedEditions = core.textEditions(suttaId);
+        }
         return data;
     },
 

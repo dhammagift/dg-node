@@ -695,6 +695,44 @@ function writeAtomic(file, obj) {
    tables, each other pack is opened with ATTACH. Every pack is read-only and comes with its fts
    ready, nothing is indexed on the device. packs-manifest.json is what switches the client from
    the single dg.db.gz to packs, so it is written last and only when this flag is given. */
+// The edition packs' names, as the reader shows them (reader/megareader.js READER_EDITIONS).
+const EDITION_TITLES = {
+    bjt: { ru: 'Будда Джаянти (Шри-Ланка)', en: 'Buddha Jayanti (Sri Lanka)' },
+    my: { ru: 'Чаттха Сангаяна (VRI)', en: 'Chaṭṭha Saṅgāyana (VRI)' },
+    th: { ru: 'Сиам Рат (1927)', en: 'Siam Rath (1927)' },
+    mso: { ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005' },
+    pts: { ru: 'Pali Text Society', en: 'Pali Text Society' },
+};
+
+/* One edition as a pack: dg.db's editions table and its index (read from sqlite_master, as writeOfflineDb does), that
+   edition's rows only, and meta. build_id is the content hash, so an unchanged edition is not downloaded again. */
+function writeEditionDb(file, packId, edition) {
+    fs.rmSync(file, { force: true });
+    const src = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    const schema = src.prepare("SELECT type, sql FROM sqlite_master WHERE tbl_name IN ('editions', 'meta') AND sql IS NOT NULL").all();
+    const parent = src.prepare("SELECT value FROM meta WHERE key = 'build_id'").get()?.value || '';
+    src.close();
+    const db = new DatabaseSync(file);
+    for (const t of schema) if (t.type === 'table') db.exec(t.sql);
+    db.prepare('ATTACH ? AS s').run(`file:${OUT_PATH}?mode=ro`);
+    db.exec('BEGIN');
+    db.prepare('INSERT INTO editions SELECT sutta_id, segment_id, ord, edition, txt FROM s.editions WHERE edition = ? ORDER BY sutta_id, ord').run(edition);
+    db.exec('COMMIT');
+    db.exec('DETACH s');
+    for (const t of schema) if (t.type === 'index') db.exec(t.sql);
+    db.exec('ANALYZE');
+    const segments = db.prepare('SELECT count(*) c FROM editions').get().c;
+    const texts = db.prepare('SELECT count(DISTINCT sutta_id) c FROM editions').get().c;
+    db.close();
+    const buildId = sha256File(file, `v1|${packId}|`).slice(0, 16);
+    const m = new DatabaseSync(file);
+    const ins = m.prepare('INSERT OR REPLACE INTO meta (key, value) VALUES (?, ?)');
+    for (const [k, v] of [['schema_version', '1'], ['build_id', buildId], ['pack_id', packId], ['edition', edition],
+        ['source', path.basename(OUT_PATH)], ['parent_build_id', parent], ['built_at', new Date().toISOString()]]) ins.run(k, v);
+    m.close();
+    return { file, buildId, segments, texts, bytes: fs.statSync(file).size, sha256: sha256File(file) };
+}
+
 function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const t = Date.now();
     const src = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
@@ -732,6 +770,28 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     // Every row of the offline copy is in exactly one pack: a row left out would silently vanish offline.
     const sum = packs.reduce((a, p) => a + p.segments, 0);
     if (sum !== fullSegments) throw new Error(`packs hold ${sum} rows, the offline copy ${fullSegments}`);
+    // The other Pali editions, one pack each (owner 2026-11-01: the editions offline too): the editions table only, raw lines
+    // (the reader's filters run at request time, in core addEditions, the same online and offline), no texts and no fts -
+    // search stays on the Mahāsaṅgīti and its variants. Optional, never default.
+    const edSrc = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+    let edCounts = [];
+    try { edCounts = edSrc.prepare('SELECT edition, count(*) n FROM editions GROUP BY edition').all(); } catch { /* a dg.db without editions */ }
+    const edTotal = edCounts.reduce((a, r) => a + r.n, 0);
+    edSrc.close();
+    let edSum = 0;
+    for (const { edition } of edCounts) {
+        const id = `ed-${edition}`;
+        const r = writeEditionDb(path.join(tmpDir, `${id}.db`), id, edition);
+        const name = `${id}.${r.buildId}.db.gz`;
+        const gz = gzipAtomic(r.file, path.join(packDir, name));
+        fs.rmSync(r.file, { force: true });
+        packs.push({ id, kind: 'edition', lang: 'pli', edition, title: EDITION_TITLES[edition] || { ru: edition, en: edition },
+            texts: r.texts, segments: r.segments, bytes: r.bytes, bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256,
+            url: `packs/${name}`, build_id: r.buildId });
+        edSum += r.segments;
+        console.log(`pack ${id}: ${r.segments} lines, ${(r.bytes / 1048576).toFixed(0)} MB, gz ${(gz.bytes / 1048576).toFixed(0)} MB`);
+    }
+    if (edSum !== edTotal) throw new Error(`edition packs hold ${edSum} lines, the editions table ${edTotal}`);
     const manifestFile = path.join(outDir, 'packs-manifest.json');
     let before = [];
     try { before = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).packs.map(p => path.basename(p.url)); } catch { /* first publish */ }
