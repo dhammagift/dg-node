@@ -423,12 +423,13 @@
   /* "Differences" between prev and next (megareader.js) */
   #dg-diff-btn { flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
     font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); color: var(--dg-text, inherit); white-space: nowrap; }
-  #dg-diff-btn input { display: inline-block !important; appearance: auto; width: 16px; height: 16px; margin: 0; accent-color: #c98d07; cursor: pointer; }   /* !important: a stylesheet of the shell hides inputs in this row */
+  #dg-diff-btn input { display: inline-block !important; appearance: auto; width: 16px; height: 16px; margin: 0; accent-color: var(--dg-tblue, #3434be); cursor: pointer; }   /* !important: a stylesheet of the shell hides inputs in this row */
   #dg-diff-btn[hidden] { display: none; }
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
   /* "Show differences": the words most of the shown texts do not have (megareader.js markEditionDiffs) */
-  mark.dg-ed-diff { background: color-mix(in srgb, #e3a008 30%, transparent); color: inherit; border-radius: 3px; padding: 0 1px; }
+  mark.dg-ed-diff { background: color-mix(in srgb, var(--dg-tblue, #3434be) 16%, transparent); color: inherit; border-radius: 3px; padding: 0 1px;
+    box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--dg-tblue, #3434be) 55%, transparent); }   /* the site's own blue, as the header's links */
 
   /* Column view with three texts or more (megareader.js useGrid): one grid column per text - editions first, then
      each translation - a header with the full names pinned under the site header, and on a phone the text scrolls
@@ -483,9 +484,17 @@
     color: var(--dg-text-muted, #808086);
     padding: .4rem 0;
   }
-  .dg-cols-head-in > button { all: unset; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .dg-cols-head-in > button::after { content: " ▾"; opacity: .6; }
-  .dg-cols-head-in > button:hover, .dg-cols-head-in > button[aria-expanded="true"] { color: var(--dg-text, inherit); }
+  .dg-col-cell { display: flex; align-items: center; gap: 6px; min-width: 0; touch-action: pan-y; }
+  .dg-col-cell > [data-col] { all: unset; flex: 0 1 auto; min-width: 0; cursor: grab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-col-cell > [data-col]::after { content: " ▾"; opacity: .6; }
+  .dg-col-cell > [data-col]:hover, .dg-col-cell > [data-col][aria-expanded="true"] { color: var(--dg-text, inherit); }
+  .dg-col-cell.is-drag { opacity: .35; }
+  .dg-col-cell.is-drop { box-shadow: inset 3px 0 0 var(--dg-accent, #14967b); }
+  .dg-col-cell.is-drop-end { box-shadow: inset -3px 0 0 var(--dg-accent, #14967b); }
+  .dg-col-pm { margin-left: auto; display: inline-flex; gap: 4px; flex: none; }
+  .dg-col-pm > button { all: unset; width: 1.45rem; height: 1.45rem; line-height: 1.4rem; text-align: center; border-radius: 50%; cursor: pointer;
+    border: 1px solid var(--dg-border-strong, rgba(127,127,127,.4)); font-size: .95rem; color: var(--dg-text, inherit); }
+  .dg-col-pm > button:hover { background: var(--dg-surface-hover, rgba(127,127,127,.12)); }
   .dg-colmenu { position: fixed; z-index: 1000; min-width: 12rem; max-width: min(20rem, 90vw); max-height: 60vh; overflow-y: auto;
     padding: 4px; border-radius: 10px; background: var(--dg-surface, #fff); border: 1px solid var(--dg-border, rgba(127,127,127,.3));
     box-shadow: 0 8px 26px rgba(0, 0, 0, .22); font: 13.5px/1.3 var(--dg-font, Lato, system-ui, sans-serif); }

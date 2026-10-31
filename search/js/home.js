@@ -2337,7 +2337,7 @@
     function colMenuClose() {
         var m = document.querySelector('.dg-colmenu');
         if (m) m.remove();
-        document.querySelectorAll('.dg-cols-head-in > [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
+        document.querySelectorAll('.dg-col-cell > [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
     }
     document.addEventListener('click', function (e) {
         var pick = e.target.closest('.dg-colmenu [data-pick]');
@@ -2354,7 +2354,22 @@
             }
             return;
         }
-        var cell = e.target.closest('.dg-cols-head-in > [data-col]');
+        if (colDragJustEnded) { colDragJustEnded = false; return; }   // the click that ends a drag opens no menu
+        if (e.target.closest('[data-col-add]')) { colMenuClose(); tsOpen(); return; }
+        var del = e.target.closest('[data-col-del]');
+        if (del) {
+            colMenuClose();
+            var last = del.closest('[data-col-cell]').dataset.colCell;
+            if (last.indexOf('ed:') === 0) {
+                var edsNow = window.getEditions();
+                if (edsNow.length > 1) tsApplyEditions(edsNow.filter(function (x) { return 'ed:' + x !== last; }));
+            } else {
+                var stNow = tsStack().filter(function (k) { return 'tr:' + k !== last; });
+                if (stNow.length) tsApply(stNow);   // the last translation stays: "Pāḷi only" is the pill's own switch
+            }
+            return;
+        }
+        var cell = e.target.closest('.dg-col-cell > [data-col]');
         if (!cell) { if (!e.target.closest('.dg-colmenu')) colMenuClose(); return; }
         var open = cell.getAttribute('aria-expanded') === 'true';
         colMenuClose();
@@ -2380,6 +2395,58 @@
         cell.setAttribute('aria-expanded', 'true');
     });
     window.addEventListener('scroll', colMenuClose, { passive: true });
+    /* Dragging a column's name sideways moves the column (owner 2026-10-31: «колонки… draggable»): editions among the
+       editions, translations among the translations (the grid draws the Pali first). A move of less than 8 px is a tap
+       and opens the column menu. Pointer events: mouse and finger alike. */
+    var colDrag = null, colDragJustEnded = false;
+    document.addEventListener('pointerdown', function (e) {
+        var name = e.target.closest('.dg-col-cell > [data-col]');
+        if (!name || e.button > 0) return;
+        colDrag = { cell: name.parentNode, key: name.dataset.col, x: e.clientX, y: e.clientY, on: false, target: null };
+    });
+    document.addEventListener('pointermove', function (e) {
+        if (!colDrag) return;
+        if (!colDrag.on) {
+            if (Math.abs(e.clientX - colDrag.x) < 8) { if (Math.abs(e.clientY - colDrag.y) > 12) colDrag = null; return; }
+            colDrag.on = true;
+            colMenuClose();
+            colDrag.cell.classList.add('is-drag');
+        }
+        var cells = [].slice.call(colDrag.cell.parentNode.querySelectorAll('[data-col-cell]'));
+        var group = colDrag.key.slice(0, 3);
+        cells.forEach(function (c) { c.classList.remove('is-drop', 'is-drop-end'); });
+        var mates = cells.filter(function (c) { return c.dataset.colCell.slice(0, 3) === group; });
+        var at = mates.length;   // drop index among the column's own group
+        for (var i = 0; i < mates.length; i++) {
+            var r = mates[i].getBoundingClientRect();
+            if (e.clientX < r.left + r.width / 2) { at = i; break; }
+        }
+        colDrag.target = at;
+        if (at < mates.length) mates[at].classList.add('is-drop'); else mates[mates.length - 1].classList.add('is-drop-end');
+    });
+    document.addEventListener('pointerup', function () {
+        var d = colDrag; colDrag = null;
+        if (!d || !d.on) return;
+        colDragJustEnded = true;
+        setTimeout(function () { colDragJustEnded = false; }, 400);
+        var cells = [].slice.call(d.cell.parentNode.querySelectorAll('[data-col-cell]'));
+        cells.forEach(function (c) { c.classList.remove('is-drag', 'is-drop', 'is-drop-end'); });
+        var group = d.key.slice(0, 3);
+        var keys = cells.map(function (c) { return c.dataset.colCell; }).filter(function (k) { return k.slice(0, 3) === group; });
+        var from = keys.indexOf(d.key), to = d.target == null ? from : d.target;
+        if (to > from) to--;   // the index counted the column itself
+        if (to === from) return;
+        keys.splice(from, 1); keys.splice(to, 0, d.key);
+        var ids = keys.map(function (k) { return k.slice(3); });
+        if (group === 'ed:') {
+            // the grid shows the chosen editions this text has; the others keep their place after them
+            var rest = window.getEditions().filter(function (x) { return ids.indexOf(x) === -1; });
+            tsApplyEditions(ids.concat(rest));
+        } else {
+            var restT = tsStack().filter(function (k) { return ids.indexOf(k) === -1; });
+            tsApply(ids.concat(restT));
+        }
+    });
     document.addEventListener('pointerup', tsEndDrag);
     document.addEventListener('pointercancel', tsEndDrag);
     window.addEventListener('resize', tsPlace);

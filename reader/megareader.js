@@ -1866,7 +1866,12 @@ window.buildSutta = async function(rawSlug, opts) {
                 const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
                 return [`tr:${entry.key}`, String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang];
             }));
-        editionsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n]) => `<button type="button" data-col="${k}">${n}</button>`).join('')}</div></div>`;
+        // Each name can be dragged sideways to move its column (home.js); the last column carries + (open the
+        // Translations window to add a text) and − (drop this column) (owner 2026-10-31).
+        const pm = `<span class="dg-col-pm"><button type="button" data-col-add title="${uiRu ? 'Добавить колонку' : 'Add a column'}">+</button>` +
+            `<button type="button" data-col-del title="${uiRu ? 'Убрать эту колонку' : 'Remove this column'}">−</button></span>`;
+        editionsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n], i) =>
+            `<span class="dg-col-cell" data-col-cell="${k}"><button type="button" data-col="${k}">${n}</button>${i === cells.length - 1 ? pm : ''}</span>`).join('')}</div></div>`;
     }
     if (absentEds.length && absentEds.some(e => e !== 'ms')) {
         const tags = absentEds.map(e => edInfo(e).tag).join(', ');
