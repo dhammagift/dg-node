@@ -5,7 +5,7 @@
   // The offline layer on this page too, so "Download" starts the transfer HERE and the reader stays in Settings
   // (owner 2026-10-31: it used to jump to the main page). Only when Settings is the page itself: inside the main
   // page's settings sheet (an iframe) that page already runs it, and the apps bring their own (window.Capacitor).
-  if (window.self === window.top && !window.Capacitor) {
+  if (window.self === window.top && !window.Capacitor && !/^(https?|capacitor):\/\/localhost$/.test(location.origin)) {
     document.write('<script src="/offline/platform.js"><\/script><script src="/offline/app.js"><\/script><script src="/offline/offline-status.js"><\/script>');
   }
 </script>
