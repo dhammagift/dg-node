@@ -413,23 +413,12 @@
 
   /* Pali editions (megareader.js editionLines, owner 2026-10-29..31). Lines: one line per chosen edition, a small
      quiet plate with its short name at the start, "—" where the edition lacks the line, no plates on headings.
-     One other edition: its text, a line it lacks taken from Mahāsaṅgīti and plated "MS". */
+     One other edition: its text, a line it lacks taken from Mahāsaṅgīti and plated "MS". The plates are the
+     translators' .dg-tag (search/css/home.css), one look for both. */
   .dg-ed-line { display: block; }
   .dg-ed-line + .dg-ed-line { margin-top: .2em; }
   .dg-ed-line.is-empty { display: none; }
   .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
-  .dg-ed-line[data-tag]::before, .dg-ed-fill[data-tag]::before {
-    content: attr(data-tag);
-    display: inline-block;
-    font: 600 .62em/1.6 var(--dg-font, Lato, system-ui, sans-serif);
-    letter-spacing: .03em;
-    padding: 0 .45em;
-    margin-right: .55em;
-    border-radius: 4px;
-    vertical-align: .15em;
-    background: color-mix(in srgb, var(--dg-text-muted, #808086) 14%, transparent);
-    color: var(--dg-text-muted, #808086);
-  }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
@@ -465,7 +454,8 @@
      line, on the same line as the title, instead of taking a row of its own (owner 2026-10-31) */
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn { grid-column: 1; grid-row: 1; justify-self: start; align-self: start; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn + .dg-ed-line { padding-left: 1.7em; }
-  #sutta.column-view.dg-grid .dg-ed-line::before { display: none; }
+  /* the header names every column: no plates in the grid (editions' nor translators') */
+  #sutta.column-view.dg-grid .dg-ed-line::before, #sutta.column-view.dg-grid .right-column > .dg-tag::before { display: none; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; grid-row: 2; font-size: .85em; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant > br:first-child { display: none; }
   #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }

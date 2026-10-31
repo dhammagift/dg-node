@@ -1845,15 +1845,16 @@ window.buildSutta = async function(rawSlug, opts) {
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
             if (t !== undefined) return edDiff && !heading ? markEditionDiffs([t, msText])[0].trim() : t.trim();
-            return heading ? msText : `<span class="dg-ed-fill" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
+            return heading ? msText : `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
         }
         let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
         if (edDiff && !heading) texts = markEditionDiffs(texts);
         return shownEds.map((e, k) => {
             const t = texts[k];
             const tag = heading ? '' : ` data-tag="${edInfo(e).tag}"`;
-            if (t === undefined) return `<span class="dg-ed-line is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
-            return `<span class="dg-ed-line" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
+            const cls = heading ? 'dg-ed-line' : 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'
+            if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
+            return `<span class="${cls}" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
         }).join('');
     }
 
