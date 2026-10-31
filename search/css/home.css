@@ -921,8 +921,8 @@ body.dg-state-reader.dg-busy #sutta:not([data-ssr]), #reader-pane.reader-pending
 /* Other Pali editions chosen (search/index.html, dg-eds-loading until megareader.js draws them): the server's text is
    the Mahāsaṅgīti alone, so it waits hidden behind a spinner instead of being swapped for the editions' a moment later */
 html.dg-eds-loading #sutta, html.dg-eds-loading #reader-pane > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area) { visibility: hidden; }
-html.dg-eds-loading #reader-pane { position: relative; }
-html.dg-eds-loading #reader-pane::after { content: ""; position: absolute; top: 140px; left: 50%; width: 28px; height: 28px; margin-left: -14px;
+/* under the pinned site header, not behind it (owner 2026-10-31: «под заголовком ридера, почти не видно») */
+html.dg-eds-loading #reader-pane::after { content: ""; position: fixed; z-index: 900; top: calc(var(--dg-stack-height, 200px) + 56px); left: 50%; width: 28px; height: 28px; margin-left: -14px;
     border: 3px solid var(--dg-border); border-top-color: var(--dg-accent); border-radius: 50%; animation: dg-eds-spin .8s linear infinite; }
 @keyframes dg-eds-spin { to { transform: rotate(360deg); } }
 /* Everything below the text (bottom prev/next, footer icons, subscription line): with #sutta still
