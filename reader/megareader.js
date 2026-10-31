@@ -282,6 +282,16 @@ function setEditions(list) {
 }
 window.getEditions = getEditions;
 window.setEditions = setEditions;
+// A redraw in place is not a scroll: restoring the reading place moved the page and the auto-hiding site header slid
+// in (owner 2026-10-31: switching a column's edition brought the whole header back). The header keeps the state it
+// had when the redraw began; `p` is the redraw's promise.
+window.dgKeepHeader = function (p) {
+    const was = document.body.classList.contains('dg-header-hidden');
+    return Promise.resolve(p).then(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => {
+        document.body.classList.toggle('dg-header-hidden', was);
+        done();
+    }))));
+};
 // "Show differences" (owner 2026-10-31: «подсветить разницу… по большинству»): a word of an edition line that most of the
 // shown texts of that segment do not have is highlighted; with two texts every difference. One edition alone is
 // compared with the Mahāsaṅgīti. Case, punctuation, quotes and ṁ/ṃ are not differences (core/edition-diff.js foldWords).
@@ -1865,22 +1875,22 @@ window.buildSutta = async function(rawSlug, opts) {
     // "Differences" in the free middle of the prev/next row (owner 2026-10-31: «на видное место… большую кнопку»),
     // there whenever two Pali texts are compared (several editions, or one edition against the Mahāsaṅgīti)
     const navRow = document.getElementById('navigation');
-    let diffBtn = document.getElementById('dg-diff-btn');
+    let diffBtn = document.getElementById('dg-diff-btn');   // a checkbox with its label (owner: «в виде чекбокса»)
     if (navRow && !diffBtn) {
-        diffBtn = document.createElement('button');
-        diffBtn.type = 'button';
+        diffBtn = document.createElement('label');
         diffBtn.id = 'dg-diff-btn';
-        diffBtn.addEventListener('click', () => {
-            try { window.dgEditionsDiff() ? localStorage.removeItem('dgEditionsDiff') : localStorage.setItem('dgEditionsDiff', 'on'); } catch (e) { /* private mode */ }
+        diffBtn.innerHTML = '<input type="checkbox"><span></span>';
+        diffBtn.querySelector('input').addEventListener('change', e => {
+            try { e.target.checked ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (x) { /* private mode */ }
             const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-            window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); });
+            window.dgKeepHeader(window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); }));
         });
         navRow.insertBefore(diffBtn, document.getElementById('next'));
     }
     if (diffBtn) {
         diffBtn.hidden = !(edMulti || edSingle);
-        diffBtn.textContent = uiRu ? 'Отличия' : 'Differences';
-        diffBtn.setAttribute('aria-pressed', String(window.dgEditionsDiff()));
+        diffBtn.querySelector('span').textContent = uiRu ? 'Отличия' : 'Differences';
+        diffBtn.querySelector('input').checked = window.dgEditionsDiff();
         diffBtn.title = uiRu ? 'Подсветить отличия изданий' : 'Highlight where the editions differ';
     }
     if (suttaArea) {

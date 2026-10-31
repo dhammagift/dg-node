@@ -2184,7 +2184,7 @@
                 if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
             });
         }
-        Promise.resolve(done).then(function () {
+        Promise.resolve(window.dgKeepHeader ? window.dgKeepHeader(done) : done).then(function () {
             tsBusy = false;
             tsRender();
             if (tsPending) { var again = tsPending; tsPending = null; tsApply(again); }
@@ -2198,10 +2198,11 @@
         var slug = window._currentSlug;
         if (!slug || typeof window.buildSutta !== 'function') return;
         var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-        window.buildSutta(slug).then(function () {
+        var redraw = window.buildSutta(slug).then(function () {
             if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
             tsRender();
         });
+        if (window.dgKeepHeader) window.dgKeepHeader(redraw);   // a redraw is not a scroll: the site header stays as it was
     }
 
     function tsClick(e) {

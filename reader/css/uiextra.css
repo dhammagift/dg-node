@@ -421,9 +421,9 @@
   .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
   /* "Differences" between prev and next (megareader.js) */
-  #dg-diff-btn { flex: none; margin: 0 auto; align-self: center; border: 1px solid var(--dg-border-strong, rgba(127,127,127,.4)); background: transparent;
-    color: var(--dg-text, inherit); border-radius: 999px; padding: 3px 12px; font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); cursor: pointer; }
-  #dg-diff-btn[aria-pressed="true"] { background: color-mix(in srgb, #e3a008 30%, transparent); border-color: #c98d07; }
+  #dg-diff-btn { flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+    font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); color: var(--dg-text, inherit); white-space: nowrap; }
+  #dg-diff-btn input { display: inline-block !important; appearance: auto; width: 16px; height: 16px; margin: 0; accent-color: #c98d07; cursor: pointer; }   /* !important: a stylesheet of the shell hides inputs in this row */
   #dg-diff-btn[hidden] { display: none; }
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
