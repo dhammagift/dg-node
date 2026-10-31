@@ -4627,6 +4627,9 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 /* Whose line is whose (megareader.js entry.cueTag, Trello Nc4FWak9): a quiet plate with the translator's short
    name at the start of each translation line, as the editions' plates. Drawn from data-tag, not in the text. */
 .dg-tag::before { content: attr(data-tag); display: inline-block; margin-right: 6px; padding: 0 4px; border: 1px solid var(--dg-border-strong); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: .04em; line-height: 1.5; color: var(--dg-text-muted); vertical-align: 1px; font-style: normal; user-select: none; }
+/* Pali hidden: rus-multi.css runs the 2nd translation on inline after the 1st (legacy reading); a plated line is a line
+   of its own, or two translators' sentences read as one (owner 2026-10-31 screenshot: "SUJ So I have heard. DG Так…") */
+#sutta.hide-pali p span.lang-2nd.dg-tag { display: block !important; }
 /* Языки чтения в окне: чипы — общая настройка (dhammaReaderLangs, та же, что на /settings/),
    нажатый = язык сейчас в тексте. "+ язык" разворачивает остальные языки этого текста. */
 .dg-ts-chip.is-missing { opacity: .4; cursor: default; }

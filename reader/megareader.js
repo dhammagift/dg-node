@@ -174,7 +174,7 @@ window.getEnabledLangs = getEnabledLangs;
 // The 3-4 letter plate of a translator on a multi-mode line (Trello Nc4FWak9); "+" marks the project's edit of
 // someone's translation (sv+edited+o -> SV+). An id not listed gets its first three letters.
 const TRANSLATOR_TAGS = {
-    o: 'DG', sujato: 'SUJ', thanissaro: 'TNS', brahmali: 'BRM', bodhi: 'BB', soma: 'SOMA', anandajoti: 'ANJ',
+    o: 'O', sujato: 'SUJ', thanissaro: 'TNS', brahmali: 'BRM', bodhi: 'BB', soma: 'SOMA', anandajoti: 'ANJ',
     kelly: 'KEL', kovilo: 'KOV', patton: 'PAT', suddhaso: 'SDS', geiger: 'GEI', horner: 'HOR', walshe: 'WAL',
     buddharakkhita: 'BRK', sv: 'SV', syrkin: 'SYR', narinyanievmenenko: 'NAR', khantibalo: 'KHB', toporov: 'TOP',
     shapovalov: 'SHP', alokananda: 'ALK', gerasimov: 'GER', gtrasimov: 'GER', khemanando: 'KHN', kheminda: 'KHM',
