@@ -1828,7 +1828,7 @@
         multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
         keepIt:   { ru: 'Оставить себе', en: 'Keep this' },
         reset:    { ru: 'По умолчанию', en: 'Default' },
-        resetHint:{ ru: 'Мои языки, у каждого — переводчик по умолчанию', en: 'My languages, each with its default translator' }
+        resetHint:{ ru: 'Языки, переводчики, их порядок и режим чтения — как при первом заходе', en: 'Languages, translators, their order and the reading mode as on a first visit' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -2156,13 +2156,19 @@
         var row = e.target.closest('.dg-ts-row');
         var sortBtn = e.target.closest('[data-ts-sort]');
         if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
-        // Owner (Trello rrYjLQ6X): one tap back to the default set - each of my languages with
-        // its priority translator (tsPriorityKey), in my languages' order; a session trial goes too.
+        // Owner (Trello rrYjLQ6X, via Cakkhu): single and multi back to what a first-time reader
+        // gets - only the reading part (language order, translator stack and choice, the reading
+        // mode, whatever single mode left saved), never theme, font, script or voice. The page is
+        // reloaded without the reading parameters, so the server's defaults draw it.
         if (e.target.closest('[data-ts-reset]')) {
-            var def = tsEnabledLangs().map(tsPriorityKey).filter(Boolean);
-            try { sessionStorage.removeItem('dgReadingStackLocal'); } catch (x) { /* private mode */ }
-            tsSort = 'manual';
-            if (def.length) tsApply(def); else tsRender();
+            try {
+                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode']
+                    .forEach(function (k) { localStorage.removeItem(k); });
+                sessionStorage.removeItem('dgReadingStackLocal');
+            } catch (x) { /* private mode */ }
+            var u = new URL(location.href);
+            ['mode', 'langs', 'translators'].forEach(function (k) { u.searchParams.delete(k); });
+            location.replace(u.toString());
             return;
         }
         if (e.target.closest('[data-ts-keep]')) {
@@ -3946,7 +3952,8 @@
         if (btn) {
             // Always there in the reader (owner: "колокольчика нет"): rung when the text is in a
             // subscription (opens the marks, #rsubp), plain otherwise (subscribes to its collection).
-            btn.hidden = !id;
+            // never hidden (owner 2026-10-31: the header is complete from the first paint); before a text id is known it
+            // is the plain bell, and a click does nothing until then
             btn.setAttribute('data-on', subs.length ? 'true' : 'false');
             // Set here, not as a {{key}} in the markup: the reader toolbar's title attributes are
             // not run through the i18n pass, the raw key showed as the tooltip.
@@ -3969,8 +3976,6 @@
         line.appendChild(txt); line.appendChild(a);
     }
     window.addEventListener('suttaRenderedCentral', function () { closeRsubp(); dgRenderReaderSubs(); });
-    new MutationObserver(function () { if (currentState() !== 'reader') { var b = document.getElementById('rsubbtn'); if (b) b.hidden = true; } })
-        .observe(document.body, { attributes: true, attributeFilter: ['class'] });
     (function () {
         var btn = document.getElementById('rsubbtn');
         if (btn) btn.addEventListener('click', function (e) {
