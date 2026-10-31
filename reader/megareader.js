@@ -289,6 +289,7 @@ window.dgKeepHeader = function (p) {
     const was = document.body.classList.contains('dg-header-hidden');
     return Promise.resolve(p).then(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => {
         document.body.classList.toggle('dg-header-hidden', was);
+        followHeader();   // the column names follow the header to where it is now
         done();
     }))));
 };

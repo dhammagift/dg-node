@@ -2067,7 +2067,7 @@
         }
 
         rows.innerHTML = keys.map(function (key) {
-            var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1;
+            var lang = tsLangOf(key), i = stack.indexOf(key), on = i !== -1 && !tsPaliOnly();   // Pāḷi only: none is on screen
             return '<div class="dg-ts-row' + (on ? ' is-on' : '') + '" data-ts-key="' + esc(key) + '">' +
                 '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
                 '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
@@ -2194,6 +2194,9 @@
         });
     }
 
+    function tsPaliOnly() {
+        try { return currentState() === 'reader' && localStorage.getItem('paliToggle') === 'pli'; } catch (e) { return false; }
+    }
     // The Pali editions: save (nothing left = MS) and redraw the text where it is being read.
     function tsApplyEditions(next) {
         window.setEditions(next);
@@ -2269,6 +2272,16 @@
             return;
         }
         var key = row.dataset.tsKey, stack = tsStack().slice();
+        // Pāḷi only (the pill, or "−" on the last translation column): ticking a translation brings the translations
+        // back with it on, instead of taking it out of a set that is not on screen (owner 2026-10-31: «добавление не работает»)
+        if (tsPaliOnly() && (e.target.closest('.dg-ts-tick') || e.target.closest('.dg-ts-name') || e.target.closest('.dg-ts-star'))) {
+            try { localStorage.setItem('paliToggle', 'pli-2nd'); } catch (x) { /* private mode */ }
+            window.language = 'pli-2nd';
+            if (typeof window.showPaliAndTranslation === 'function') window.showPaliAndTranslation();
+            dgSyncLangPill();
+            tsApply(stack.indexOf(key) === -1 ? stack.concat([key]) : [key].concat(stack.filter(function (k) { return k !== key; })));
+            return;
+        }
         if (e.target.closest('.dg-ts-star')) {                       // основной = первый в списке
             stack = [key].concat(stack.filter(function (k) { return k !== key; }));
             tsApply(stack);
