@@ -459,10 +459,7 @@
   #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: 1; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang { display: contents; }
   #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); grid-row: 1; margin: 0; }
-  /* a title row's speaker (added after the render, before the lines): it shares the first column's cell with that
-     line, on the same line as the title, instead of taking a row of its own (owner 2026-10-31) */
-  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn { grid-column: 1; grid-row: 1; justify-self: start; align-self: start; }
-  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn + .dg-ed-line { padding-left: 1.7em; }
+  /* a title row's speaker sits inside its first edition line (reader/common.js), on the title's line, lines and grid alike */
   /* the header names every column: no plates in the grid (editions' nor translators') */
   #sutta.column-view.dg-grid .dg-ed-line::before, #sutta.column-view.dg-grid .right-column > .dg-tag::before { display: none; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; grid-row: 2; font-size: .85em; }

@@ -142,7 +142,11 @@ function addIconsTo01() {
             }
         });
 
-        span.insertBefore(playBtn, span.firstChild);
+        // Several Pali editions (megareader.js .dg-ed-line, display:block): the speaker goes inside the first line that has
+        // text, on the title's line - before them it stood alone on a line of its own (owner 2026-10-31)
+        const firstEdLine = Array.from(span.querySelectorAll(':scope > .dg-ed-line')).find(l => !l.classList.contains('is-empty') && l.textContent.trim());
+        if (firstEdLine) firstEdLine.insertBefore(playBtn, firstEdLine.firstChild);
+        else span.insertBefore(playBtn, span.firstChild);
     });
 }
 
