@@ -196,13 +196,13 @@ const PROFILE = LIBRARY_PROFILE;
             await page.evaluate(() => { try { localStorage.removeItem('forceLocal'); } catch (e) {} });
             const withoutFlag = await readLinks();
             check('the local-only reader links are hidden by default (no bb/ai)',
-                !withoutFlag.includes('bb') && !withoutFlag.includes('ai'),
+                !withoutFlag.some(text => /^(?:bb|ai)\b/i.test(text)),
                 JSON.stringify(withoutFlag));
 
             await page.evaluate(() => { try { localStorage.setItem('forceLocal', 'true'); } catch (e) {} });
             const withFlag = await readLinks();
             check('the secret switch reveals them (?force_local=1 / typed word)',
-                withFlag.includes('bb') && withFlag.includes('ai'), JSON.stringify(withFlag));
+                withFlag.some(text => /^bb\b/i.test(text)) && withFlag.some(text => /^ai\b/i.test(text)), JSON.stringify(withFlag));
             await page.evaluate(() => { try { localStorage.removeItem('forceLocal'); } catch (e) {} });
 
             const links = await page.evaluate(async () => {

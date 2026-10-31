@@ -913,32 +913,9 @@ body.dg-busy #search-pane,
 body.dg-busy:not(.dg-state-reader) #reader-pane {
     display: none;
 }
-/* Reader while loading (cold load: dg-busy; in-app: .reader-pending): only #sutta is hidden, and
-   the header keeps its place.
-
-   The first version drew ONE 300px bar per row, and it fitted worse the narrower the screen got
-   (owner, 2026-09-20). The width was never the real fault. Looking at the loaded header at 1900,
-   820 and 390 shows what is actually there: at the two larger sizes the toolbar is a single centred
-   row — six text links, six icons, the title pill — and at 390 it wraps into two rows, with the
-   prev/next row under it either way.
-
-   Most of that is NOT waiting for anything. The icons are the same for every sutta and are ready
-   before the text is; a grey bar over them replaces finished content with a promise. Three things
-   do wait, and each now gets a placeholder of its OWN shape in its OWN place:
-
-     #smart-toc-btn (the title pill) → its own box, shimmering
-     #navigation    (prev/next)      → two bars at the two ends
-
-   And one that deliberately gets NOTHING: the per-sutta edition links (Voice/4nt/DPR/BJT/SC/TBW).
-   megareader.js builds them at render time (generateThirdPartyLinks), so on a cold load there are
-   no elements to shimmer — a placeholder for them would have to be invented out of guessed widths,
-   which is exactly the fixed-pixel mistake this replaces. They stay hidden, as before; the rule
-   that hides them matters for in-app navigation, where the PREVIOUS sutta's links are still in the
-   DOM.
-
-   Nothing here is a fixed pixel width that has to be retuned per screen: each placeholder inherits
-   the box of the element it stands for, so wrapping at 390 and the single row at 1900 come out
-   right for free, and there is not one media query in it. */
+/* Reader loading keeps the finished chrome in place. Voice and the external-links shell are
+   static and stay visible; only the per-sutta links inside the menu wait for the render.
+   The contents pill and previous/next row get placeholders in their own shapes. */
 /* #sutta[data-ssr]: the text came with the page (dg-fastify.js textBodyHtml) - show it from the first frame */
 body.dg-state-reader.dg-busy #sutta:not([data-ssr]), #reader-pane.reader-pending #sutta:not(:has(> .dg-sutta-skeleton)) { visibility: hidden; }
 /* Everything below the text (bottom prev/next, footer icons, subscription line): with #sutta still
@@ -960,32 +937,9 @@ body.dg-state-reader.dg-busy #navigation::after, #reader-pane.reader-pending #na
     background: linear-gradient(90deg, var(--dg-surface-hover) 25%, var(--dg-border) 50%, var(--dg-surface-hover) 75%);
     background-size: 200% 100%; animation: dg-tiles-skeleton 1.4s ease-in-out infinite;
 }
-/* The per-sutta edition links, wherever they currently are.
-
-   Scoping this to #reader-toolbar was not enough (owner, 2026-09-20, landscape phone): until
-   megareader.js has rendered, the links sit in their MOBILE home (#top-links-container, a row of
-   their own) and only then does buildSutta move them up into the icon row — on desktop widths,
-   decided by window.innerWidth at render time. So a wide screen showed the mobile two-row header
-   for as long as the load took, and then the header rearranged itself under the reader's eyes.
-
-   Hiding them by class rather than by container means they are simply not seen in the wrong place:
-   they appear once, already where they belong. The header keeps its height either way — the icons
-   hold the toolbar row and #navigation has its min-height.
-
-   The container's BOX is also what applyPadding() measures for the fixed tail, so taking it out
-   with display:none took its 32px out of the reserved padding too (measured live on the 390px
-   layout, 2026-09-24: #sutta's padding-top came out 34px instead of 67px, the pinned rows sat on
-   the text, and the missing 32px then appeared as an extra gap the moment something recomputed).
-   visibility:hidden keeps the box, and the min-height below holds the same height the loaded row
-   occupies on a phone, so the skeleton is measured exactly like the loaded page and nothing moves
-   when loading ends. Scoped out above 768px: that is the width at which megareader.js moves these
-   links into the reader toolbar and hides the container for good (see its merge comment there),
-   where reserving a row would only double-count the toolbar's own growth. Ceiling, named: under
-   ~360px the row may wrap to a second line and this 32px is one line short — the ResizeObserver in
-   search/index.html corrects it the moment the row is shown, so the text still never sits under
-   the pinned rows. */
-body.dg-state-reader.dg-busy .sc-ext-link, #reader-pane.reader-pending .sc-ext-link { display: none; }
-body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { visibility: hidden; }
+/* Keep Voice and the dropdown shell visible while their contents are pending. The row's box
+   stays measurable too, so the fixed-header padding does not jump when the links arrive. */
+body.dg-state-reader.dg-busy .sc-ext-link:not(.voice-link), #reader-pane.reader-pending .sc-ext-link:not(.voice-link) { display: none; }
 @media (max-width: 768px) {
   body.dg-state-reader.dg-busy #top-links-container, #reader-pane.reader-pending #top-links-container { display: block; min-height: 32px; }
   /* server text on screen, the reader not run yet: the busy state ends first, so the row's place is held
@@ -3902,8 +3856,8 @@ body.dg-skin-minimal .dg-contact-btn:hover {
    расстояние между иконками и текстовыми ссылками в ридере и в других частях сайта" — the mobile
    html{font-size} bump above (--dg-mobile-scale) is meant for PROSE (headings, paragraphs, table
    cells, TOC entries); growing icon-button/toolbar-link CHROME too was collateral damage — bigger
-   link/tab labels wrapped onto extra lines (.dg-reader-toolbar's DPR/BJT/Voice/… row, "TBW" bumped
-   to its own line) and read as "spaced too far apart", even though the row's own gap/min-width
+   link/tab labels wrapped onto extra lines in the reader toolbar and read as "spaced too far apart",
+   even though the row's own gap/min-width
    were already fixed px and never moved. Each selector below divides its OWN normal rem size back
    by --dg-mobile-scale — not a flat 1rem/scale for all of them, that would make .dg-icon-btn (0.8rem)
    and .dg-tile (0.92rem) suddenly render at the SAME size as everything else instead of their
@@ -4260,12 +4214,15 @@ body.dg-state-reader #smart-toc-btn {
 /* no 96 px cap on phones any more (it cut every title to "11. A…"): as wide as the title, up to the screen;
    megareader.js dgFitReaderHeader moves it out of the icon row when it does not fit there whole */
 @media (max-width: 767.98px) { body.dg-state-reader #smart-toc-btn { max-width: min(240px, calc(100vw - 32px)); padding: 4px 8px; } }
-/* Reader header (megareader.js dgFitReaderHeader, measured at every width): the third-party links sized by their
-   text when they share the icon row, and step 3's row - the links, then the contents pill at its own width,
-   centred, never wrapping (owner 2026-10-30: one row when everything fits; a stretched pill was rejected) */
+/* Voice and the dropdown are the only external-link items in the measured header layout. */
 body.dg-state-reader #reader-toolbar > a.sc-ext-link { width: auto; min-width: 0; padding: 3px 5px; white-space: nowrap; }
+body.dg-state-reader #reader-pane .dg-external-links-menu a {
+    display: flex; width: 100%; min-width: 0; min-height: 0; padding: 8px 10px; border-radius: 7px;
+    align-items: center; justify-content: space-between; color: var(--dg-text-2); font-size: 13px; line-height: 1.35;
+}
+body.dg-state-reader #reader-pane .dg-external-links-menu a:hover { background: var(--dg-accent-bg); color: var(--dg-text); }
 body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box {
-    flex: 0 0 100%; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 2px; min-width: 0; padding: 0 6px;
+    flex: 0 0 100%; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 6px;
 }
 body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box #smart-toc-btn { flex: 0 1 auto; min-width: 0; margin-left: 6px; }
 body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box > a.sc-ext-link {

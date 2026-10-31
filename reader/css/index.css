@@ -458,3 +458,113 @@ a:hover {
 /* #sutta.hide-pali p (margin: 0 ...) outranks the rule above and drops only the pull-back, leaving the
    text 2em to the right in translation-only mode. */
 #sutta.hide-pali article p { margin-left: -2em; }
+
+.dg-external-links {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+.dg-external-links-ru { display: none; }
+html[lang="ru"] .dg-external-links-en { display: none; }
+html[lang="ru"] .dg-external-links-ru { display: inline; }
+.dg-external-links-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 28px;
+  padding: 3px 9px;
+  border: 1px solid var(--dg-border, #d7d4c9);
+  border-radius: 999px;
+  background: var(--dg-surface, #fff);
+  color: var(--dg-text-2, #4b4b46);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: transform 140ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out;
+  -webkit-tap-highlight-color: transparent;
+}
+.dg-external-links-toggle:hover,
+.dg-external-links.is-open .dg-external-links-toggle {
+  border-color: var(--dg-border-strong, #b9b5a8);
+  background: var(--dg-surface-hover, #f5f4f1);
+  color: var(--dg-text, #242424);
+}
+.dg-external-links-toggle:active { transform: scale(0.97); }
+.dg-external-links-toggle:focus-visible { outline: 2px solid var(--dg-accent, #16785a); outline-offset: 2px; }
+.dg-external-links-chevron {
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 160ms ease-out;
+}
+.dg-external-links.is-open .dg-external-links-chevron { transform: translateY(1px) rotate(225deg); }
+.dg-external-links-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  z-index: 1000;
+  width: max-content;
+  min-width: 220px;
+  max-width: calc(100vw - 24px);
+  max-height: min(420px, calc(100vh - 140px));
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--dg-border, #e7e5de);
+  border-radius: 12px;
+  background: var(--dg-surface, #fff);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  transform: translateX(-50%);
+}
+.dg-external-links-menu[hidden] { display: none; }
+.dg-external-links-menu a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  padding: 8px 10px;
+  border-radius: 7px;
+  color: var(--dg-text-2, #4b4b46);
+  font-size: 13px;
+  line-height: 1.35;
+  text-align: left;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.dg-external-links-menu a::after { content: "↗"; color: var(--dg-text-muted, #777); }
+.dg-external-links-menu a:hover {
+  background: var(--dg-accent-bg, #eaf4ef);
+  color: var(--dg-text, #242424);
+  text-decoration: none;
+}
+.dg-external-links-status {
+  display: block;
+  padding: 10px 12px;
+  color: var(--dg-text-muted, #777);
+  font-size: 13px;
+}
+#bottom-links-container .dg-external-links-menu { top: auto; bottom: calc(100% + 7px); }
+.dark .dg-external-links-toggle {
+  border-color: var(--dg-border, #3b3b3b);
+  background: var(--dg-surface, #202020);
+  color: var(--dg-text-2, #ddd);
+}
+.dark .dg-external-links-menu {
+  border-color: var(--dg-border, #2c2c2c);
+  background: var(--dg-surface, #191919);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+.dark .dg-external-links-menu a { color: var(--dg-text-2, #ddd); }
+@media (max-width: 767.98px) {
+  .dg-external-links-menu { left: 0; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dg-external-links-toggle, .dg-external-links-chevron { transition: none; }
+}

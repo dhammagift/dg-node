@@ -609,64 +609,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        already fully sized) while cutting that visible gap down to ~27px — reads as tight, not
        "room for one more". Freed-up width goes back into the pill: 6×44 + 6×2 (gap) + pill = 276 +
        pill, room for ~100px and still ~14px of margin under a 390px phone. */
-    /* Owner, third round: "сократи расстояние между кнопками... в 2 раза. и то же самое для
-       ссылок ниже" — halved again (2px → 1px), and the SAME halving applied to the link row
-       below the icons (#top-links-container p.sc-link a — DPR/BJT/Voice/4nt/SC/BB/TBW, plus the
-       RU-only extra translator links): its visual spacing isn't a flex gap, it's the a's own
-       horizontal padding (8px each side, reader/css/rus-multi.css and index.css, shared with
-       desktop — overridden here instead of at the source so desktop stays untouched), so halving
-       THAT is this row's equivalent move. */
-    /* Owner: "ну сделай 18 пустоты" — measured live: at 44px hit-area / 19px icon, the visible
-       gap between two icon glyphs was (44-19) + 1px gap = 26px, not the 1px the gap value alone
-       suggests (most of it was the 44px HIG touch-target's own padding around each icon, not the
-       flex gap). 36px hit-area gets (36-19) + 1px = 18px exactly — shrinks the invisible padding,
-       not the gap. Mobile-only: this is the same 44px "apple-design audit" touch target that was
-       deliberately grown before, left untouched at its original size on desktop/tablet where
-       there's no crowding complaint. */
+    /* Compact icon hit areas on phones; Voice keeps the same smaller padding in the links row. */
     @media (max-width: 767.98px) {
         .dg-reader-toolbar { gap: 1px; }
         .dg-reader-toolbar a { min-width: 36px; min-height: 36px; }
         .dg-reader-toolbar #smart-toc-btn { max-width: 100px; }
         #top-links-container p.sc-link a { padding-left: 4px; padding-right: 4px; }
     }
-    /* Owner: "жутко много места занимает текущая вёрстка... десктоп нужно менять как на моём
-       мокапе, но более близкие расстояния между ссылками. на мобильных так не получится, пусть
-       будет как есть" — edition-links (DPR/BJT/Voice/4nt/SC/BB/TBW) join the icon toolbar row on
-       wide screens only; megareader.js (buildSutta) moves each <a> there individually (desktop-
-       only, checks window.innerWidth at render time — see its comment for why individual links,
-       not a wrapper). Mobile markup/CSS above is untouched — #top-links-container there still
-       renders normally inside #sutta, own row, exactly as before; on desktop it's simply
-       display:none (its content has moved out, an empty fixed-position bar would otherwise be
-       left behind) — settings.js's PDF export and smoothScroll.js's exclusion filter both key
-       off the .sc-ext-link class now (added in generateThirdPartyLinks(), megareader.js)
-       instead of the parent id, since the id alone no longer reliably contains these links. */
+    /* Voice and the intact external-links dropdown join the icon row when they fit. Otherwise
+       #top-links-container keeps them as a separate row. Export still finds the nested sources
+       by .sc-ext-link in either location. */
     @media (min-width: 768px) {
-        /* Row width: capped to match #navigation (prev/next, uiextra.css: max-width:45rem;
-           margin:0 auto) and centered the same way. .dg-reader-toolbar is position:fixed;
-           left:0; right:0 (spans the full viewport otherwise) — max-width+margin:auto is the
-           standard fixed/absolute-element centering trick (over-constrained width resolution,
-           same math as any auto-margin block, just also valid here per spec).
-
-           Owner: "собирай внеш ссылки и иконки вместе и рассматривай их как единое целое и
-           задавай одинаковые отступы между ними... можешь растягивать когда мало ссылок, когда
-           много — сужать... не занимало много строк". Two earlier attempts at this didn't hold
-           up: fixed 34/33/33% columns broke once RU's 9 edition links (7 EN + Th.ru/Th.su)
-           didn't fit their 34% share (wrapped to a second line, or needed the font shrunk to an
-           illegibly tiny 13px to force-fit); the follow-up used CSS display:contents to flatten
-           #top-links-container/.dg-toolbar-icons so every link/icon/pill shared one flex row —
-           measured correctly in Chromium (playwright) but owner tested a fresh/incognito
-           non-Chromium browser and the gaps were wildly uneven with the links/icons boundary
-           touching (display:contents + flex gap is a known cross-browser inconsistency,
-           Firefox/Safari in particular).
-           megareader.js now moves the REAL <a> elements (not a wrapper) into #reader-toolbar on
-           desktop — every edition link, icon, and the TOC pill are genuine direct children of
-           .dg-reader-toolbar, no CSS flattening trick involved, so this plain justify-content:
-           space-between behaves identically in every browser. That's "one whole, equal gaps,
-           stretches when there's few items (fewer links → fewer, wider gaps) and narrows when
-           there's many (RU's 9 links → each gap shrinks on its own, no manual tuning)" — since
-           space-between only redistributes LEFTOVER space as gaps, it never shrinks any item
-           below its natural size (font-size/padding stay untouched, same size always) and stays
-           on one line as long as natural content actually fits in 45rem (verified at 9 links). */
+        /* Match the centred 45rem navigation column. Real direct flex children keep
+           justify-content:space-between consistent across browsers; the measured JS fallback
+           handles widths where the complete row no longer fits. */
         .dg-reader-toolbar {
             flex-wrap: nowrap;
             justify-content: space-between;
@@ -1758,8 +1714,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      следующий контент заехал бы под них). dgApplyHeaderPadding() зовёт dgSetState() ниже по
      файлу при каждом переключении состояния.
      Стек ПОДРОБНО: выдача — #dg-hero-band, #results-toolbar; чтение — #dg-hero-band,
-     #reader-toolbar, #navigation (прев/некст), #top-links-container (строка R+R/R+E/DPR/BJT/
-     Voice/4nt/SC/BB/TBW — владелец явно попросил закрепить и её тоже). Эта последняя — особый
+     #reader-toolbar, #navigation (прев/некст), #top-links-container (Voice и выпадающий
+     список внешних источников, когда весь ряд не помещается рядом с иконками). Эта последняя — особый
      случай: она НЕ снаружи #sutta, как остальные, а мегарідер пересоздаёт её ВНУТРИ #sutta на
      КАЖДЫЙ рендер/смену режима (buildSutta() в megareader.js кладёт её innerHTML'ом заново) —
      поэтому у нее СВОЙ content-таргет для паддинга (#sutta, не #reader-pane) и свой пересчёт по
@@ -3084,6 +3040,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              тот класс тянет margin-top:-3px/margin-left:6px, подобранные под inline-flow
              #form-div реального прода — в чистом flex-ряду они просто криво съезжали. -->
         <div id="reader-toolbar" class="dg-reader-toolbar">
+            <a href="javascript:void(0)" role="button" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link dg-header-link">Voice</a>
+            <span class="dg-external-links dg-header-link">
+                <button type="button" class="dg-external-links-toggle" aria-expanded="false">
+                    <span class="dg-external-links-en">External links</span><span class="dg-external-links-ru">Внеш. ссылки</span><span class="dg-external-links-chevron" aria-hidden="true"></span>
+                </button>
+                <span class="dg-external-links-menu" hidden><span class="dg-external-links-status"><span class="dg-external-links-en">Loading…</span><span class="dg-external-links-ru">Загрузка…</span></span></span>
+            </span>
             <a id="toggle-variants" href="javascript:void(0)" role="button" title="Show Variants">
                 <img src="/assets/svg/eye.svg" alt="Variants">
             </a>

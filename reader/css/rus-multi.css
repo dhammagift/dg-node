@@ -207,8 +207,7 @@ p.sc-link {
   margin-top: 0.3rem !important;
 }
 
-/* apple-design audit: DPR/BJT/Voice/4nt/SC/BB/TBW links sat edge-to-edge with only
-   whitespace between them — under the 44px HIG touch target on mobile. */
+/* Keep Voice and other inline source links comfortably tappable on mobile. */
 p.sc-link a {
   display: inline-block;
   padding: 6px 8px;
