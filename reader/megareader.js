@@ -171,6 +171,21 @@ window.getEnabledLangs = getEnabledLangs;
      текста в текст (владелец: "переход в другой текст — не повод сбрасывать настройки"), но в
      глобальные настройки не просачивается и закрытием вкладки заканчивается.
    Порядок и выбор переводчиков внутри МОИХ языков сохраняются всегда — это и есть "как я читаю". */
+// The 3-4 letter plate of a translator on a multi-mode line (Trello Nc4FWak9); "+" marks the project's edit of
+// someone's translation (sv+edited+o -> SV+). An id not listed gets its first three letters.
+const TRANSLATOR_TAGS = {
+    o: 'DG', sujato: 'SUJ', thanissaro: 'TNS', brahmali: 'BRM', bodhi: 'BB', soma: 'SOMA', anandajoti: 'ANJ',
+    kelly: 'KEL', kovilo: 'KOV', patton: 'PAT', suddhaso: 'SDS', geiger: 'GEI', horner: 'HOR', walshe: 'WAL',
+    buddharakkhita: 'BRK', sv: 'SV', syrkin: 'SYR', narinyanievmenenko: 'NAR', khantibalo: 'KHB', toporov: 'TOP',
+    shapovalov: 'SHP', alokananda: 'ALK', gerasimov: 'GER', gtrasimov: 'GER', khemanando: 'KHN', kheminda: 'KHM',
+    pannavaro: 'PNV', tel: 'TEL', translatorMs: 'MS', myagkih: 'MYG', adelina: 'ADL', gemini: 'AI', ai: 'AI',
+    mahachula: 'MCU', siamrath: 'SRT', jayasaro: 'JAY', naratharo: 'NAR', sabbamitta: 'SBM'
+};
+function translatorTag(id) {
+    const [base, ...rest] = String(id || '').split('+');
+    const tag = TRANSLATOR_TAGS[base] || base.slice(0, 3).toUpperCase();
+    return rest.includes('edited') ? tag + '+' : tag;
+}
 const STACK_KEY = 'dgReadingStack';
 const LOCAL_STACK_KEY = 'dgReadingStackLocal';
 function readLocalStack() {
@@ -1687,21 +1702,19 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     READER_MODE.stack = orderedEntries.map(o => o.entry.key);
 
-    /* Whose line is whose. The translator's name is NOT printed above every paragraph — the
-       language already says which line is which. It is only genuinely ambiguous when ONE
-       language has two translations on screen at once, and even then the first one stays clean:
-       the extra opinion is the thing that gets a thin coloured margin (.dg-cue-N, home.css) and
-       a hover title with the name. A plain ru+en reading gets no marks at all. */
-    // Owner: "полоски на все строки от 3-х, а то непонятно, почему у некоторых нет отметки".
-    // Два перевода читаются и так (это два разных языка либо очевидная пара), а с трёх строк
-    // помечаются ВСЕ — иначе метка выглядит как признак чего-то особенного у одной строки.
-    const cueAll = orderedEntries.length >= 3;
-    let cueIndex = 0;
+    /* Whose line is whose: with two or more translations on screen, each line starts with a quiet plate - the
+       translator in 3-4 letters (SUJ, TNS, BRM), the full name in its title. Owner, Trello Nc4FWak9: the coloured
+       bars said nothing; the plates match the editions' (MS/BJT/VRI). Drawn by CSS from data-tag (.dg-tag::before),
+       so it is not part of the text - copying, the voice and the search highlight never see it. One language alone
+       (single mode) gets no plate. */
+    const tagAll = orderedEntries.length >= 2;
     for (const { lang, entry } of orderedEntries) {
         entry.cueClass = '';
         entry.cueTitle = '';
-        if (!cueAll) continue;
-        entry.cueClass = ' dg-cue dg-cue-' + (cueIndex++ % 6 + 1);
+        entry.cueTag = '';
+        if (!tagAll) continue;
+        entry.cueClass = ' dg-tag';
+        entry.cueTag = translatorTag(entry.translatorId);
         const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
         entry.cueTitle = String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
     }
@@ -1965,7 +1978,7 @@ window.buildSutta = async function(rawSlug, opts) {
                     // A second translation of the SAME language is the only case the text itself
                     // can't disambiguate — mark just those, and only the extra ones (see
                     // dupLangs below). Everything else prints clean, no translator name per line.
-                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}${useGrid ? ` style="--c:${colOf[entry.key]}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
+                    rightColumnHtml += `<span class="${lang}-lang${posClass}${entry.cueClass || ''} quote" lang="${lang}" data-translator="${entry.translatorId}"${entry.cueTag ? ` data-tag="${entry.cueTag}"` : ''}${entry.cueTitle ? ` title="${entry.cueTitle}"` : ''}${useGrid ? ` style="--c:${colOf[entry.key]}"` : ''}>${linkToCopyStart}${val.trim()}${linkToCopy}</span>`;
                     transIndex++;
                 }
             });
@@ -2000,7 +2013,7 @@ window.buildSutta = async function(rawSlug, opts) {
             label = lang === 'ru' ? 'Рус: ' : lang === 'en' ? 'Eng: ' : `${lang}: `;
         }
         const rowClass = (i === 0 ? `${lang}-lang` : `${lang}-lang lang-2nd`) + (entry.cueClass || '');
-        return `<span class="${rowClass}" lang="${lang}"> ${label}${displayName}</span>`;
+        return `<span class="${rowClass}" lang="${lang}"${entry.cueTag ? ` data-tag="${entry.cueTag}"` : ''}> ${label}${displayName}</span>`;
     });
 
     // Owner: "не загружать интерфейс" — only the main translator stays on the byline; every

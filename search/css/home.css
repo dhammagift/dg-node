@@ -4624,15 +4624,9 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 }
 @media (prefers-reduced-motion: reduce) { .dg-ts { animation: none; } }
 
-/* Второй перевод того же языка в самом тексте (megareader.js entry.cueClass): имени
-   переводчика над каждым абзацем нет — язык и так виден; метка появляется только там, где
-   двух переводов одного языка не различить, и только у «второго мнения». */
-.dg-cue { border-left: 2px solid var(--dg-cue, var(--dg-border-strong)); padding-left: 9px; }
-.dg-cue-1 { --dg-cue: #d08a1e; }
-.dg-cue-2 { --dg-cue: #3d7fd6; }
-.dg-cue-3 { --dg-cue: #b5539c; }
-.dg-cue-4 { --dg-cue: #2f9e6f; }
-#trn .dg-cue { border-left-width: 3px; padding-left: 6px; }
+/* Whose line is whose (megareader.js entry.cueTag, Trello Nc4FWak9): a quiet plate with the translator's short
+   name at the start of each translation line, as the editions' plates. Drawn from data-tag, not in the text. */
+.dg-tag::before { content: attr(data-tag); display: inline-block; margin-right: 6px; padding: 0 4px; border: 1px solid var(--dg-border-strong); border-radius: 4px; font-size: 10px; font-weight: 600; letter-spacing: .04em; line-height: 1.5; color: var(--dg-text-muted); vertical-align: 1px; font-style: normal; user-select: none; }
 /* Языки чтения в окне: чипы — общая настройка (dhammaReaderLangs, та же, что на /settings/),
    нажатый = язык сейчас в тексте. "+ язык" разворачивает остальные языки этого текста. */
 .dg-ts-chip.is-missing { opacity: .4; cursor: default; }
@@ -4648,9 +4642,6 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 .dg-ts-add-row { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-text); padding: 7px 6px; border-radius: 8px; cursor: pointer; text-align: left; }
 .dg-ts-add-row:hover { background: var(--dg-surface-hover); }
 .dg-ts-add-n { margin-left: auto; font-size: 11px; color: var(--dg-text-muted); }
-/* Полосок теперь до шести — с трёх переводов помечаются все строки. */
-.dg-cue-5 { --dg-cue: #6a5acd; }
-.dg-cue-6 { --dg-cue: #c2611f; }
 /* Локальный язык — тот, которого нет в моих языках (/settings/): включён только на этом тексте. */
 .dg-ts-chip.is-local { border-style: dashed; border-color: var(--dg-border-strong); }
 .dg-ts-tag.is-local { border: 1px dashed var(--dg-border-strong); }
