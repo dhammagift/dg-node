@@ -3933,7 +3933,7 @@ function withTextHead(html, h) {
         .replace(/(<meta (?:property|name)="(?:og|twitter):title" content=")[^"]*"/g, `$1${t}"`)
         .replace(/(<meta (?:property|name)="(?:og|twitter):description" content=")[^"]*"/g, `$1${d}"`)
         .replace(/(<meta property="og:url" content=")[^"]*"/, `$1${u}"`);
-    if (h.body) {
+    if (h.body || h.readerShell) {
         // the reader's stylesheets up front (search/index.html adds them only when the reader script loads)
         const css = ['index.css', 'rus-multi.css', 'uiextra.css'].map(f => {
             const v = getAssetVersion(path.join(__dirname, 'reader', 'css', f));
@@ -3941,8 +3941,8 @@ function withTextHead(html, h) {
         }).join('\n');
         out = out
             .replace('<body>', '<body class="dg-state-reader">')
-            .replace('<div id="reader-pane" class="mt-4">', '<div id="reader-pane" class="mt-4" data-ssr>') // home.css: no cold-load prev/next reservation
-            .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`)
+            .replace('<div id="reader-pane" class="mt-4">', () => h.body ? '<div id="reader-pane" class="mt-4" data-ssr>' : '<div id="reader-pane" class="mt-4">') // home.css: no cold-load prev/next reservation
+            .replace('<div id="sutta" class="sutta"></div>', () => h.body ? `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>` : '<div id="sutta" class="sutta"></div>')
             // the search box shows the text's id from the first paint, not after the scripts (it filled in late and moved)
             .replace(/(<input [^>]*id="paliauto")/, (m) => `${m} value="${htmlAttr(decodeURIComponent(new URL(h.canonical).pathname.slice(1)))}"`);
         return withCritical(out.replace('</head>', links + css + '\n</head>'), 'reader');
@@ -4355,7 +4355,9 @@ async function sendTextHtml(req, res, dataId, urlId) {
     if (!h) return sendVersionedHtml(req, res, searchIndexPath);
     // the text in the HTML only for the default view: another mode/script/translator set would be swapped at once
     const q = req.query;
-    if (q.mode || q.langs || q.translators || q.script || q.s) return sendHeadHtml(req, res, h);
+    // ...but still the reader's shell: its stylesheets and critical CSS, so the header is in its final look from the first
+    // paint (owner 2026-10-31: a ?mode= link showed a bare "External links" button and the contents pill jumping)
+    if (q.mode || q.langs || q.translators || q.script || q.s) return sendHeadHtml(req, res, { ...h, readerShell: true });
     // links in the text name the site the reader is on (test or prod); any other host (a direct localhost call) the canonical one
     const pageUrl = new URL(req.url, /(^|\.)dhamma\.gift$/.test(req.hostname || '') ? 'https://' + req.hostname : SITE);
     // the reader's column is the asked language even where the text has no such translation (Pali only),
