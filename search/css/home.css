@@ -4636,9 +4636,9 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 /* Языки чтения в окне: чипы — общая настройка (dhammaReaderLangs, та же, что на /settings/),
    нажатый = язык сейчас в тексте. "+ язык" разворачивает остальные языки этого текста. */
 .dg-ts-chip.is-missing { opacity: .4; cursor: default; }
-/* the Pali editions row of the Translations window (home.js tsRender) */
-.dg-ts-eds { align-items: center; padding-top: 7px; }
-.dg-ts-eds-cap { flex: none; font-size: 11.5px; color: var(--dg-text-muted); margin-right: 3px; }
+/* the Pali and Translations sections of the Translations window (home.js tsRender) */
+.dg-ts-sec { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-text-muted); padding: 8px 6px 4px; }
+.dg-ts-row.is-missing .dg-ts-name, .dg-ts-row.is-missing .dg-ts-tick { opacity: .45; }
 .dg-qs-eds { flex-wrap: wrap; padding: 2px 0 6px; }
 .dg-ts-add { border-style: dashed !important; border-color: var(--dg-border-strong) !important; }
 .dg-ts-add-list { padding: 4px 10px 2px; max-height: 240px; overflow-y: auto; }

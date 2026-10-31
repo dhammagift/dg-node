@@ -456,13 +456,16 @@
   }
   #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: 1; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang { display: contents; }
-  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > a.copyLink { display: none; }
-  #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); margin: 0; }
+  #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); grid-row: 1; margin: 0; }
+  /* a title row's speaker (added after the render, before the lines): it shares the first column's cell with that
+     line, on the same line as the title, instead of taking a row of its own (owner 2026-10-31) */
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn { grid-column: 1; grid-row: 1; justify-self: start; align-self: start; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > .title-play-btn + .dg-ed-line { padding-left: 1.7em; }
   #sutta.column-view.dg-grid .dg-ed-line::before { display: none; }
-  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; order: 99; font-size: .85em; }
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant { display: block; grid-column: 1 / -1; grid-row: 2; font-size: .85em; }
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang > font.variant > br:first-child { display: none; }
   #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }
-  #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); width: auto; margin: 0; padding: 0; }
+  #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); grid-row: 1; width: auto; margin: 0; padding: 0; }
   .dg-cols-head { display: none; }
   #sutta.column-view.dg-grid > .dg-cols-head {
     display: block;
@@ -473,6 +476,9 @@
     background: var(--dg-page, #fff);
     border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
     margin-bottom: .6rem;
+    /* moves with the site header's own slide (search/index.html: transform .25s): it jumped to its place under the
+       header before the header was back, and showed in the middle of the text for a moment (owner's video 2026-10-31) */
+    transition: top .25s ease;
   }
   body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { top: 0; }
   #sutta.column-view.dg-grid .dg-cols-head-in {
@@ -481,7 +487,17 @@
     color: var(--dg-text-muted, #808086);
     padding: .4rem 0;
   }
-  .dg-cols-head-in > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-cols-head-in > button { all: unset; cursor: pointer; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-cols-head-in > button::after { content: " ▾"; opacity: .6; }
+  .dg-cols-head-in > button:hover, .dg-cols-head-in > button[aria-expanded="true"] { color: var(--dg-text, inherit); }
+  .dg-colmenu { position: fixed; z-index: 1000; min-width: 12rem; max-width: min(20rem, 90vw); max-height: 60vh; overflow-y: auto;
+    padding: 4px; border-radius: 10px; background: var(--dg-surface, #fff); border: 1px solid var(--dg-border, rgba(127,127,127,.3));
+    box-shadow: 0 8px 26px rgba(0, 0, 0, .22); font: 13.5px/1.3 var(--dg-font, Lato, system-ui, sans-serif); }
+  .dg-colmenu button { display: flex; justify-content: space-between; gap: 10px; width: 100%; border: 0; background: none; color: var(--dg-text, inherit);
+    text-align: left; padding: 8px 10px; border-radius: 7px; cursor: pointer; font: inherit; }
+  .dg-colmenu button:hover { background: var(--dg-surface-hover, rgba(127,127,127,.12)); }
+  .dg-colmenu button[aria-current="true"] { color: var(--dg-accent, #14967b); font-weight: 700; }
+  .dg-colmenu button small { color: var(--dg-text-muted, #808086); font-size: 11px; }
 
   /* Ширина контейнера — #sutta.column-view (ID+класс, специфичность 110), НЕ .sutta.column-view
      (только классы, 20): index.css/rus-multi.css задают базовую ширину через #sutta{max-width:

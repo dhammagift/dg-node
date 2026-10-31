@@ -1772,12 +1772,14 @@ window.buildSutta = async function(rawSlug, opts) {
     orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = (edMulti ? shownEds.length : 1) + k + 1; });
     let editionsHead = '';
     if (useGrid) {
-        const names = (edMulti ? shownEds : [shownEds[0]]).map(e => edInfo(e)[uiRu ? 'ru' : 'en'])
+        // A tap on a column's name switches what the column shows (home.js, the column menu): another edition, or
+        // another translator (owner 2026-10-31: «переключить по заголовку… и переводчиков»).
+        const cells = (edMulti ? shownEds : [shownEds[0]]).map(e => [`ed:${e}`, edInfo(e)[uiRu ? 'ru' : 'en']])
             .concat(orderedEntries.map(({ lang, entry }) => {
                 const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
-                return String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang;
+                return [`tr:${entry.key}`, String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang];
             }));
-        editionsHead = `<div class="dg-cols-head" aria-hidden="true"><div class="dg-cols-head-in">${names.map(n => `<span>${n}</span>`).join('')}</div></div>`;
+        editionsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n]) => `<button type="button" data-col="${k}">${n}</button>`).join('')}</div></div>`;
     }
     if (absentEds.length && absentEds.some(e => e !== 'ms')) {
         const tags = absentEds.map(e => edInfo(e).tag).join(', ');
@@ -1792,7 +1794,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
     // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
-    function editionLines(segment, msText) {
+    function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         if (!edSingle && !edMulti) return msText;
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
         if (edSingle) {
@@ -1804,7 +1806,7 @@ window.buildSutta = async function(rawSlug, opts) {
             const t = e === 'ms' ? msText : (edMaps[e] || {})[segment];
             const tag = heading ? '' : ` data-tag="${edInfo(e).tag}"`;
             if (t === undefined) return `<span class="dg-ed-line is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
-            return `<span class="dg-ed-line" data-ed="${e}" style="--c:${k + 1}"${tag}>${typeof t === 'string' ? t.trim() : t}</span>`;
+            return `<span class="dg-ed-line" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
         }).join('');
     }
 
@@ -1871,7 +1873,11 @@ window.buildSutta = async function(rawSlug, opts) {
                 ? transformToMnemonic(memRawPali.trim())
                 : paliData[segment].trim();
             const pliSpanClass = isMemMode ? pliClass + ' dict-ignore' : pliClass;
-            inner += `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${editionLines(segment, pliContent)}${linkToCopy}`;
+            // Several editions: every edition line carries the segment's copy links itself (lines and columns alike),
+            // so each line keeps its context menu at its start and after its end (owner 2026-10-31)
+            inner += edMulti
+                ? `<span class="${pliSpanClass}" lang="pi">${editionLines(segment, pliContent, linkToCopyStart, linkToCopy)}`
+                : `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${editionLines(segment, pliContent)}${linkToCopy}`;
             // dualScript mode (dev/dev_en): variant stays attached to the ISO/Latin line below
             // (matches prod's devanagari.js), not the script-converted main line here. The variant line belongs to the
             // MS text: gone when MS itself is not shown.

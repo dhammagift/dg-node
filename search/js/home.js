@@ -1830,7 +1830,9 @@
         reset:    { ru: 'По умолчанию', en: 'Default' },
         resetHint:{ ru: 'Языки, переводчики, их порядок и режим чтения — как при первом заходе', en: 'Languages, translators, their order and the reading mode as on a first visit' },
         edLabel:  { ru: 'Пали', en: 'Pāḷi' },
-        edMissing:{ ru: 'Этого текста нет в издании', en: 'This text is not in this edition' }
+        trnLabel: { ru: 'Переводы', en: 'Translations' },
+        edMissing:{ ru: 'нет текста', en: 'no text' },
+        edMain:   { ru: 'основное: читается и озвучивается', en: 'main: read and voiced' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -1935,8 +1937,8 @@
             '<span class="dg-ts-mode"></span>' +
             '<button type="button" class="dg-ts-reset" data-ts-reset></button>' +
             '<button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
-            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div><div class="dg-ts-chips dg-ts-eds"></div>' +
-            '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
+            '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
+            '<div class="dg-ts-body"><div class="dg-ts-pali"></div><div class="dg-ts-sec dg-ts-sec-trn"></div><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
         document.body.appendChild(host);
         host.addEventListener('click', tsClick);
         host.querySelector('.dg-ts-x').addEventListener('click', function () { tsClose(); });
@@ -2026,19 +2028,34 @@
                     '<span>' + esc(LANG_FULL_NAME[l] || l) + '</span><span class="dg-ts-add-n">' + n + '</span></button>';
             }).join('');
 
-        // The Pali editions (reader only, megareader.js READER_EDITIONS): MS and the others this text is in. One chosen =
-        // the text read in it; several = a line (or a column) per edition. Applied at once, saved for every text.
-        var edHost = host.querySelector('.dg-ts-eds');
+        // The Pali editions (reader only, megareader.js READER_EDITIONS), managed like the translators (owner 2026-10-31:
+        // «пали - самое главное… так же, как в переводчиках, галочками»): a row per edition, ticked = shown, the order of
+        // the ticked rows = the order of the lines / columns (drag by the handle), the star = the main one (read alone in
+        // single mode, voiced). Rows of editions this text is not in stay, greyed. Saved for every text.
+        var paliHost = host.querySelector('.dg-ts-pali');
         var eds = currentState() === 'reader' && window.DG_EDITIONS && window.getEditions ? window.getEditions() : null;
-        edHost.hidden = !eds;
+        paliHost.hidden = !eds;
+        host.querySelector('.dg-ts-sec-trn').hidden = !eds;
+        host.querySelector('.dg-ts-sec-trn').textContent = tsStr('trnLabel');
         if (eds) {
             var edAvail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
-            edHost.innerHTML = '<span class="dg-ts-eds-cap">' + esc(tsStr('edLabel')) + '</span>' + window.DG_EDITIONS.map(function (ed) {
-                var missing = edAvail.indexOf(ed.id) === -1;
-                return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + '" data-ts-ed="' + ed.id + '"' +
-                    (missing ? ' disabled' : '') + ' title="' + esc(missing ? tsStr('edMissing') : ed[menuLang() === 'ru' ? 'ru' : 'en']) + '"' +
-                    ' aria-pressed="' + (eds.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + '</button>';
-            }).join('');
+            var edOrder = eds.concat(window.DG_EDITIONS.map(function (x) { return x.id; }).filter(function (id) { return eds.indexOf(id) === -1; }));
+            paliHost.innerHTML = '<div class="dg-ts-sec">' + esc(tsStr('edLabel')) + '</div><div class="dg-ts-rows dg-ts-edrows">' +
+                edOrder.map(function (id) {
+                    var ed = window.DG_EDITIONS.find(function (x) { return x.id === id; });
+                    var i = eds.indexOf(id), on = i !== -1, missing = edAvail.indexOf(id) === -1;
+                    return '<div class="dg-ts-row' + (on ? ' is-on' : '') + (missing ? ' is-missing' : '') + '" data-ts-key="ed:' + id + '">' +
+                        '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
+                        '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
+                        '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
+                        '<span class="dg-ts-name">' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en']) + '</span>' +
+                        '<span class="dg-ts-tag">' + esc(missing ? tsStr('edMissing') : ed.tag) + '</span>' +
+                        '<button type="button" class="dg-ts-star' + (i === 0 ? ' is-main' : '') + '" title="' + esc(tsStr('edMain')) + '">' + (i === 0 ? '★' : '☆') + '</button>' +
+                        '</div>';
+                }).join('') + '</div>';
+            var edRows = paliHost.querySelector('.dg-ts-edrows'), ey = 0;
+            edRows.querySelectorAll('.dg-ts-row').forEach(function (r) { tsSetY(r, ey); ey += TS_ROW; });
+            edRows.style.height = ey + 'px';
         }
 
         rows.innerHTML = keys.map(function (key) {
@@ -2169,6 +2186,19 @@
         });
     }
 
+    // The Pali editions: save (nothing left = MS) and redraw the text where it is being read.
+    function tsApplyEditions(next) {
+        window.setEditions(next);
+        tsRender();
+        var slug = window._currentSlug;
+        if (!slug || typeof window.buildSutta !== 'function') return;
+        var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+        window.buildSutta(slug).then(function () {
+            if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+            tsRender();
+        });
+    }
+
     function tsClick(e) {
         var row = e.target.closest('.dg-ts-row');
         var sortBtn = e.target.closest('[data-ts-sort]');
@@ -2194,22 +2224,6 @@
             return;
         }
         if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
-        var edChip = e.target.closest('[data-ts-ed]');
-        if (edChip) {
-            var eds = window.getEditions(), ed = edChip.dataset.tsEd;
-            eds = eds.indexOf(ed) !== -1 ? eds.filter(function (x) { return x !== ed; }) : eds.concat([ed]);
-            window.setEditions(eds);   // nothing left = MS
-            tsRender();
-            var slug = window._currentSlug;
-            if (slug && typeof window.buildSutta === 'function') {
-                var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-                window.buildSutta(slug).then(function () {
-                    if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
-                    tsRender();
-                });
-            }
-            return;
-        }
         var newLang = e.target.closest('[data-ts-newlang]');
         if (newLang) {
             tsAddOpen = false;
@@ -2232,6 +2246,14 @@
             return;
         }
         if (!row) return;
+        if (row.dataset.tsKey.indexOf('ed:') === 0) {
+            var id = row.dataset.tsKey.slice(3), eds = window.getEditions();
+            if (e.target.closest('.dg-ts-star')) tsApplyEditions([id].concat(eds.filter(function (x) { return x !== id; })));
+            else if (e.target.closest('.dg-ts-tick') || e.target.closest('.dg-ts-name')) {
+                tsApplyEditions(eds.indexOf(id) !== -1 ? eds.filter(function (x) { return x !== id; }) : eds.concat([id]));
+            }
+            return;
+        }
         var key = row.dataset.tsKey, stack = tsStack().slice();
         if (e.target.closest('.dg-ts-star')) {                       // основной = первый в списке
             stack = [key].concat(stack.filter(function (k) { return k !== key; }));
@@ -2287,11 +2309,66 @@
         var d = tsDrag; tsDrag = null;
         d.row.classList.remove('is-lift');   // вернуть переход: строка доедет до своего слота
         tsSetY(d.row, d.index * TS_ROW);     // соседей pointermove уже расставил
+        if (d.keys[0].indexOf('ed:') === 0) {   // the Pali editions: the ticked ones in their new order
+            var eds = window.getEditions();
+            var nextEds = d.keys.map(function (k) { return k.slice(3); }).filter(function (id) { return eds.indexOf(id) !== -1; });
+            if (nextEds.join() !== eds.join()) tsApplyEditions(nextEds);
+            return;
+        }
         // порядок в тексте = порядок включённых строк; выключенные в стек не попадают
         var stack = tsStack();
         var next = d.keys.filter(function (k) { return stack.indexOf(k) !== -1; });
         if (next.length && next.join() !== stack.join()) tsApply(next);
     }
+    /* Column view: a tap on a column's name opens a short list of what else that column can show - the other editions
+       (that this text is in) for a Pali column, the text's other translators for a translation column - and the pick
+       takes the column's place (owner 2026-10-31: «переключить по заголовку… и переводчиков»). */
+    function colMenuClose() {
+        var m = document.querySelector('.dg-colmenu');
+        if (m) m.remove();
+        document.querySelectorAll('.dg-cols-head-in > [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
+    }
+    document.addEventListener('click', function (e) {
+        var pick = e.target.closest('.dg-colmenu [data-pick]');
+        if (pick) {
+            var from = pick.parentNode.dataset.from, to = pick.dataset.pick;
+            colMenuClose();
+            if (from === to) return;
+            if (from.indexOf('ed:') === 0) {
+                var eds = window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : x; });
+                tsApplyEditions(eds.filter(function (x, i) { return eds.indexOf(x) === i; }));
+            } else {
+                var st = tsStack().map(function (k) { return 'tr:' + k === from ? to.slice(3) : k; });
+                tsApply(st.filter(function (k, i) { return st.indexOf(k) === i; }));
+            }
+            return;
+        }
+        var cell = e.target.closest('.dg-cols-head-in > [data-col]');
+        if (!cell) { if (!e.target.closest('.dg-colmenu')) colMenuClose(); return; }
+        var open = cell.getAttribute('aria-expanded') === 'true';
+        colMenuClose();
+        if (open) return;
+        var key = cell.dataset.col, ru = menuLang() === 'ru', items;
+        if (key.indexOf('ed:') === 0) {
+            var avail = (window.READER_MODE && window.READER_MODE.availableEditions) || ['ms'];
+            items = (window.DG_EDITIONS || []).filter(function (x) { return avail.indexOf(x.id) !== -1; })
+                .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag]; });
+        } else {
+            items = tsAvailable().slice().sort(tsByRank).map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
+        }
+        var m = document.createElement('div');
+        m.className = 'dg-colmenu';
+        m.dataset.from = key;
+        m.innerHTML = items.map(function (it) {
+            return '<button type="button" data-pick="' + esc(it[0]) + '"' + (it[0] === key ? ' aria-current="true"' : '') + '><span>' + esc(it[1]) + '</span><small>' + esc(it[2]) + '</small></button>';
+        }).join('');
+        document.body.appendChild(m);
+        var r = cell.getBoundingClientRect();
+        m.style.top = Math.round(r.bottom + 4) + 'px';
+        m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + 'px';
+        cell.setAttribute('aria-expanded', 'true');
+    });
+    window.addEventListener('scroll', colMenuClose, { passive: true });
     document.addEventListener('pointerup', tsEndDrag);
     document.addEventListener('pointercancel', tsEndDrag);
     window.addEventListener('resize', tsPlace);
