@@ -3597,7 +3597,7 @@
         function show(paliTitle, body, href) {
             var LN = nativeLN();
             if (LN) { // the app: a local notification (WebView has no Notification API)
-                LN.schedule({ notifications: [{ id: SUB_NOTIF_OPEN + (idx % 90), title: subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''),
+                LN.schedule({ notifications: [{ isExactNotification: false, id: SUB_NOTIF_OPEN + (idx % 90), title: subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''),
                     body: clip(body) || ' ', schedule: { at: new Date(Date.now() + 1500) }, extra: { url: href || '/' + id } }] }).catch(function () {});
                 return;
             }
@@ -3720,7 +3720,11 @@
                 });
                 return items.map(function (it, i) {
                     var n = names[it.id] || {};
-                    return { id: SUB_NOTIF_SCHED + i, title: subLabel(it.sub) + ' * ' + it.id + (n.pali ? ' ' + n.pali : ''), body: n.tr || t('menu.daily.notifTitle', 'Текст дня'),
+                    // isExactNotification: false - LocalNotifications 8 wants an exact alarm by default, and without the
+                    // exact-alarm permission (the app has none) it opens "Alarms & reminders" and never answers the call:
+                    // nothing was scheduled on Android 12+ (emulator check, 2026-10-31). A text of the day may come a
+                    // few minutes late; it must not stop arriving.
+                    return { isExactNotification: false, id: SUB_NOTIF_SCHED + i, title: subLabel(it.sub) + ' * ' + it.id + (n.pali ? ' ' + n.pali : ''), body: n.tr || t('menu.daily.notifTitle', 'Текст дня'),
                         schedule: { at: new Date(it.when), allowWhileIdle: true }, extra: { url: '/' + it.id } };
                 });
             });
