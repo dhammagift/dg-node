@@ -134,8 +134,9 @@ const EDITION_LABEL = { my: 'my', bjt: 'bjt', th: 'th', mso: 'ms2005', pts: 'pts
 const ABBREV = new Set(['pe', 'peyyāla', 'pa', 'la']);
 const EDITORS_NOTE = new Set(['the', 'has', 'been', 'page', 'above', 'moved', 'content', 'omitted', 'reads', 'see', 'note', 'and', 'of', 'in', 'is']);
 const editionShifts = [];
-// Owner 2026-10-31: start with one nikāya and see how it works - DN first, the others once it holds up.
-const EDITION_READINGS_SCOPE = /^dn\d/;
+// Owner 2026-10-31: the default search set (4 nikāyas + the 6 Khuddaka books) - complete information first, speed
+// second («получить информацию важнее, чем получить неполную информацию быстро»); DN alone was the first trial.
+const EDITION_READINGS_SCOPE = new RegExp(`^(${DEFAULT_SCOPE_PREFIXES.join('|')})\\d`);
 function editionReadings(rel, msSegs, variants) {
     if (!EDITION_READINGS_SCOPE.test(path.basename(rel))) return {};
     const eds = {};
