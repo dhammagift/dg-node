@@ -3935,7 +3935,9 @@ function withTextHead(html, h) {
         out = out
             .replace('<body>', '<body class="dg-state-reader">')
             .replace('<div id="reader-pane" class="mt-4">', '<div id="reader-pane" class="mt-4" data-ssr>') // home.css: no cold-load prev/next reservation
-            .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`);
+            .replace('<div id="sutta" class="sutta"></div>', () => `<div id="sutta" class="sutta" data-ssr="1">${h.body}</div>`)
+            // the search box shows the text's id from the first paint, not after the scripts (it filled in late and moved)
+            .replace(/(<input [^>]*id="paliauto")/, (m) => `${m} value="${htmlAttr(decodeURIComponent(new URL(h.canonical).pathname.slice(1)))}"`);
         return withCritical(out.replace('</head>', links + css + '\n</head>'), 'reader');
     }
     // contents / search results: the search box's hint text is the largest thing on the first screen (PageSpeed

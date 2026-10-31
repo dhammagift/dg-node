@@ -843,59 +843,29 @@ function dgPrepareReaderLinks() {
         menu.innerHTML = dgExternalLinksStatus();
     });
 }
-function dgResetReaderHeader(top, bar) {
-    const toc = document.getElementById('smart-toc-btn');
-    const box = bar.querySelector('.dg-row2-box');
-    if (box) { if (toc) bar.appendChild(toc); box.remove(); }
-    Array.from(bar.querySelectorAll('.dg-header-link')).forEach(function (stale) { stale.remove(); });
-    bar.classList.remove('dg-row2');
-    top.innerHTML = dgLastScLink;
-    top.style.display = '';
-}
-function dgFitReaderHeader() {
-    const top = document.getElementById('top-links-container');
-    const bar = document.getElementById('reader-toolbar');
-    const first = document.getElementById('toggle-variants');
-    if (!top || !bar || !first || !dgLastScLink) return;
-    dgResetReaderHeader(top, bar);
-    const toc = document.getElementById('smart-toc-btn');
-    const label = document.getElementById('smart-toc-current');
-    const tocShown = toc && toc.parentNode === bar && !toc.classList.contains('hidden-toc') && toc.offsetParent !== null;
-    const cap = tocShown ? parseFloat(getComputedStyle(toc).maxWidth) || Infinity : Infinity;
-    const cut = () => !!label && label.scrollWidth > label.clientWidth + 1;
-    const sameRow = el => Math.abs(el.getBoundingClientRect().top - first.getBoundingClientRect().top) < 10;
-    const pillWhole = () => !tocShown || (sameRow(toc) && !(cut() && toc.getBoundingClientRect().width < cap - 1));
-    const done = () => { if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding(); };
-    const links = Array.from(top.querySelectorAll('.dg-header-link'));
-    links.forEach(function (link) { bar.insertBefore(link, first); });
-    top.style.display = 'none';
-    if (links.every(sameRow) && bar.scrollWidth <= bar.clientWidth + 1 && pillWhole()) return done();
-    dgResetReaderHeader(top, bar);
-    if (pillWhole() || !links.length) return done();
-    const box = document.createElement('div');
-    box.className = 'dg-row2-box';
-    Array.from(top.querySelectorAll('.dg-header-link')).forEach(function (link) { box.appendChild(link); });
-    box.appendChild(toc);
-    bar.appendChild(box);
-    bar.classList.add('dg-row2');
-    top.style.display = 'none';
-    if (cut() && toc.getBoundingClientRect().width < 110) dgResetReaderHeader(top, bar);
-    done();
-}
+// The reader header is laid out by CSS alone (search/css/home.css, "Reader header"): the external-links dropdown, the
+// icons, the bell and the contents pill are in the page from the first paint and stay where they are (owner
+// 2026-10-31: the header appears at once in its final form; only the contents label and prev/next fill in). A render
+// refills the dropdown's menu and adds a text's extra header link (Vinaya "Final") after it; nothing is moved or
+// measured, so nothing jumps.
 function dgPlaceReaderLinks() {
-    const top = document.getElementById('top-links-container');
     const bar = document.getElementById('reader-toolbar');
-    if (!top || !bar) return;
-    dgResetReaderHeader(top, bar);
-    requestAnimationFrame(function () { dgFitReaderHeader(); });
-    setTimeout(dgFitReaderHeader, 400);
+    const top = document.getElementById('top-links-container');
+    if (!bar) return;
+    const fresh = document.createElement('div');
+    fresh.innerHTML = dgLastScLink;
+    const menu = bar.querySelector('.dg-external-links-menu');
+    const freshMenu = fresh.querySelector('.dg-external-links-menu');
+    if (menu && freshMenu) menu.innerHTML = freshMenu.innerHTML;
+    Array.from(bar.querySelectorAll('.dg-header-extra')).forEach(function (stale) { stale.remove(); });
+    const dropdown = bar.querySelector('.dg-external-links');
+    Array.from(fresh.querySelectorAll('.dg-header-link')).filter(function (a) { return !a.classList.contains('dg-external-links'); })
+        .reverse().forEach(function (a) { a.classList.add('dg-header-extra'); if (dropdown) dropdown.after(a); });
+    if (top) { top.innerHTML = ''; top.style.display = 'none'; }
+    if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding();
 }
-let dgFitTimer = 0;
-window.dgRefitReaderHeader = function () {
-    clearTimeout(dgFitTimer);
-    dgFitTimer = setTimeout(dgFitReaderHeader, 50);
-};
-window.addEventListener('resize', window.dgRefitReaderHeader);
+// reader/common.js syncTOC calls this when the pill's label changes: the layout no longer depends on it
+window.dgRefitReaderHeader = function () {};
 
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
     // No "Voice"/«Голос» link here any more (owner 2026-10-31): the speaker on the translation's

@@ -4211,23 +4211,28 @@ body.dg-state-reader #reader-toolbar > a:hover { background: var(--dg-surface-ho
 body.dg-state-reader #smart-toc-btn {
     border: 1px solid var(--dg-border); background: var(--dg-surface); border-radius: 999px; font-size: 12.5px; color: var(--dg-text-2); padding: 4px 11px; max-width: 170px; flex: 0 1 auto; min-width: 0;
 }
-/* no 96 px cap on phones any more (it cut every title to "11. A…"): as wide as the title, up to the screen;
-   megareader.js dgFitReaderHeader moves it out of the icon row when it does not fit there whole */
-@media (max-width: 767.98px) { body.dg-state-reader #smart-toc-btn { max-width: min(240px, calc(100vw - 32px)); padding: 4px 8px; } }
-/* Voice and the dropdown are the only external-link items in the measured header layout. */
+@media (max-width: 767.98px) { body.dg-state-reader #smart-toc-btn { padding: 4px 8px; } }
+/* Reader header, laid out by CSS alone so the first paint is the final one (owner 2026-10-31: everything in place at
+   once, only the contents label and prev/next fill in; no layout decided after the text loads). The contents pill has
+   a width of its own, not the label's, so a longer or shorter title never moves the rest.
+   600 px and wider: one row - external links, icons, bell, pill.
+   Narrower: the icons on the first row; the external links (left) and the pill (right) on the second. */
 body.dg-state-reader #reader-toolbar > a.sc-ext-link { width: auto; min-width: 0; padding: 3px 5px; white-space: nowrap; }
+/* the open dropdown over the prev/next row (both fixed at z-index 850; the later one in the page was on top) */
+#reader-toolbar:has(.dg-external-links.is-open) { z-index: 860; }
+@media (min-width: 600px) { body.dg-state-reader #reader-toolbar #smart-toc-btn { flex: 1 1 0; min-width: 120px; max-width: 240px; } }
+@media (min-width: 768px) { body.dg-state-reader #reader-toolbar #smart-toc-btn { flex: 0 0 240px; } }
+@media (max-width: 599.98px) {
+    body.dg-state-reader #reader-toolbar { flex-wrap: wrap; justify-content: center; row-gap: 4px; }
+    body.dg-state-reader #reader-toolbar::after { content: ''; order: 1; flex-basis: 100%; height: 0; }
+    body.dg-state-reader #reader-toolbar .dg-external-links, body.dg-state-reader #reader-toolbar .dg-header-extra { order: 2; margin-left: 6px; }
+    body.dg-state-reader #reader-toolbar #smart-toc-btn { order: 3; flex: 0 1 auto; min-width: 0; max-width: calc(100% - 150px); margin-left: auto; margin-right: 6px; }
+}
 body.dg-state-reader #reader-pane .dg-external-links-menu a {
     display: flex; width: 100%; min-width: 0; min-height: 0; padding: 8px 10px; border-radius: 7px;
     align-items: center; justify-content: space-between; color: var(--dg-text-2); font-size: 13px; line-height: 1.35;
 }
 body.dg-state-reader #reader-pane .dg-external-links-menu a:hover { background: var(--dg-accent-bg); color: var(--dg-text); }
-body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box {
-    flex: 0 0 100%; display: flex; flex-wrap: nowrap; align-items: center; justify-content: center; gap: 6px; min-width: 0; padding: 0 6px;
-}
-body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box #smart-toc-btn { flex: 0 1 auto; min-width: 0; margin-left: 6px; }
-body.dg-state-reader #reader-toolbar.dg-row2 .dg-row2-box > a.sc-ext-link {
-    flex: 0 0 auto; width: auto; min-width: 0; height: auto; font-size: 13px; padding: 3px 5px; color: var(--dg-tblue); text-decoration: none; white-space: nowrap;
-}
 body.dg-state-reader #smart-toc-btn:hover { border-color: var(--dg-border-strong); color: var(--dg-text); }
 body.dg-state-reader #reader-pane .navigation { font-size: 13px; padding: 2px 0 11px; }
 body.dg-state-reader #reader-pane .navigation a { color: var(--dg-tblue); display: inline-flex; align-items: center; gap: 6px; }
