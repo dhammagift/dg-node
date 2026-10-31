@@ -344,13 +344,15 @@ function markEditionDiffs(texts) {
         return toks[i].map((w, x) => keys[i][x] && support[x] <= n / 2 ? `<mark class="dg-ed-diff">${w}</mark>` : w).join(' ');
     });
 }
-// The pinned column header sits right under the site header's real bottom (the lowest of the fixed stack's rows, which
-// slide away together when the header hides), frame by frame while the header
-// slides. A CSS top switched between the two places ran ahead of the slide and the header showed in the middle of the
-// text for a moment, twice per hide (owner's video 2026-10-31).
+// The column names are glued to the site header as one block (owner 2026-10-31: «монолит… как только хедер уходит, она
+// сразу так же плавно уходит»): pinned at the header's bottom (--dg-cols-top, measured while the header is in place),
+// and when the header hides they slide up by the same distance with the same transition (uiextra.css), a strip of
+// the page's colour above them covering the header's extra travel. Following the header frame by frame lagged it.
 function placeColsHead() {
     const s = document.querySelector('#sutta.dg-grid.column-view');
-    if (!s) return;
+    if (!s || document.body.classList.contains('dg-header-hidden')) return;   // measured with the header in place only
+    const band = document.getElementById('dg-hero-band');
+    if (band && band.getBoundingClientRect().top < -1) return;               // ...not while it slides
     let bottom = 0;
     for (const id of ['dg-hero-band', 'reader-toolbar', 'navigation', 'top-links-container']) {
         const el = document.getElementById(id);
@@ -368,16 +370,9 @@ function placeColsHead() {
         head.dataset.glued = '1';
     }
 }
-let colsRaf = 0, colsUntil = 0;
-function followHeader() {
-    colsUntil = performance.now() + 400;   // the slide is .25s (search/index.html)
-    if (!colsRaf) colsRaf = requestAnimationFrame(function tick() {
-        placeColsHead();
-        colsRaf = performance.now() < colsUntil ? requestAnimationFrame(tick) : 0;
-    });
-}
-window.addEventListener('scroll', followHeader, { passive: true });
+const followHeader = () => requestAnimationFrame(placeColsHead);
 window.addEventListener('resize', followHeader);
+window.addEventListener('scroll', followHeader, { passive: true });   // placeColsHead measures only with the header in place
 // The pinned column header (.dg-cols-head, column view with 3+ texts) sits outside the article, which scrolls sideways
 // on a phone: it follows that scroll. Scroll events do not bubble, so one capturing listener for every render.
 document.addEventListener('scroll', e => {

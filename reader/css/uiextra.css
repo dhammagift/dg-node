@@ -470,11 +470,16 @@
   #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }
   #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); grid-row: 1; width: auto; margin: 0; padding: 0; position: relative; }
   .dg-cols-head { display: none; }
+  body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { transform: translateY(calc(-1 * var(--dg-cols-top, var(--dg-stack-height, 65px)))); }
   #sutta.column-view.dg-grid > .dg-cols-head {
     display: block;
     position: sticky;
     top: var(--dg-cols-top, var(--dg-stack-height, 65px));   /* megareader.js placeColsHead */
     z-index: 3;
+    /* one block with the site header: up by the header's height on hide, with its transition (search/index.html
+       transform .25s ease); the shadow is a strip of the page's colour above, over the header's longer travel */
+    transition: transform .25s ease;
+    box-shadow: 0 -48px 0 0 var(--dg-page, #fff);
     overflow: hidden;
     background: var(--dg-page, #fff);
     border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
