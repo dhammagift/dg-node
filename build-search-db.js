@@ -124,7 +124,8 @@ function mergeReadings(sc, ours) {
 // The readings of the other editions (offline-data root/pli/<ed>, cut into SC's segments) that the variant line does
 // not carry yet (owner via f3-seo, 2026-10-31: search stays on the Mahāsaṅgīti + variants, so the variants must hold
 // every place the editions differ; sn56.11:1.1 BJT "evaṃ me sutaṃ…" was missing). Word-level, the same comparison as
-// MCP compare_editions (core/edition-diff.js); spelling conventions, case, punctuation and ṁ/ṃ are not readings.
+// MCP compare_editions (core/edition-diff.js). Every difference, spelling conventions included (sandhi, compounds
+// written apart, hyphens, final m, Thai ñh); only case, punctuation and ṁ = ṃ are the same text.
 // Not added: omissions (no new word to find), titles and headings. Skipped and logged instead: an edition line that
 // lost more than half the Mahāsaṅgīti words or doubled them (a shifted boundary,
 // for the weekly review - Cakkhu), and "pe"/"peyyāla" abbreviation marks.
@@ -144,8 +145,7 @@ function editionReadings(rel, msSegs, variants) {
     }
     const out = {};
     const segIds = Object.keys(msSegs);
-    // PTS hyphenates compounds (paṭhavī-dhātu): for readings that is spelling, not a word boundary
-    const fold = t => foldWords(String(t || '').replace(/(\p{L})-(\p{L})/gu, '$1$2'));
+    const fold = foldWords;
     for (const [si, seg] of segIds.entries()) {
         const msTxt = msSegs[seg];
         if (typeof msTxt !== 'string' || !msTxt.trim() || /:0\.\d+$|\.0(\.\d+)?$/.test(seg)) continue;   // titles and headings are not readings
@@ -161,9 +161,12 @@ function editionReadings(rel, msSegs, variants) {
             const edTxt = segs && segs[seg];
             if (typeof edTxt !== 'string' || !edTxt.trim()) continue;
             const ew = fold(edTxt);
-            const runs = wordDiff(ms, ew).filter(d => d.kind === 'reading');
-            const lost = runs.reduce((n, d) => n + (d.ms ? d.ms.split(' ').filter(w => !ABBREV.has(w)).length : 0), 0);
-            const gained = runs.reduce((n, d) => n + (d.ed ? d.ed.split(' ').length : 0), 0);
+            // every difference goes in, spelling conventions too (owner 2026-10-31: «это же разночтение… по-разному можно
+            // искать» - evamme in Siam Rath must be found); the reading class only decides whether a line is shifted
+            const runs = wordDiff(ms, ew);
+            const real = runs.filter(d => d.kind === 'reading');
+            const lost = real.reduce((n, d) => n + (d.ms ? d.ms.split(' ').filter(w => !ABBREV.has(w)).length : 0), 0);
+            const gained = real.reduce((n, d) => n + (d.ed ? d.ed.split(' ').length : 0), 0);
             // an edition that spells out what the Mahāsaṅgīti abbreviates keeps every Mahāsaṅgīti word
             const expansion = abbreviated && lost <= 1 && gained > 4;
             if (expansion && spelledOut) continue;
