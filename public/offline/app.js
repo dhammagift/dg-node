@@ -654,7 +654,8 @@
     // they are: the platform only decides WHERE the bytes come from. Platforms that cannot do this
     // define nothing, so Android, the PWA and the site keep the path they have always had.
     function prepareArchive(kind) {
-        if (!platform.prepareArchive) return Promise.resolve(false);
+        // Packs come one by one through the worker (packsBase); the platform's transfer is the whole single archive.
+        if (!platform.prepareArchive || PACKS_ON) return Promise.resolve(false);
         return Promise.resolve(platform.prepareArchive({ update: kind === 'update' })).then(function (ok) {
             // The platform may have moved its base (an archive already on disk is fetched through
             // the app's own file handler, not the network), and DIST_BASE was captured at load.
