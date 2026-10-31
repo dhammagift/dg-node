@@ -3461,7 +3461,21 @@ window.syncDeleteData = async function() {
 
             // 3. Если это Google-аккаунт, удаляем и его
             const user = typeof auth !== 'undefined' && auth ? auth.currentUser : null;
-            if (user) await user.delete(); 
+            if (user) {
+                try {
+                    await user.delete();
+                } catch (e) {
+                    // Firebase deletes an account only after a recent sign-in. The Android app has no way to confirm an
+                    // Apple sign-in again before deleting, so an old sign-in left the account (and its e-mail) in place
+                    // while the data went - silently. Say so: a fresh sign-in and Delete again remove it.
+                    if (e && e.code === 'auth/requires-recent-login' && typeof showBubbleNotification === 'function') {
+                        showBubbleNotification(window.notEn
+                            ? 'Данные удалены. Чтобы удалить и сам аккаунт, войдите снова тем же способом и сразу нажмите «Удалить» ещё раз.'
+                            : 'Your data is deleted. To delete the account itself, sign in again the same way and press Delete once more.', 12000, 'error');
+                    }
+                    throw e;
+                }
+            }
 
         } catch (error) { 
             console.error("Delete Error:", error); 
