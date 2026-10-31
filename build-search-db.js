@@ -13,6 +13,7 @@ const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
 const { paliSkel } = require('./public/overrides/js/pali-skeleton.js');
+const { foldWords, wordDiff } = require('./core/edition-diff.js');
 // Только ради DEFAULT_SCOPE_PREFIXES/matchesScope для словаря подсказок (см. build()). Модуль при require
 // ничего не делает — читает свои json-конфиги и ждёт init(), которого здесь не будет.
 const { DEFAULT_SCOPE_PREFIXES, matchesScope, stripSearchPunctuation } = require('./core/search-core.js');
@@ -118,6 +119,79 @@ function mergeReadings(sc, ours) {
     const have = new Set(sc.split(' | ').map(norm));
     const add = ours.split(' | ').map(t => t.trim()).filter(t => t && !have.has(norm(t)));
     return add.length ? sc.trimEnd() + ' | ' + add.join(' | ') + ' ' : sc;
+}
+
+// The readings of the other editions (offline-data root/pli/<ed>, cut into SC's segments) that the variant line does
+// not carry yet (owner via f3-seo, 2026-10-31: search stays on the Mahāsaṅgīti + variants, so the variants must hold
+// every place the editions differ; sn56.11:1.1 BJT "evaṃ me sutaṃ…" was missing). Word-level, the same comparison as
+// MCP compare_editions (core/edition-diff.js); spelling conventions, case, punctuation and ṁ/ṃ are not readings.
+// Not added: omissions (no new word to find), titles and headings. Skipped and logged instead: an edition line that
+// lost more than half the Mahāsaṅgīti words or doubled them (a shifted boundary,
+// for the weekly review - Cakkhu), and "pe"/"peyyāla" abbreviation marks.
+// order = which edition's wording spells out an abbreviated (…pe…) passage of the Mahāsaṅgīti
+const EDITION_LABEL = { my: 'my', bjt: 'bjt', th: 'th', mso: 'ms2005', pts: 'pts' };
+const ABBREV = new Set(['pe', 'peyyāla', 'pa', 'la']);
+const EDITORS_NOTE = new Set(['the', 'has', 'been', 'page', 'above', 'moved', 'content', 'omitted', 'reads', 'see', 'note', 'and', 'of', 'in', 'is']);
+const editionShifts = [];
+// Owner 2026-10-31: start with one nikāya and see how it works - DN first, the others once it holds up.
+const EDITION_READINGS_SCOPE = /^dn\d/;
+function editionReadings(rel, msSegs, variants) {
+    if (!EDITION_READINGS_SCOPE.test(path.basename(rel))) return {};
+    const eds = {};
+    for (const ed of Object.keys(EDITION_LABEL)) {
+        const f = path.join(DG_OFFLINE, 'root', 'pli', ed, rel.replace(/_root-pli-ms\.json$/, `_root-pli-${ed}.json`));
+        eds[ed] = fs.existsSync(f) ? readSegments(f) : null;
+    }
+    const out = {};
+    const segIds = Object.keys(msSegs);
+    // PTS hyphenates compounds (paṭhavī-dhātu): for readings that is spelling, not a word boundary
+    const fold = t => foldWords(String(t || '').replace(/(\p{L})-(\p{L})/gu, '$1$2'));
+    for (const [si, seg] of segIds.entries()) {
+        const msTxt = msSegs[seg];
+        if (typeof msTxt !== 'string' || !msTxt.trim() || /:0\.\d+$|\.0(\.\d+)?$/.test(seg)) continue;   // titles and headings are not readings
+        const ms = fold(msTxt);
+        // words an edition drew over from the neighbouring segments (its line cut a word or two off) are not readings
+        const next = fold(msSegs[segIds[si + 1]]), prev = fold(msSegs[segIds[si - 1]]);
+        if (!ms.length) continue;
+        const abbreviated = ms.includes('pe');
+        const have = ' ' + foldWords(variants[seg] || '').join(' ') + ' ';
+        const byReading = new Map();
+        let spelledOut = false;   // one edition's wording of an abbreviated passage is enough
+        for (const [ed, segs] of Object.entries(eds)) {
+            const edTxt = segs && segs[seg];
+            if (typeof edTxt !== 'string' || !edTxt.trim()) continue;
+            const ew = fold(edTxt);
+            const runs = wordDiff(ms, ew).filter(d => d.kind === 'reading');
+            const lost = runs.reduce((n, d) => n + (d.ms ? d.ms.split(' ').filter(w => !ABBREV.has(w)).length : 0), 0);
+            const gained = runs.reduce((n, d) => n + (d.ed ? d.ed.split(' ').length : 0), 0);
+            // an edition that spells out what the Mahāsaṅgīti abbreviates keeps every Mahāsaṅgīti word
+            const expansion = abbreviated && lost <= 1 && gained > 4;
+            if (expansion && spelledOut) continue;
+            if (!expansion && ms.length >= 4 && (lost > ms.length / 2 || gained > 2 * ms.length)) { editionShifts.push(`${seg} ${ed}`); continue; }
+            if (expansion) spelledOut = true;
+            for (const d of runs) {
+                let edw = d.ed.split(' ').filter(w => w && !ABBREV.has(w));
+                const msw = d.ms.split(' ').filter(w => w && !ABBREV.has(w));
+                if (!msw.length && !edw.length) continue;                      // only the abbreviation mark
+                if (!edw.length) continue;   // an omission adds no word to find, only the Mahāsaṅgīti's own again
+                if (edw.some(w => EDITORS_NOTE.has(w))) continue;              // an editor's English note in the file (PTS)
+                edw = edw.filter(w => !/^[ivxlc]+$/.test(w));                 // PTS section numbers (xiii)
+                if (!edw.length) continue;
+                if (!msw.length) {   // an insertion: trim a spill from the next segment's start or the previous one's end
+                    for (let k = Math.min(edw.length, next.length); k > 0; k--) if (edw.slice(-k).join(' ') === next.slice(0, k).join(' ')) { edw = edw.slice(0, -k); break; }
+                    for (let k = Math.min(edw.length, prev.length); k > 0; k--) if (edw.slice(0, k).join(' ') === prev.slice(-k).join(' ')) { edw = edw.slice(k); break; }
+                    if (!edw.length) continue;
+                }
+                const edWords = edw.join(' ');
+                if (!edWords && !d.ms) continue;
+                if (edWords && have.includes(' ' + edWords + ' ')) continue;   // the collated line has it already
+                const key = `${d.ms || '+'} → ${edWords || '—'}`;
+                (byReading.get(key) || byReading.set(key, []).get(key)).push(EDITION_LABEL[ed]);
+            }
+        }
+        if (byReading.size) out[seg] = [...byReading].map(([k, e]) => `${k} (${e.join(', ')})`).join(' | ');
+    }
+    return out;
 }
 
 function readSegments(file) {
@@ -310,15 +384,36 @@ function build() {
             const DG_VARIANT = path.join(DG_OFFLINE, 'variant', 'pli', 'ms');
             if (isDir(DG_VARIANT)) walkJson(DG_VARIANT, file => ours.set(path.relative(DG_VARIANT, file), readSegments(file)));
             const root = path.join(SC_BILARA, dir, 'pli', 'ms');
+            const merged = new Map();   // rel -> SC's variant line + ours, per segment
             walkJson(path.join(SC_BILARA, dir), file => {
                 const rel = path.relative(root, file), add = ours.get(rel);
-                if (!add) { n += ingest(file, kind, null, null); return; }
-                ours.delete(rel);
-                const merged = Object.assign({}, readSegments(file));
-                for (const [seg, txt] of Object.entries(add)) merged[seg] = mergeReadings(merged[seg], txt);
-                n += ingest(file, kind, null, null, null, merged);
+                const segs = Object.assign({}, readSegments(file));
+                if (add) { ours.delete(rel); for (const [seg, txt] of Object.entries(add)) segs[seg] = mergeReadings(segs[seg], txt); }
+                merged.set(rel, segs);
             });
-            for (const [rel, segs] of ours) n += ingest(path.join(DG_VARIANT, rel), kind, null, null, null, segs);
+            for (const [rel, segs] of ours) merged.set(rel, segs);
+            // ...plus the editions' readings, segment by segment in the root's order
+            const ROOT_MS = path.join(SC_BILARA, 'root', 'pli', 'ms');
+            let added = 0;
+            walkJson(ROOT_MS, file => {
+                const relRoot = path.relative(ROOT_MS, file);
+                const rel = relRoot.replace(/_root-pli-ms\.json$/, '_variant-pli-ms.json');
+                const msSegs = readSegments(file) || {};
+                const segs = merged.get(rel) || {};
+                const eds = editionReadings(relRoot, msSegs, segs);
+                if (!Object.keys(eds).length) return;
+                const ordered = {};
+                for (const seg of Object.keys(msSegs)) {
+                    const both = [segs[seg], eds[seg]].filter(Boolean);
+                    if (both.length) ordered[seg] = both.map(t => t.trimEnd()).join(' | ') + ' ';
+                    if (eds[seg]) added++;
+                }
+                for (const seg of Object.keys(segs)) if (!(seg in ordered)) ordered[seg] = segs[seg];
+                merged.set(rel, ordered);
+            });
+            for (const [rel, segs] of merged) n += ingest(path.join(root, rel), kind, null, null, null, segs);
+            console.log(`variant: ${added} segments got the editions' readings, ${editionShifts.length} edition lines skipped as shifted`);
+            if (editionShifts.length) fs.writeFileSync(path.join(__dirname, 'edition-shifts.log'), editionShifts.join('\n') + '\n');
         }
         db.exec('COMMIT');
         rows += n;
