@@ -78,6 +78,67 @@ async function checkVoice(page) {
     return errs;
 }
 
+async function checkExternalLinks(page) {
+    const errs = [];
+    let releaseText;
+    const textGate = new Promise(resolve => { releaseText = resolve; });
+    await page.route('**/api/text/**', async route => {
+        await textGate;
+        await route.continue();
+    });
+    await page.goto(BASE + '/sn56.11?lang=ru', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('#reader-toolbar .dg-external-links-toggle', { state: 'visible', timeout: 10000 });
+    const early = await page.evaluate(() => {
+        const voice = document.querySelector('#reader-toolbar .voice-link');
+        const toggle = document.querySelector('#reader-toolbar .dg-external-links-toggle');
+        return {
+            voice: !!voice && voice.offsetParent !== null,
+            toggle: !!toggle && toggle.offsetParent !== null,
+            label: toggle?.innerText.trim(),
+        };
+    });
+    if (!early.voice) errs.push('Voice is not visible while the text is loading');
+    if (!early.toggle) errs.push('external-links shell is not visible while the text is loading');
+    if (early.label !== 'Внеш. ссылки') errs.push('wrong immediate Russian label: ' + early.label);
+    const earlyToggle = page.locator('#reader-toolbar .dg-external-links-toggle');
+    await earlyToggle.click();
+    const earlyStatus = await page.locator('#reader-toolbar .dg-external-links-status').innerText();
+    if (earlyStatus !== 'Загрузка…') errs.push('wrong immediate loading status: ' + earlyStatus);
+    await earlyToggle.click();
+    releaseText();
+    await page.waitForFunction(() => window.dgReaderSlug && document.querySelector('#sutta article .quote'), null, { timeout: 20000 });
+    await page.waitForTimeout(600);
+    const header = await page.evaluate(() => {
+        const root = document.querySelector('#reader-toolbar > .dg-external-links, #top-links-container .dg-external-links, #reader-toolbar .dg-row2-box > .dg-external-links');
+        const voice = document.querySelector('#reader-toolbar > .voice-link, #top-links-container .voice-link, #reader-toolbar .dg-row2-box > .voice-link');
+        return {
+            root: !!root,
+            voice: !!voice && !!voice.dataset.slug,
+            nested: !!root && root.querySelectorAll('.dg-external-links-menu a').length > 1,
+            label: root?.querySelector('.dg-external-links-toggle')?.textContent.trim(),
+        };
+    });
+    if (!header.root) errs.push('dropdown was not kept as one header item');
+    if (!header.voice) errs.push('rendered Voice has no text slug');
+    if (!header.nested) errs.push('external links were not populated inside the dropdown');
+    if (header.label !== 'Внеш. ссылки') errs.push('wrong Russian dropdown label: ' + header.label);
+    const toggle = page.locator('#reader-pane .dg-external-links-toggle').first();
+    await toggle.click();
+    const menu = page.locator('#reader-pane .dg-external-links-menu').first();
+    if (!await menu.isVisible()) errs.push('dropdown did not open');
+    const box = await menu.boundingBox();
+    const viewport = page.viewportSize();
+    if (box && (box.x < 0 || box.x + box.width > viewport.width + 1)) errs.push('dropdown escapes the viewport: ' + JSON.stringify(box));
+    const names = await menu.locator('a').allTextContents();
+    if (!names.includes('SuttaCentral')) errs.push('full SuttaCentral name is missing: ' + names.join(', '));
+    if (names.includes('SC')) errs.push('abbreviation is still shown instead of the full name');
+    await page.keyboard.press('Escape');
+    if (await menu.isVisible()) errs.push('Escape did not close the dropdown');
+    if (await toggle.getAttribute('aria-expanded') !== 'false') errs.push('aria-expanded was not reset');
+    if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1)) errs.push('horizontal scroll');
+    return errs;
+}
+
 // Loose spelling finds the Pali word, but never a different word: moon is not monk (owner 2026-10-26).
 async function checkLoose(page) {
     const errs = [];
@@ -122,6 +183,8 @@ async function checkLoose(page) {
     for (const viewport of [{ width: 412, height: 900 }, { width: 1280, height: 800 }])
         for (const c of CASES) await run(`${viewport.width}px ${c[0]} pali=${c[1]}`, viewport, page => check(page, c));
     await run('voice: speaker → Voice / Alt+R', { width: 1280, height: 800 }, checkVoice);
+    for (const viewport of [{ width: 390, height: 844 }, { width: 1280, height: 800 }])
+        await run(`external links: ready shell and dropdown (${viewport.width}px)`, viewport, checkExternalLinks);
     await run('loose spelling: find on page and the Filter box', { width: 1280, height: 800 }, checkLoose);
     await browser.close();
     console.log(failed ? `\n${failed} failed (${BASE})` : `\nall passed (${BASE})`);

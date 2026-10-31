@@ -795,24 +795,59 @@ document.addEventListener('click', (event) => {
 const memBubblesOpen = document.getElementsByClassName('mem-bubble');
 document.addEventListener('scroll', () => { if (memBubblesOpen.length) window.removeBubbles(); }, true);
 
-// The reader header, decided by measuring at every width, not by a breakpoint (owner 2026-10-30: «там вообще всё
-// должно было бы вместиться в одну строку» — at 600 px everything fits one row, yet the 768 px rule split it):
-//   1. one row: the third-party links in the icon row (#reader-toolbar) beside the icons and the contents pill,
-//      kept if nothing wraps or overflows and the pill is not squeezed below its own width (or its cap);
-//   2. otherwise the links get their own row (#top-links-container, their <p class="sc-link">) and the pill stays
-//      with the icons if it fits there whole;
-//   3. otherwise the pill goes to the END of the links row at its own width, centred with them, in a row that
-//      never wraps (a stretched pill was rejected; "11. A…" alone in a row was the bug). If even then it would be
-//      cut below 110 px (Russian mn10, 7 links), step 2's layout stays.
-// The real <a> elements move, see the long note in buildSutta. Re-run on every render, on resize (a phone turned)
-// and when the pill's label changes on scroll (reader/common.js syncTOC). Rebuilt from the last render's markup
-// each time, so no stale or doubled set is left behind.
+// Voice and the external-links dropdown are permanent header items. Their markup is present in the
+// static toolbar on a cold load; the generated copy replaces it when the text is ready. The dropdown
+// moves as ONE item, so its links never spill back into the toolbar. Layout is decided by measuring:
+// 1) everything beside the icons and contents pill; 2) links on their own row; 3) the pill after them.
 let dgLastScLink = '';
+function dgExternalLinksStatus() {
+    const isRu = window.isRuPath || document.documentElement.lang === 'ru';
+    return `<span class="dg-external-links-status">${isRu ? 'Загрузка…' : 'Loading…'}</span>`;
+}
+function dgCloseExternalLinks(except) {
+    document.querySelectorAll('.dg-external-links.is-open').forEach(function (dropdown) {
+        if (dropdown === except) return;
+        dropdown.classList.remove('is-open');
+        dropdown.querySelector('.dg-external-links-toggle')?.setAttribute('aria-expanded', 'false');
+        const menu = dropdown.querySelector('.dg-external-links-menu');
+        if (menu) menu.hidden = true;
+    });
+}
+document.addEventListener('click', function (event) {
+    const toggle = event.target.closest('.dg-external-links-toggle');
+    if (toggle) {
+        const dropdown = toggle.closest('.dg-external-links');
+        const willOpen = !dropdown.classList.contains('is-open');
+        dgCloseExternalLinks(dropdown);
+        dropdown.classList.toggle('is-open', willOpen);
+        toggle.setAttribute('aria-expanded', String(willOpen));
+        dropdown.querySelector('.dg-external-links-menu').hidden = !willOpen;
+        return;
+    }
+    if (event.target.closest('.dg-external-links-menu a')) dgCloseExternalLinks();
+    else if (!event.target.closest('.dg-external-links')) dgCloseExternalLinks();
+});
+document.addEventListener('keydown', function (event) {
+    if (event.key !== 'Escape') return;
+    const open = document.querySelector('.dg-external-links.is-open');
+    dgCloseExternalLinks();
+    open?.querySelector('.dg-external-links-toggle')?.focus();
+});
+function dgPrepareReaderLinks() {
+    dgLastScLink = '';
+    dgCloseExternalLinks();
+    document.querySelectorAll('#reader-toolbar .voice-link, #top-links-container .voice-link').forEach(function (voice) {
+        voice.removeAttribute('data-slug');
+    });
+    document.querySelectorAll('#reader-toolbar .dg-external-links-menu, #top-links-container .dg-external-links-menu').forEach(function (menu) {
+        menu.innerHTML = dgExternalLinksStatus();
+    });
+}
 function dgResetReaderHeader(top, bar) {
     const toc = document.getElementById('smart-toc-btn');
     const box = bar.querySelector('.dg-row2-box');
     if (box) { if (toc) bar.appendChild(toc); box.remove(); }
-    Array.from(bar.querySelectorAll('.sc-ext-link')).forEach(function (stale) { stale.remove(); });
+    Array.from(bar.querySelectorAll('.dg-header-link')).forEach(function (stale) { stale.remove(); });
     bar.classList.remove('dg-row2');
     top.innerHTML = dgLastScLink;
     top.style.display = '';
@@ -831,18 +866,15 @@ function dgFitReaderHeader() {
     const sameRow = el => Math.abs(el.getBoundingClientRect().top - first.getBoundingClientRect().top) < 10;
     const pillWhole = () => !tocShown || (sameRow(toc) && !(cut() && toc.getBoundingClientRect().width < cap - 1));
     const done = () => { if (typeof window.dgApplyHeaderPadding === 'function') window.dgApplyHeaderPadding(); };
-    // 1. one row
-    const links = Array.from(top.querySelectorAll('a'));
+    const links = Array.from(top.querySelectorAll('.dg-header-link'));
     links.forEach(function (link) { bar.insertBefore(link, first); });
     top.style.display = 'none';
     if (links.every(sameRow) && bar.scrollWidth <= bar.clientWidth + 1 && pillWhole()) return done();
-    // 2. links on their own row, the pill with the icons
     dgResetReaderHeader(top, bar);
     if (pillWhole() || !links.length) return done();
-    // 3. the pill after the links
     const box = document.createElement('div');
     box.className = 'dg-row2-box';
-    Array.from(top.querySelectorAll('a')).forEach(function (link) { box.appendChild(link); });
+    Array.from(top.querySelectorAll('.dg-header-link')).forEach(function (link) { box.appendChild(link); });
     box.appendChild(toc);
     bar.appendChild(box);
     bar.classList.add('dg-row2');
@@ -855,7 +887,6 @@ function dgPlaceReaderLinks() {
     const bar = document.getElementById('reader-toolbar');
     if (!top || !bar) return;
     dgResetReaderHeader(top, bar);
-    // measured once the header is laid out and the pill has its title (both come after this call on a render)
     requestAnimationFrame(function () { dgFitReaderHeader(); });
     setTimeout(dgFitReaderHeader, 400);
 }
@@ -867,120 +898,69 @@ window.dgRefitReaderHeader = function () {
 window.addEventListener('resize', window.dgRefitReaderHeader);
 
 window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator) {
-    let scLink = "";
+    const voiceLink = `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" role="button" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link dg-header-link">${window.isRuPath ? 'Голос' : 'Voice'}</a>`;
+    let externalLinks = '';
 
-    // Order matches legacy (read/js/common.js buildThirdPartyLinksHTML): Voice, 4nt, DPR, BJT,
-    // SC, BB, TBW, Th.ru, Th.su — was DPR/BJT first here (owner, live compare against prod:
-    // "в русской версии dn22 на проде... Voice 4nt DPR BJT SC TBW... а в node версии... порядок
-    // неверный"). Voice always renders first (no leading separator needed); every conditional
-    // item after it gets a LEADING plain space instead of each one adding its own TRAILING
-    // separator — simpler to keep in this order without an off-by-one on whichever item ends up
-    // last. Plain space, not &nbsp;: on the desktop reader toolbar (search/index.html) these
-    // links are flex items sharing a justify-content:space-between row with the icon toolbar —
-    // &nbsp; doesn't collapse, so it rendered as its own visible anonymous flex item alongside
-    // the real spacing, throwing off the "equal gaps" owner asked for. A plain space between
-    // flex items IS collapsible per spec, so the browser ignores it and space-between alone
-    // controls the gap. Same string also feeds the non-flex mobile/bottom-of-page copies of
-    // this row (reader/css/rus-multi.css p.sc-link a — plain inline-block flow there) — visually
-    // unaffected by the swap, ordinary text spacing either way.
-    // sc-ext-link on every tag below: a stable marker so callers that need "every one of these
-    // links" (settings.js's PDF export) can find them by class instead of by parent container —
-    // on desktop these get physically MOVED into #reader-toolbar (see buildSutta() below), so
-    // #top-links-container alone no longer reliably contains them.
-    scLink += `<a data-slug="${texttype}/${slugReady}" href="javascript:void(0)" role="button" title="Text-to-Speech (Alt+R)" class="voice-link sc-ext-link">${window.isRuPath ? 'Голос' : 'Voice'}</a>`;
-
-    // 4nt (BJT/CST/Thai edition comparison) — get4ntUrl() (settings.js) always returns the
-    // local /4nt/... path (siteroot/4nt); mirror-link.js falls back to the project's own
-    // s.dhamma.gift copy of the same tool when /4nt isn't actually mounted (packaged mobile app).
     if (typeof get4ntUrl === 'function') {
-        let url4nt = get4ntUrl(slug);
+        const url4nt = get4ntUrl(slug);
         if (url4nt) {
-            let onlineUrl4nt = url4nt.replace(/^\/4nt/, 'https://s.dhamma.gift');
-            scLink += ` <a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4nt</a>`;
+            const onlineUrl4nt = url4nt.replace(/^\/4nt/, 'https://s.dhamma.gift');
+            externalLinks += `<a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4 Nikāya Tool</a>`;
         }
     }
 
     let dprUrl = null;
     if (typeof dprLinksData !== 'undefined') {
-        let dprItem = dprLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
+        const dprItem = dprLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
         if (dprItem && dprItem[1]) dprUrl = "https://d.dhamma.gift/_dprhtml/index.html?loc=" + dprItem[1];
     }
-    if (dprUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">DPR</a>`;
+    if (dprUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">Digital Pali Reader</a>`;
 
     let bjtUrl = null;
     if (typeof bjtLinksData !== 'undefined') {
-        let bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
+        const bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
         if (bjtItem && bjtItem[1]) bjtUrl = "https://open.tipitaka.lk/latn/" + bjtItem[1];
     }
-    if (bjtUrl) scLink += ` <a target="_blank" class="sc-ext-link" title="Buddha Jayanti Tipiṭaka at tipitaka.lk" href="${bjtUrl}">Tpt.lk</a>`;
+    if (bjtUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Buddha Jayanti Tipiṭaka at tipitaka.lk" href="${bjtUrl}">Tipitaka.lk · BJT</a>`;
 
-    scLink += ` <a target="_blank" class="sc-ext-link" title='SuttaCentral.net' href="https://suttacentral.net/${slug}">SC</a>`;
+    externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral</a>`;
 
-    // Owner (item 9): TBW/BB/AI must follow the explicit ?force_local flag, like the legacy site
-    // (assets/js/openBw-RealTBW.js/settings.js there) — NOT mirror-link.js's live-reachability
-    // probe used just above for other mirrors (theirs is "is it actually here right now",
-    // right for a mirror that may or may not be mounted; force_local is an explicit mode switch,
-    // wrong to derive from whether a fetch happens to succeed).
-    //
-    // Hostname is deliberately NOT part of this any more. It used to say "localhost counts as
-    // local too", which was written for the dev server — but the Capacitor app's own origin is
-    // https://localhost, so every reader in the app got the secret/local links: "bb" and "ai"
-    // showed up for people who never asked for them (owner, screenshot of dn1 in the app). The
-    // switch is the flag, and only the flag.
+    // TBW follows the explicit local mode. BB and AI are local-only links, never public fallbacks.
     const isLocal = localStorage.getItem('forceLocal') === 'true';
-
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
         if (hasTbw) {
             const hashSeg = window.location.hash ? window.location.hash.slice(1) : '';
             const segSuffix = hashSeg ? '#' + hashSeg : '';
-
-            // TBW always appears (public resource, not secret) — online by default, local mirror
-            // under force_local, in that order so "secret" bb/ai land after it, not before.
             const book = (slug.match(/^[a-z]+/) || [""])[0];
             const tbwUrl = isLocal ? `/bw/${book}/${slug}.html` : `https://thebuddhaswords.net/${book}/${slug}.html`;
-            scLink += ` <a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">TBW</a>`;
-
-            // "bb"/"ai" (owner: secret, force_local-only — must not appear at all otherwise, no
-            // online fallback like TBW gets). bb reuses this same siteroot/b as the legacy site's
-            // /b/ tool; ai is the same siteroot/ai mount (see siteroot/ dir) of the legacy site's
-            // /ai/ reader, both now served locally by THIS site under force_local instead of
-            // pointing at old.dhamma.gift.
+            externalLinks += `<a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">The Buddha’s Words</a>`;
             if (isLocal && !window.location.pathname.startsWith('/b/')) {
-                scLink += ` <a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">bb</a>`;
+                externalLinks += `<a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">BB &amp; Other Translations</a>`;
             }
             if (isLocal) {
-                scLink += ` <a target="_blank" class="sc-ext-link" title="AI" href="/ai/?q=${encodeURIComponent(slug)}${segSuffix}">ai</a>`;
+                externalLinks += `<a target="_blank" class="sc-ext-link" title="AI" href="/ai/?q=${encodeURIComponent(slug)}${segSuffix}">AI</a>`;
             }
         }
     }
 
-    // Th.ru/Th.su — Russian-only external sources, gated on window.isRuPath (reader/common.js)
-    // matching legacy read/js/common.js's own `if (window.isRuPath)` wrapper. Was missing here —
-    // these links rendered on the English reader too before this fix.
     if (window.isRuPath) {
         if (typeof thruLinksData !== 'undefined') {
             const ruItem = thruLinksData.find(item => item[0] === slug);
-            // Same mirror-link.js resolution as TBW above — this one used to be a bare local
-            // path with no online fallback at all, 404ing outright wherever the mirror isn't
-            // mounted (the packaged mobile app, but also anyone off the dev/prod boxes).
-            if (ruItem) scLink += ` <a title="Theravada.ru" target="_blank" class="sc-ext-link mirror-link" href="https://theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}" data-local="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Th.ru</a>`;
+            if (ruItem) externalLinks += `<a title="Theravada.ru" target="_blank" class="sc-ext-link mirror-link" href="https://theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}" data-local="/theravada.ru/Teaching/Canon/Suttanta/Texts/${ruItem[1]}">Theravada.ru</a>`;
         }
-
-        // Th.su's local mirror (thsuLinksDataoffl, plain "dn1.html") and the online site
-        // (thsuLinksData, "node/table/1100") use genuinely different URL schemes, not just
-        // different domains — both datasets are looked up regardless of hostname, and
-        // mirror-link.js picks whichever is actually reachable at click time.
         if (typeof thsuLinksData !== 'undefined') {
             const suOnlineItem = thsuLinksData.find(item => item[0] === slug);
             if (suOnlineItem) {
                 const suLocalItem = typeof thsuLinksDataoffl !== 'undefined' && thsuLinksDataoffl.find(item => item[0] === slug);
                 const suLocalAttr = suLocalItem ? ` data-local="/tipitaka.theravada.su/dn/${suLocalItem[1]}"` : '';
-                scLink += ` <a title="Theravada.su" target="_blank" class="sc-ext-link mirror-link" href="https://tipitaka.theravada.su/${suOnlineItem[1]}"${suLocalAttr}>Th.su</a>`;
+                externalLinks += `<a title="Theravada.su" target="_blank" class="sc-ext-link mirror-link" href="https://tipitaka.theravada.su/${suOnlineItem[1]}"${suLocalAttr}>Theravada.su</a>`;
             }
         }
     }
-    return scLink;
+
+    const label = window.isRuPath ? 'Внеш. ссылки' : 'External links';
+    return voiceLink + ` <span class="dg-external-links dg-header-link"><button type="button" class="dg-external-links-toggle" aria-expanded="false"><span>${label}</span><span class="dg-external-links-chevron" aria-hidden="true"></span></button><span class="dg-external-links-menu" hidden>${externalLinks}</span></span>`;
 };
 
 // ==========================================
@@ -1388,6 +1368,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const abort = buildAbort = (typeof AbortController === 'function') ? new AbortController() : null;
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
+    dgPrepareReaderLinks();
     // Point the shell's Contents link (.dg-shell-toc, reader-only) at THIS sutta's node in the
     // tree — /toc/<id> makes toc.js open the owning book/vagga and flash the leaf, instead of
     // dumping the reader back at the collection root (owner: "должен был оказаться здесь с
@@ -1916,7 +1897,7 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     
     if (finalRulingAnchor) {
-        scLink += `&nbsp;<a href="#${finalRulingAnchor}" title="К окончательному правилу">Final</a>`;
+        scLink += `&nbsp;<a href="#${finalRulingAnchor}" title="К окончательному правилу" class="dg-header-link">Final</a>`;
     }
     scLink += "</p>";
 
@@ -1994,28 +1975,9 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     if (bottomContainer) bottomContainer.innerHTML = scLink;
 
-    // Owner: "десктоп нужно менять как на моём мокапе... на мобильных так не получится, пусть
-    // будет как есть", then: "равные расстояния между ВСЕМИ элементами строки... между ссылками
-    // и иконками такой же интервал, как между каждым другим элементом... не должно быть слипшихся
-    // ссылок и иконок". First attempt moved the whole #top-links-container wrapper in and used
-    // CSS display:contents to flatten it (and the icon wrapper) so every link/icon/pill shared
-    // one justify-content:space-between row — worked in Chromium (playwright), but owner tested
-    // a fresh/incognito non-Chromium browser and the gaps were wildly uneven with the links/icons
-    // boundary touching (display:contents + flex gap is a known cross-browser inconsistency,
-    // Firefox/Safari in particular). Moving the REAL <a> elements instead sidesteps that whole
-    // category of bug — every item sharing the row is a genuine direct child of #reader-toolbar,
-    // no CSS trick involved, so gap/space-between behave identically everywhere.
-    // Individual links (.sc-ext-link, marked in generateThirdPartyLinks() above) get inserted
-    // one at a time right before the first icon (#toggle-variants, always present in the static
-    // markup) — repeated insertBefore(x, sameRef) naturally preserves iteration order (each new
-    // node lands immediately before the reference, pushing previously-inserted ones to stay put
-    // ahead of it). #top-links-container itself stays put (still owns the SAME <a> elements by
-    // reference, so settings.js's PDF export / smoothScroll.js's exclusion — updated to key off
-    // .sc-ext-link instead of the parent id, since the id no longer reliably contains them — see
-    // those files) — just hidden, its own box would otherwise be an empty fixed-position bar.
-    // Decided fresh on every render, not on resize — a mid-read window resize across 768px won't
-    // re-flow until the next sutta/mode render (stackConfig(), search/index.html, has the same
-    // trade-off, keeps them consistent with each other).
+    // Move the .dg-header-link items (Voice, the intact dropdown, optional Final) before the first icon.
+    // Real direct children keep flex spacing consistent across browsers; nested menu links stay
+    // inside the dropdown. Export finds them by .sc-ext-link in either header location.
     dgLastScLink = scLink;
     dgPlaceReaderLinks();
 
