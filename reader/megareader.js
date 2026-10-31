@@ -1836,7 +1836,14 @@ window.buildSutta = async function(rawSlug, opts) {
        bars said nothing; the plates match the editions' (MS/BJT/VRI). Drawn by CSS from data-tag (.dg-tag::before),
        so it is not part of the text - copying, the voice and the search highlight never see it. One language alone
        (single mode) gets no plate. */
-    const tagAll = orderedEntries.length >= 2;
+    // ...and once any plate is on screen, every text has one (owner 2026-10-31: «как только где-то появились плашки - на
+    // всех остальных»): another Pali edition shown plates the single translation too, two translations plate the lone
+    // Mahāsaṅgīti line (editionLines, platesOn).
+    const edsAsked = (isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey)) ? [] : getEditions();
+    const edsOnScreen = edsAsked.filter(e => e === 'ms' || (Array.isArray(suttaData.editions) && suttaData.editions.includes(e)));
+    const otherPaliShown = edsOnScreen.length > 1 || (edsOnScreen.length === 1 && edsOnScreen[0] !== 'ms');
+    const tagAll = orderedEntries.length >= 2 || (otherPaliShown && orderedEntries.length >= 1);
+    const platesOn = tagAll || otherPaliShown;
     for (const { lang, entry } of orderedEntries) {
         entry.cueClass = '';
         entry.cueTitle = '';
@@ -2001,11 +2008,11 @@ window.buildSutta = async function(rawSlug, opts) {
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
     const edDiff = true;   // marks always drawn with several editions, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
-        if (!edSingle && !edMulti) return msText;
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
+        if (!edSingle && !edMulti) return platesOn && !heading ? `<span class="dg-ed-line dg-tag" data-ed="ms" data-tag="MS">${msText}</span>` : msText;
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
-            if (t !== undefined) return t.trim();
+            if (t !== undefined) return heading ? t.trim() : `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${t.trim()}</span>`;
             return heading ? msText : `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
         }
         let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);

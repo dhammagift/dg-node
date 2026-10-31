@@ -1683,11 +1683,14 @@ function createPlaylistFromData(textData, mode) {
 
     if (mode === 'pi') { addPali(); }
     else if (mode === 'trn') { addTrn(); }
-    else if (mode === 'trn2') { addTrn2(); }
+    // trn2 / pi-trn2 (a tap on a second translation): the column logic in prepareTextData already reads the translation
+    // the reading started on (trnCol), and translation2 is empty when that is the last one - the second translation's
+    // speaker opened the player and read nothing (owner 2026-10-31). They read like trn / pi-trn now.
+    else if (mode === 'trn2') { addTrn(); }
     else if (mode === 'pi-trn') { addPali(); addTrn(); }
     else if (mode === 'trn-pi') { addTrn(); addPali(); }
-    else if (mode === 'pi-trn2') { addPali(); addTrn2(); }
-    else if (mode === 'trn2-pi') { addTrn2(); addPali(); }
+    else if (mode === 'pi-trn2') { addPali(); addTrn(); }
+    else if (mode === 'trn2-pi') { addTrn(); addPali(); }
   });
   
   return playlist;
