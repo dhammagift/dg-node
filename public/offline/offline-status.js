@@ -109,7 +109,7 @@
             font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
         }
         #dgConsent.show #dgConsentSheet { transform: translateY(0); }
-        [data-bs-theme="dark"] #dgConsentSheet {
+        [data-bs-theme="dark"] #dgConsentSheet, body.dark #dgConsentSheet {
             --dgc-surface: #171f1d; --dgc-sunk: #101816; --dgc-rule: #27332f;
             --dgc-ink: #e8efec; --dgc-muted: #9aaba6; --dgc-faint: #6d7f7a; --dgc-accent: #3f9d86;
             box-shadow: 0 24px 64px -16px rgba(0, 0, 0, .7);
@@ -175,7 +175,7 @@
             transition: opacity .18s ease, transform .2s cubic-bezier(.2,.8,.3,1);
         }
         #dgDlCard.show { opacity: 1; transform: translate(-50%, 0); }
-        [data-bs-theme="dark"] #dgDlCard {
+        [data-bs-theme="dark"] #dgDlCard, body.dark #dgDlCard {
             --dgc-surface: #171f1d; --dgc-sunk: #101816; --dgc-rule: #27332f;
             --dgc-ink: #e8efec; --dgc-muted: #9aaba6; --dgc-faint: #6d7f7a; --dgc-accent: #3f9d86;
             box-shadow: 0 18px 48px -14px rgba(0, 0, 0, .65);
