@@ -132,7 +132,8 @@ async function checkExternalLinks(page) {
     const box = await menu.boundingBox();
     const viewport = page.viewportSize();
     if (box && (box.x < 0 || box.x + box.width > viewport.width + 1)) errs.push('dropdown escapes the viewport: ' + JSON.stringify(box));
-    const names = await menu.locator('a').allTextContents();
+    // the site's name only: the edition plates (.dg-link-eds: MS, BJT…) are part of the link since fd1b098
+    const names = await menu.locator('a').evaluateAll(as => as.map(a => { const c = a.cloneNode(true); c.querySelectorAll('.dg-link-eds').forEach(e => e.remove()); return c.textContent.trim(); }));
     if (!names.includes('SuttaCentral')) errs.push('full SuttaCentral name is missing: ' + names.join(', '));
     if (names.includes('SC')) errs.push('abbreviation is still shown instead of the full name');
     await page.keyboard.press('Escape');

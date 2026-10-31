@@ -3039,6 +3039,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              Иконки — своя CSS (.dg-reader-toolbar в <style> этой страницы), не common-size-icon4:
              тот класс тянет margin-top:-3px/margin-left:6px, подобранные под inline-flow
              #form-div реального прода — в чистом flex-ряду они просто криво съезжали. -->
+        <!-- the external-links label and status in the page's language from the first paint: these rules live in
+             reader/css/index.css, which loads later, and the closed menu's status is not in the critical CSS -->
+        <style>.dg-external-links-ru{display:none}html[lang="ru"] .dg-external-links-en{display:none}html[lang="ru"] .dg-external-links-ru{display:inline}</style>
         <div id="reader-toolbar" class="dg-reader-toolbar">
             <span class="dg-external-links dg-header-link">
                 <button type="button" class="dg-external-links-toggle" aria-expanded="false">
