@@ -4501,6 +4501,12 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         window.MEGAREADER_MANUAL_INIT = true;
         ensureReaderAssets();
     }
+    // home.js's Translations window saves through megareader.js (setReadingStack); on the results
+    // page that script may not be here yet (the warm-up waits for a first move) - it asks for it.
+    window.dgReaderAssets = function () {
+        if (!document.body.classList.contains('dg-state-reader')) window.MEGAREADER_MANUAL_INIT = true;
+        return ensureReaderAssets();
+    };
     // Speed (PageSpeed, search results): the scripts of the warm-up wait for the visitor's first move on a
     // loaded page (pointer, touch, key, wheel). Started on idle they went out with the results still being
     // drawn - the reader's seven scripts ahead of the table's translated titles (LCP). A tap on a result is a

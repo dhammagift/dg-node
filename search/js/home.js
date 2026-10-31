@@ -1826,7 +1826,9 @@
         modeMulti:{ ru: 'Мульти', en: 'Multi' },
         readNote: { ru: 'правки до конца сессии', en: 'changes last for this session' },
         multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
-        keepIt:   { ru: 'Оставить себе', en: 'Keep this' }
+        keepIt:   { ru: 'Оставить себе', en: 'Keep this' },
+        reset:    { ru: 'По умолчанию', en: 'Default' },
+        resetHint:{ ru: 'Мои языки, у каждого — переводчик по умолчанию', en: 'My languages, each with its default translator' }
     };
     function tsStr(k) { return TRANS_STR[k][menuLang() === 'ru' ? 'ru' : 'en']; }
     var tsSort = 'manual';
@@ -1929,6 +1931,7 @@
         host.innerHTML =
             '<div class="dg-ts-head"><b class="dg-ts-title"></b><span class="dg-ts-count"></span>' +
             '<span class="dg-ts-mode"></span>' +
+            '<button type="button" class="dg-ts-reset" data-ts-reset></button>' +
             '<button type="button" class="dg-ts-x" aria-label="✕">✕</button></div>' +
             '<div class="dg-ts-seg"></div><div class="dg-ts-chips"></div><div class="dg-ts-add-list" hidden></div>' +
             '<div class="dg-ts-body"><div class="dg-ts-rows"></div></div><div class="dg-ts-foot"></div>';
@@ -1980,6 +1983,9 @@
         modeEl.textContent = trial ? tsStr('modeRead') : tsStr('modeMulti');
         modeEl.title = trial ? tsStr('readNote') : tsStr('multiNote');
         modeEl.hidden = currentState() !== 'reader';   // results have no reading mode
+        var resetEl = host.querySelector('.dg-ts-reset');
+        resetEl.textContent = '↺ ' + tsStr('reset');
+        resetEl.title = tsStr('resetHint');
         host.querySelector('.dg-ts-seg').innerHTML = ['manual', 'lang', 'name'].map(function (m) {
             return '<button type="button" data-ts-sort="' + m + '" aria-pressed="' + (tsSort === m) + '">' +
                 esc(tsStr(m === 'manual' ? 'manual' : m === 'lang' ? 'byLang' : 'byName')) + '</button>';
@@ -2090,6 +2096,11 @@
        нет — это тот же buildSutta(), что и у переключения режимов. */
     var tsBusy = false, tsPending = null;
     function tsApply(next) {
+        if (typeof window.setReadingStack !== 'function') {
+            // results page before the reader's scripts arrived: load them, then apply (a tick was lost)
+            if (window.dgReaderAssets) window.dgReaderAssets().then(function () { tsApply(next); });
+            return;
+        }
         if (currentState() === 'results') {
             window.setReadingStack(next);
             // The old popover's per-language hiding would fight the set — the set decides now.
@@ -2145,6 +2156,15 @@
         var row = e.target.closest('.dg-ts-row');
         var sortBtn = e.target.closest('[data-ts-sort]');
         if (sortBtn) { tsSort = sortBtn.dataset.tsSort; tsRender(); return; }
+        // Owner (Trello rrYjLQ6X): one tap back to the default set - each of my languages with
+        // its priority translator (tsPriorityKey), in my languages' order; a session trial goes too.
+        if (e.target.closest('[data-ts-reset]')) {
+            var def = tsEnabledLangs().map(tsPriorityKey).filter(Boolean);
+            try { sessionStorage.removeItem('dgReadingStackLocal'); } catch (x) { /* private mode */ }
+            tsSort = 'manual';
+            if (def.length) tsApply(def); else tsRender();
+            return;
+        }
         if (e.target.closest('[data-ts-keep]')) {
             window.setReadingStack(tsStack());     // с этого момента набор обычный, сохраняемый
             tsRender();
