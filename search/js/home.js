@@ -2233,7 +2233,12 @@
             } catch (x) { /* private mode */ }
             var u = new URL(location.href);
             ['mode', 'langs', 'translators', 'editions'].forEach(function (k) { u.searchParams.delete(k); });
-            location.replace(u.toString());
+            // In the apps /sn56.11 is no file (the dot reads as an extension, the WebView fails it), so "Default" did
+            // nothing there (owner, iPhone 2026-10-31): the root with the _nativeRoute handoff opens the same place,
+            // as public/offline/app.js reloadHere() does.
+            var last = u.pathname.split('/').pop();
+            location.replace(window.dgOfflineReady && last.indexOf('.') !== -1 && !/\.html?$/.test(last)
+                ? '/?_nativeRoute=' + encodeURIComponent(u.pathname + u.search + u.hash) : u.toString());
             return;
         }
         if (e.target.closest('[data-ts-keep]')) {
