@@ -115,7 +115,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     try {
       var s = parseInt(localStorage.getItem('uiScale'), 10);
       s = (s >= 70 && s <= 250) ? s : 100;
-      var z = s / 100 * ((document.documentElement.classList.contains('dg-app') || matchMedia('(max-width: 767.98px)').matches) ? 1.1 : 1);
+      // touch screens too, not only narrow ones: a foldable or a tablet is wider than 768 px and read too small at 1.0
+      // (owner 2026-10-31: «очень мелкий… мы это чинили») - the same query as home.js BIG_BASE
+      var z = s / 100 * ((document.documentElement.classList.contains('dg-app') || matchMedia('(max-width: 767.98px), (pointer: coarse)').matches) ? 1.1 : 1);
       if (z !== 1 && window.CSS && CSS.supports && CSS.supports('zoom', '1.5')) {
         document.documentElement.style.zoom = z;
         document.documentElement.style.setProperty('--dg-zoom', z);

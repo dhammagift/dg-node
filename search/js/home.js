@@ -5658,7 +5658,9 @@
     // Owner (2026-09-29): on phones and in the app the old 110% is the new 100% — the base size
     // there read too small. The control still shows 70–250%, relative to that base; the same rule
     // runs early in index.html <head> so the page does not jump from small to big on load.
-    var BIG_BASE = window.matchMedia('(max-width: 767.98px)');
+    // ...and on any touch screen (pointer: coarse): an unfolded phone or a tablet is wider than 768 px and read too small
+    // at 1.0 (owner 2026-10-31: «очень мелкий… мы это чинили»).
+    var BIG_BASE = window.matchMedia('(max-width: 767.98px), (pointer: coarse)');
     // After a size change the pinned header must be re-measured (zoom fires no resize).
     var reMeasure = function () { window.dispatchEvent(new Event('resize')); };
     function uiBase() { return (BIG_BASE.matches || document.documentElement.classList.contains('dg-app')) ? 1.1 : 1; } // owner: 1.2 read big and wrapped the phone toolbar; 1.1
