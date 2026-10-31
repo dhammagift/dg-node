@@ -857,6 +857,9 @@ function dgPlaceReaderLinks() {
     const menu = bar.querySelector('.dg-external-links-menu');
     const freshMenu = fresh.querySelector('.dg-external-links-menu');
     if (menu && freshMenu) menu.innerHTML = freshMenu.innerHTML;
+    // the toggle's label in the page's language only (the static one carries both, CSS shows one; same text on screen)
+    const toggle = bar.querySelector('.dg-external-links-toggle'), freshToggle = fresh.querySelector('.dg-external-links-toggle');
+    if (toggle && freshToggle && toggle.innerHTML !== freshToggle.innerHTML) toggle.innerHTML = freshToggle.innerHTML;
     Array.from(bar.querySelectorAll('.dg-header-extra')).forEach(function (stale) { stale.remove(); });
     const dropdown = bar.querySelector('.dg-external-links');
     Array.from(fresh.querySelectorAll('.dg-header-link')).filter(function (a) { return !a.classList.contains('dg-external-links'); })
