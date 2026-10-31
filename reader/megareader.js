@@ -305,8 +305,9 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
     st.id = 'dg-ed-diff-style';
     st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;box-shadow:inset 0 0 0 transparent;' +
         'transition:background-color .45s ease,box-shadow .45s ease}' +
-        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,var(--dg-tblue,#3434be) 18%,transparent);' +
-        'box-shadow:inset 0 -1.5px 0 color-mix(in srgb,var(--dg-tblue,#3434be) 60%,transparent)}' +
+        // strong enough to be seen at a glance on a phone (owner: «на скринах нет подсветки» at 18%)
+        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,var(--dg-tblue,#3434be) 34%,transparent);' +
+        'box-shadow:inset 0 -2px 0 var(--dg-tblue,#3434be)}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
