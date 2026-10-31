@@ -71,7 +71,8 @@ onReady(function () {
 // ИКОНКИ АУДИО И ПОДЕЛИТЬСЯ ДЛЯ СТРОКИ 0.1 (заголовок сутты/раздела)
 // ==========================================
 function addIconsTo01() {
-    const segment01 = document.getElementById('0.1');
+    // "0.1" on one text; "an1.140:0.1" on a range of texts (an1.140-149 had no speakers)
+    const segment01 = document.getElementById('0.1') || document.querySelector('#sutta [id$=":0.1"]');
     if (!segment01) return;
 
     if (segment01.classList.contains('icons-added')) return;

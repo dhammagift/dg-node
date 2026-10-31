@@ -1526,11 +1526,26 @@ async function prepareTextData(slug) {
   }
 
   const textData = [];
-  
+
+  // The column reading starts on (owner 2026-10-31: «он должен проигрывать тот перевод, на котором его запустили»): with
+  // several translations, or later several Pali editions, side by side, a speaker or a tap on the second one reads the
+  // second one down the text, not always the first. Its index among the same kind of lines of its own segment.
+  const startEl = document.querySelector('.active-word');
+  const columnOf = (list) => {
+      if (!startEl) return 0;
+      const sid = getElementId(startEl);
+      const k = list.filter(el => getElementId(el) === sid).findIndex(el => el === startEl || el.contains(startEl) || startEl.contains(el));
+      return Math.max(0, k);
+  };
+  const startsOnPali = !!startEl && startEl.matches('.pli-lang, [lang="pi"]');
+  const trnCol = startsOnPali ? 0 : columnOf(translationElements);
+  const paliCol = startsOnPali ? columnOf(paliElements) : 0;
+
   allIds.forEach(id => {
-    const paliElement = Array.from(paliElements).find(el => getElementId(el) === id);
+    const segPali = Array.from(paliElements).filter(el => getElementId(el) === id);
+    const paliElement = segPali[paliCol] || segPali[0] || null;
     const segTranslations = Array.from(translationElements).filter(el => getElementId(el) === id);
-    const trnEl1 = segTranslations[0] || null;
+    const trnEl1 = segTranslations[trnCol] || segTranslations[0] || null;
     const trnEl2 = segTranslations.length > 1 ? segTranslations[segTranslations.length - 1] : null;
     
     let paliDev = '';
@@ -1538,7 +1553,7 @@ async function prepareTextData(slug) {
     let translation1 = '';
     let translation2 = '';
     
-    if (cleanJsonMap[id]) {
+    if (cleanJsonMap[id] && paliCol === 0) {
       paliDev = cleanJsonMap[id];
       paliIast = iastJsonMap[id];
       const currentIndex = jsonKeys.indexOf(id);
