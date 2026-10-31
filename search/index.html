@@ -1744,6 +1744,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var lastY = window.scrollY;
     var DOWN_THRESHOLD = 8;  // px — не прятать от дребезга инерционного скролла/тачпада
     var UP_THRESHOLD = 4;    // "небольшой скролл назад" — реагирует охотнее, чем прячется
+    // ...but counted over the whole move back, not one event: the end of a fling and the finger leaving the glass give
+    // a few px back, and the header slid in and out again (owner 2026-10-31: «ложное срабатывание… два раза хедер
+    // выезжает»). It comes back after UP_DISTANCE px of real scrolling up; any move down starts the count again.
+    var UP_DISTANCE = 36;
+    var upRun = 0;
 
     function stackConfig() {
       // TOC: only the band is pinned (no toolbar of its own) — the pane below it is the content
@@ -1934,9 +1939,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // the language pill's observer — on every scroll event. With 1000 result rows that was most
       // of a second per jump between find-on-page matches (2026-10-06).
       var hide = document.body.classList.contains('dg-header-hidden');
+      upRun = delta < 0 ? upRun - delta : 0;
       if (y < bandHeight) hide = false;
       else if (delta > DOWN_THRESHOLD) hide = true;
-      else if (delta < -UP_THRESHOLD) hide = false;
+      else if (delta < -UP_THRESHOLD && upRun >= UP_DISTANCE) hide = false;
       if (hide !== document.body.classList.contains('dg-header-hidden')) {
         document.body.classList.toggle('dg-header-hidden', hide);
       }
