@@ -1930,7 +1930,10 @@ window.buildSutta = async function(rawSlug, opts) {
     const edSingle = shownEds.length === 1 && shownEds[0] !== 'ms';   // the text read in one other edition
     const edMulti = shownEds.length > 1;                              // a line per edition / a column per edition
     const edInfo = id => READER_EDITIONS.find(e => e.id === id);
-    const uiRu = window.isRu !== undefined ? !!window.isRu : READER_MODE.lang === 'ru';
+    // the interface's language (dhamma-i18n.js), not the reading one: an English page with a Russian translation (or a
+    // Thai one) read "Отличия" and Russian column names (owner 2026-10-31)
+    const uiLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || (() => { try { return localStorage.getItem('dhammaLanguage'); } catch (e) { return null; } })() || 'en';
+    const uiRu = uiLang === 'ru';
     // Column view with three texts or more (editions + translations): one grid column per text, a pinned header with
     // the full names, sideways scrolling on a phone (reader/css/uiextra.css .dg-grid). Two texts keep the old halves.
     // Pāḷi only (the pill, or "−" on the last translation's column) with several editions: the grid is the editions alone
@@ -1950,11 +1953,12 @@ window.buildSutta = async function(rawSlug, opts) {
             }));
         // Each name can be dragged sideways to move its column (home.js); the last column carries + (open the
         // Translations window to add a text) and − (drop this column) (owner 2026-10-31).
-        // − first, + in the corner: the hand goes to the corner by itself, and there it only adds (owner 2026-10-31)
+        // every column: − drops it, + adds a text to its right (owner 2026-10-31: «на каждой колонке»); − first, + nearer
+        // the corner, where the hand goes by itself and only adds
         const pm = `<span class="dg-col-pm"><button type="button" data-col-del title="${uiRu ? 'Убрать эту колонку' : 'Remove this column'}">−</button>` +
-            `<button type="button" data-col-add title="${uiRu ? 'Добавить колонку' : 'Add a column'}">+</button></span>`;
+            `<button type="button" data-col-add title="${uiRu ? 'Добавить колонку справа' : 'Add a column to the right'}">+</button></span>`;
         colsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n], i) =>
-            `<span class="dg-col-cell" data-col-cell="${k}"><button type="button" data-col="${k}">${n}</button>${i === cells.length - 1 ? pm : ''}</span>`).join('')}</div></div>`;
+            `<span class="dg-col-cell" data-col-cell="${k}"><button type="button" data-col="${k}">${n}</button>${pm}</span>`).join('')}</div></div>`;
     }
     if (absentEds.length && absentEds.some(e => e !== 'ms')) {
         const tags = absentEds.map(e => edInfo(e).tag).join(', ');

@@ -502,9 +502,10 @@
   .dg-col-cell.is-drop { box-shadow: inset 3px 0 0 var(--dg-accent, #14967b); }
   .dg-col-cell.is-drop-end { box-shadow: inset -3px 0 0 var(--dg-accent, #14967b); }
   .dg-col-pm { margin-left: auto; display: inline-flex; gap: 4px; flex: none; }
-  .dg-col-pm > button { all: unset; width: 1.45rem; height: 1.45rem; line-height: 1.4rem; text-align: center; border-radius: 50%; cursor: pointer;
-    border: 1px solid var(--dg-border-strong, rgba(127,127,127,.4)); font-size: .95rem; color: var(--dg-text, inherit); }
-  .dg-col-pm > button:hover { background: var(--dg-surface-hover, rgba(127,127,127,.12)); }
+  /* on every column now: quiet grey, darker on hover (owner 2026-10-31: «чуть посерее, менее броскими») */
+  .dg-col-pm > button { all: unset; width: 1.3rem; height: 1.3rem; line-height: 1.25rem; text-align: center; border-radius: 50%; cursor: pointer;
+    border: 1px solid var(--dg-border, rgba(127,127,127,.25)); font-size: .85rem; color: var(--dg-text-muted, #8a8a8f); opacity: .75; }
+  .dg-col-pm > button:hover, .dg-col-pm > button[aria-expanded="true"] { opacity: 1; color: var(--dg-text, inherit); background: var(--dg-surface-hover, rgba(127,127,127,.12)); }
   .dg-colmenu { position: fixed; z-index: 1000; min-width: 12rem; max-width: min(20rem, 90vw); max-height: 60vh; overflow-y: auto;
     padding: 4px; border-radius: 10px; background: var(--dg-surface, #fff); border: 1px solid var(--dg-border, rgba(127,127,127,.3));
     box-shadow: 0 8px 26px rgba(0, 0, 0, .22); font: 13.5px/1.3 var(--dg-font, Lato, system-ui, sans-serif); }

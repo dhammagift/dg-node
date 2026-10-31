@@ -2359,13 +2359,25 @@
     function colMenuClose() {
         var m = document.querySelector('.dg-colmenu');
         if (m) m.remove();
-        document.querySelectorAll('.dg-col-cell > [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
+        document.querySelectorAll('.dg-col-cell [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
     }
     document.addEventListener('click', function (e) {
         var pick = e.target.closest('.dg-colmenu [data-pick]');
         if (pick) {
-            var from = pick.parentNode.dataset.from, to = pick.dataset.pick;
+            var from = pick.parentNode.dataset.from, to = pick.dataset.pick, after = pick.parentNode.dataset.after;
             colMenuClose();
+            if (after) {   // "+": the pick goes in right after that column
+                if (after.indexOf('ed:') === 0) {
+                    var e1 = window.getEditions(), at = e1.indexOf(after.slice(3)) + 1;
+                    e1.splice(at, 0, to.slice(3));
+                    tsApplyEditions(e1);
+                } else {
+                    var s1 = tsStack(), at2 = s1.indexOf(after.slice(3)) + 1;
+                    s1.splice(at2, 0, to.slice(3));
+                    tsApply(s1);
+                }
+                return;
+            }
             if (from === to) return;
             if (from.indexOf('ed:') === 0) {
                 var eds = window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : x; });
@@ -2377,11 +2389,28 @@
             return;
         }
         if (colDragJustEnded) { colDragJustEnded = false; return; }   // the click that ends a drag opens no menu
-        if (e.target.closest('[data-col-add]')) { colMenuClose(); tsOpen(); return; }
+        var add = e.target.closest('[data-col-add]');
+        if (add) {
+            // "+" on a column: the texts of its kind not on screen yet, the pick lands to its right; none left - the window
+            var addKey = add.closest('[data-col-cell]').dataset.colCell, ruA = menuLang() === 'ru', addItems;
+            colMenuClose();
+            if (addKey.indexOf('ed:') === 0) {
+                var availA = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'], shownA = window.getEditions();
+                addItems = (window.DG_EDITIONS || []).filter(function (x) { return (!availA || availA.indexOf(x.id) !== -1) && shownA.indexOf(x.id) === -1; })
+                    .map(function (x) { return ['ed:' + x.id, x[ruA ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
+            } else {
+                var stA = tsPaliOnly() ? [] : tsStack();
+                addItems = tsAvailable().filter(function (k) { return stA.indexOf(k) === -1; }).sort(tsByRank)
+                    .map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
+            }
+            if (!addItems.length) { tsOpen(); return; }
+            colMenuOpen(add, addKey, addItems, true);
+            return;
+        }
         var del = e.target.closest('[data-col-del]');
         if (del) {
             colMenuClose();
-            var last = del.closest('[data-col-cell]').dataset.colCell;
+            var last = del.closest('[data-col-cell]').dataset.colCell;   // the column the − sits on
             if (last.indexOf('ed:') === 0) {
                 var edsNow = window.getEditions();
                 if (edsNow.length > 1) tsApplyEditions(edsNow.filter(function (x) { return 'ed:' + x !== last; }));
@@ -2405,18 +2434,23 @@
         } else {
             items = tsAvailable().slice().sort(tsByRank).map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
         }
+        colMenuOpen(cell, key, items, false);
+    });
+    // the menu under a column's name (switch: which text this column shows) or under its "+" (add: which text goes right of it)
+    function colMenuOpen(anchor, key, items, adding) {
         var m = document.createElement('div');
         m.className = 'dg-colmenu';
         m.dataset.from = key;
+        if (adding) m.dataset.after = key;
         m.innerHTML = items.map(function (it) {
-            return '<button type="button" data-pick="' + esc(it[0]) + '"' + (it[0] === key ? ' aria-current="true"' : '') + '><span>' + esc(it[1]) + '</span><small>' + esc(it[2]) + '</small></button>';
+            return '<button type="button" data-pick="' + esc(it[0]) + '"' + (!adding && it[0] === key ? ' aria-current="true"' : '') + '><span>' + esc(it[1]) + '</span><small>' + esc(it[2]) + '</small></button>';
         }).join('');
         document.body.appendChild(m);
-        var r = cell.getBoundingClientRect();
+        var r = anchor.getBoundingClientRect();
         m.style.top = Math.round(r.bottom + 4) + 'px';
         m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + 'px';
-        cell.setAttribute('aria-expanded', 'true');
-    });
+        anchor.setAttribute('aria-expanded', 'true');
+    }
     window.addEventListener('scroll', colMenuClose, { passive: true });
     /* Dragging a column's name sideways moves the column (owner 2026-10-31: «колонки… draggable»): editions among the
        editions, translations among the translations (the grid draws the Pali first). A move of less than 8 px is a tap
