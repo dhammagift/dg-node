@@ -3510,6 +3510,8 @@ window.dg_pendingSettingsUpdates = {}; // Очередь атомарных из
 // Keys that never go to the cloud (and are not taken from it). The Uposatha calendar's place, time zone and hemisphere
 // stay on this device (owner, 2026-09-30); a prefix match, and the names the shipped apps read are unchanged.
 const DG_SYNC_IGNORE = ['DataTables_', 'localSearchHistory', 'lastSyncTime', 'syncPhrase', 'dg_', 'firebase_', 'firestore_', 'dgUposathaLoc', 'dgUposathaTz', 'dgUposathaHemisphere',
+    // a personal API key is a secret, not a preference: it stays on the device it was typed on (owner 2026-10-31)
+    'tts_google_key',
     // the home page's own tiles stay on this device (owner, home.js USER_STARS_KEY): order, emoji, overrides, stars
     'dgTileOrder', 'dgCustomTiles', 'dgTileOverrides', 'dgUserStars'];
 let isObserverInitialized = false;
