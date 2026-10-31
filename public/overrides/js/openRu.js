@@ -54,16 +54,12 @@ function findRuTextUrl(slug) {
     let thsuSwitherUrl;
 
     // 1. Сначала определяем базу по умолчанию (это важно для DN/thsu)
-    if (window.location.host.includes('localhost') || window.location.host.includes('127.0.0.1')) {
-        base = "/";
-        thsuSwitherDS = thsuLinksDataoffl;
-        thsuSwitherUrl = "tipitaka.theravada.su/dn/"; 
-    } else {
-        base = "https://";
-        thsuSwitherDS = thsuLinksData;
-        thsuSwitherUrl = "tipitaka.theravada.su/"; 
-    }
-  
+    // theravada.su is linked directly everywhere, the app included (its origin is localhost, and the local copy
+    // the old branch pointed at is not in the app) - owner 2026-11-01
+    base = "https://";
+    thsuSwitherDS = thsuLinksData;
+    thsuSwitherUrl = "tipitaka.theravada.su/";
+
     // 2. Логика ветвления
     if (slug.match("dn")) {
         // Если это Дигха Никая (thsu), оставляем логику как есть (зависит от онлайна/оффлайна)
