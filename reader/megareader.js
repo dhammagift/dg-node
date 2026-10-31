@@ -1663,6 +1663,7 @@ window.buildSutta = async function(rawSlug, opts) {
         if (stale()) return false;
     } catch (error) {
         if (stale()) return false; // aborted by a newer load — not an error to show
+        document.documentElement.classList.remove('dg-eds-loading');
         console.error('Text load failed:', error);
         // A 5xx or no network is not "no such text": keep the address (segment, ?s=) and offer a
         // retry. Only a 404 above turns into a search; this used to run a search for "dn22" too.
@@ -1899,8 +1900,9 @@ window.buildSutta = async function(rawSlug, opts) {
             }));
         // Each name can be dragged sideways to move its column (home.js); the last column carries + (open the
         // Translations window to add a text) and − (drop this column) (owner 2026-10-31).
-        const pm = `<span class="dg-col-pm"><button type="button" data-col-add title="${uiRu ? 'Добавить колонку' : 'Add a column'}">+</button>` +
-            `<button type="button" data-col-del title="${uiRu ? 'Убрать эту колонку' : 'Remove this column'}">−</button></span>`;
+        // − first, + in the corner: the hand goes to the corner by itself, and there it only adds (owner 2026-10-31)
+        const pm = `<span class="dg-col-pm"><button type="button" data-col-del title="${uiRu ? 'Убрать эту колонку' : 'Remove this column'}">−</button>` +
+            `<button type="button" data-col-add title="${uiRu ? 'Добавить колонку' : 'Add a column'}">+</button></span>`;
         editionsHead = `<div class="dg-cols-head"><div class="dg-cols-head-in">${cells.map(([k, n], i) =>
             `<span class="dg-col-cell" data-col-cell="${k}"><button type="button" data-col="${k}">${n}</button>${i === cells.length - 1 ? pm : ''}</span>`).join('')}</div></div>`;
     }
@@ -2197,6 +2199,7 @@ window.buildSutta = async function(rawSlug, opts) {
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
     followHeader();   // the column header's place under the site header (placeColsHead)
+    document.documentElement.classList.remove('dg-eds-loading');   // the editions are drawn (search/index.html)
     // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus
     // come after it (public/offline/app.js dgTextOnline) and take the library's Principles line's place. Asked once the
     // page is drawn and the browser is idle, so the request never competes with the text's own loading (owner 2026-10-26).

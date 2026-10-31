@@ -918,6 +918,13 @@ body.dg-busy:not(.dg-state-reader) #reader-pane {
    The contents pill and previous/next row get placeholders in their own shapes. */
 /* #sutta[data-ssr]: the text came with the page (dg-fastify.js textBodyHtml) - show it from the first frame */
 body.dg-state-reader.dg-busy #sutta:not([data-ssr]), #reader-pane.reader-pending #sutta:not(:has(> .dg-sutta-skeleton)) { visibility: hidden; }
+/* Other Pali editions chosen (search/index.html, dg-eds-loading until megareader.js draws them): the server's text is
+   the Mahāsaṅgīti alone, so it waits hidden behind a spinner instead of being swapped for the editions' a moment later */
+html.dg-eds-loading #sutta, html.dg-eds-loading #reader-pane > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area) { visibility: hidden; }
+html.dg-eds-loading #reader-pane { position: relative; }
+html.dg-eds-loading #reader-pane::after { content: ""; position: absolute; top: 140px; left: 50%; width: 28px; height: 28px; margin-left: -14px;
+    border: 3px solid var(--dg-border); border-top-color: var(--dg-accent); border-radius: 50%; animation: dg-eds-spin .8s linear infinite; }
+@keyframes dg-eds-spin { to { transform: rotate(360deg); } }
 /* Everything below the text (bottom prev/next, footer icons, subscription line): with #sutta still
    empty it sat right under the pinned rows, so a cold load showed the footer's icon grid for a
    second (owner: "сначала неграмотно отрисовывается"). */

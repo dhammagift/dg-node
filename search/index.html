@@ -1210,6 +1210,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     var unlock = function () { b.classList.remove('dg-no-anim'); };
     requestAnimationFrame(function () { requestAnimationFrame(unlock); });
     setTimeout(unlock, 400);
+    // Other Pali editions chosen (megareader.js getEditions): the server's text is the Mahāsaṅgīti alone and the reader
+    // draws the editions over it a moment later - one text, then another (owner 2026-10-31: «то одно, то другое»).
+    // Until the reader's own render (it removes the class) the page shows a spinner instead; 10 s at most.
+    try {
+      var eds = new URLSearchParams(location.search).get('editions') || (JSON.parse(localStorage.getItem('dgEditions') || 'null') || []).join(',');
+      if (/^\/[a-z-]{1,24}\d/i.test(path) && !hasQuery && eds.split(',').some(function (e) { return e && e !== 'ms'; })) {
+        document.documentElement.classList.add('dg-eds-loading');
+        setTimeout(function () { document.documentElement.classList.remove('dg-eds-loading'); }, 10000);
+      }
+    } catch (e) { /* private mode, a broken saved value: the page as always */ }
 })();
 </script>
 
