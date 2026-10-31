@@ -975,7 +975,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
         const url4nt = get4ntUrl(slug);
         if (url4nt) {
             const onlineUrl4nt = url4nt.replace(/^\/4nt/, 'https://s.dhamma.gift');
-            externalLinks += `<a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4 Nikāya Tool</a>`;
+            externalLinks += `<a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4NT</a>`;
         }
     }
 
