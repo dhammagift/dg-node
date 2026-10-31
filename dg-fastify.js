@@ -3952,7 +3952,8 @@ function withTextHead(html, h) {
     // in the language dhamma-i18n.js will pick. Home keeps its own random hint (randPlaceholderOnMain).
     if (h.critical !== 'home') out = out.replace(/(<input [^>]*id="paliauto"[^>]*>)/, (m) => m + `<script>(function(){var P=${SEARCH_PLACEHOLDERS},` +
         `l=window.DHAMMA_LANG||new URLSearchParams(location.search).get('lang')||(/^\\/(ru|r|ml|mt)(\\/|$)/.test(location.pathname)?'ru':null);` +
-        `try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=P[l]||P.en})()</script>`);
+        // the interface is Russian or English only (dhamma-i18n.js uiLanguage): ?lang=th reads Thai texts, not a Thai field
+        `if(l!=='ru'&&l!=='en')l=null;try{l=l||localStorage.getItem('dhammaLanguage')}catch(e){}document.getElementById('paliauto').placeholder=(l==='ru'?P.ru:P.en)||P.en})()</script>`);
     // search results as plain HTML (searchSsrHtml), hidden once scripts run
     // search results as plain HTML, for non-browsers only (sendSiteHtml); hidden all the same if scripts run, for a
     // browser that slips through without Sec-Fetch-Mode (Safari up to 16.3): it costs real browsers nothing

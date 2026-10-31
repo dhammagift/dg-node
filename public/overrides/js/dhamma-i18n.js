@@ -171,7 +171,20 @@ window.DHAMMA_I18N = (() => {
     }
   }
 
+  // The interface speaks Russian and English (owner 2026-10-31: «откуда у нас тайский язык в интерфейсе… я просто включил
+  // тайские переводы»). A reading language beyond them - a Thai translation made the main one, ?lang=th - keeps the
+  // interface in the language it had; the texts still come in the reading language (megareader.js READER_MODE.lang).
+  const UI_LANGUAGES = ["ru", "en"];
+  function uiLanguage(language) {
+    if (UI_LANGUAGES.indexOf(language) !== -1) return language;
+    if (UI_LANGUAGES.indexOf(activeLanguage) !== -1) return activeLanguage;
+    let stored = null;
+    try { stored = localStorage.getItem("dhammaLanguage"); } catch (_) { /* privacy mode */ }
+    return UI_LANGUAGES.indexOf(stored) !== -1 ? stored : "en";
+  }
+
   async function setSiteLanguage(language, explicitUrl) {
+    if (!explicitUrl) language = uiLanguage(language);
     let config, globalConfig, englishConfig;
     try {
       [config, globalConfig, englishConfig] = await Promise.all([
