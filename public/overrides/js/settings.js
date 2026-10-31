@@ -1424,7 +1424,7 @@ if (event.altKey && event.code === "KeyR") {
     // fall back to the whole-page start when nothing is selected.
     if (!window.isVoiceScriptLoaded) {
         window.loadVoiceScripts(() => {
-            const target = document.querySelector('.dynamic-tts-btn') || document.querySelector('.voice-link');
+            const target = document.querySelector('.dynamic-tts-btn') || document.querySelector('.voice-link') || document.querySelector('.voice-start-btn');
             if (target) target.click();
         });
         return;
@@ -1446,8 +1446,9 @@ if (event.altKey && event.code === "KeyR") {
         return;
     }
 
-    // 4. Сценарий: Запуск по умолчанию
-    const voiceLink = document.querySelector('.voice-link');
+    // 4. Сценарий: Запуск по умолчанию. В ридере ссылки «Голос» больше нет — её место занял
+    // динамик у строки перевода (.voice-start-btn, reader/common.js).
+    const voiceLink = document.querySelector('.voice-link') || document.querySelector('.voice-start-btn');
     if (voiceLink) {
         voiceLink.click();
     }
