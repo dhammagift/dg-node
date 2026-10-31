@@ -430,11 +430,8 @@
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
   /* "Show differences": the words most of the shown texts do not have (megareader.js markEditionDiffs) */
-  mark.dg-ed-diff { background: transparent; color: inherit; border-radius: 3px; padding: 0 1px; box-shadow: inset 0 0 0 transparent;
-    transition: background-color .45s ease, box-shadow .45s ease; }
-  #sutta.dg-diff-on mark.dg-ed-diff { background: color-mix(in srgb, var(--dg-tblue, #3434be) 16%, transparent);
-    box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--dg-tblue, #3434be) 55%, transparent); }   /* the site's own blue, as the header's links */
-  @media (prefers-reduced-motion: reduce) { mark.dg-ed-diff { transition: none; } }
+  /* the marks' look: megareader.js (#dg-ed-diff-style), shipped with the script so a cached stylesheet cannot leave them stuck */
+
 
   /* Column view with three texts or more (megareader.js useGrid): one grid column per text - editions first, then
      each translation - a header with the full names pinned under the site header, and on a phone the text scrolls

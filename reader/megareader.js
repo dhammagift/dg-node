@@ -298,6 +298,18 @@ window.dgKeepHeader = function (p) {
 window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDiff') === 'on'; } catch (e) { return false; } };
 // The marks are always in the text when two Pali texts are compared; the switch only shows them (#sutta.dg-diff-on),
 // so they fade in and out (owner 2026-10-31: «плавно появлялось, плавно исчезало») and no redraw is needed.
+// The marks' look ships with this script, not in uiextra.css: a phone holding a cached stylesheet next to the new
+// script showed the toggle move and the marks stay (owner 2026-10-31).
+(function () {
+    const st = document.createElement('style');
+    st.id = 'dg-ed-diff-style';
+    st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;box-shadow:inset 0 0 0 transparent;' +
+        'transition:background-color .45s ease,box-shadow .45s ease}' +
+        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,var(--dg-tblue,#3434be) 18%,transparent);' +
+        'box-shadow:inset 0 -1.5px 0 color-mix(in srgb,var(--dg-tblue,#3434be) 60%,transparent)}' +
+        '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
+    document.head.appendChild(st);
+})();
 window.dgSetEditionsDiff = function (on) {
     try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (e) { /* private mode */ }
     const s = document.getElementById('sutta');
@@ -1910,7 +1922,7 @@ window.buildSutta = async function(rawSlug, opts) {
         navRow.insertBefore(diffBtn, document.getElementById('next'));
     }
     if (diffBtn) {
-        diffBtn.hidden = !(edMulti || edSingle);
+        diffBtn.hidden = !edMulti;   // several editions only (owner: one edition = nothing to compare on screen)
         diffBtn.lastChild.textContent = uiRu ? 'Отличия' : 'Differences';
         diffBtn.setAttribute('aria-pressed', String(window.dgEditionsDiff()));
         diffBtn.title = uiRu ? 'Подсветить отличия изданий' : 'Highlight where the editions differ';
@@ -1926,13 +1938,13 @@ window.buildSutta = async function(rawSlug, opts) {
     // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
     // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
-    const edDiff = true;   // marks always drawn, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
+    const edDiff = true;   // marks always drawn with several editions, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         if (!edSingle && !edMulti) return msText;
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
-            if (t !== undefined) return edDiff && !heading ? markEditionDiffs([t, msText])[0].trim() : t.trim();
+            if (t !== undefined) return t.trim();
             return heading ? msText : `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
         }
         let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);

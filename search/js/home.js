@@ -2056,8 +2056,11 @@
                         '<button type="button" class="dg-ts-star' + (i === 0 ? ' is-main' : '') + '" title="' + esc(tsStr('edMain')) + '">' + (i === 0 ? '★' : '☆') + '</button>' +
                         '</div>';
                 }).join('') + '</div>';
-            paliHost.insertAdjacentHTML('beforeend', '<div class="dg-ts-diff" data-ts-diff><button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' +
-                window.dgEditionsDiff() + '"></button><span>' + esc(tsStr('edDiff')) + '</span></div>');
+            // greyed with fewer than two editions on screen: nothing to compare
+            var canDiff = eds.filter(function (x) { return edAvail.indexOf(x) !== -1; }).length > 1;
+            paliHost.insertAdjacentHTML('beforeend', '<div class="dg-ts-diff' + (canDiff ? '' : ' is-off') + '"' + (canDiff ? ' data-ts-diff' : '') +
+                '><button type="button" class="dg-ts-tick" role="checkbox"' + (canDiff ? '' : ' disabled') + ' aria-checked="' +
+                (canDiff && window.dgEditionsDiff()) + '"></button><span>' + esc(tsStr('edDiff')) + '</span></div>');
             var edRows = paliHost.querySelector('.dg-ts-edrows'), ey = 0;
             edRows.querySelectorAll('.dg-ts-row').forEach(function (r) { tsSetY(r, ey); ey += TS_ROW; });
             edRows.style.height = ey + 'px';

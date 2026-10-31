@@ -4646,6 +4646,7 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 /* the Pali and Translations sections of the Translations window (home.js tsRender) */
 .dg-ts-sec { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-text-muted); padding: 8px 6px 4px; }
 .dg-ts-row.is-missing .dg-ts-name, .dg-ts-row.is-missing .dg-ts-tick { opacity: .45; }
+.dg-ts-diff.is-off { opacity: .4; cursor: default; }
 .dg-ts-diff { display: flex; align-items: center; gap: 9px; padding: 8px 6px 4px 58px; font-size: 13px; color: var(--dg-text); cursor: pointer; }
 .dg-qs-eds { flex-wrap: wrap; padding: 2px 0 6px; }
 .dg-ts-add { border-style: dashed !important; border-color: var(--dg-border-strong) !important; }
