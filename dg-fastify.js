@@ -1238,6 +1238,14 @@ function textEditions(suttaId) {
         return EDITION_KEYS.filter(e => have.has(e));
     } catch { return []; }   // a dg.db built before the editions table
 }
+// A line that swallowed the lines after it (f3-ultra's review, 2026-10-31: BJT sn24.5:1.3 holds the whole sutta from 1.3
+// on, 2421 chars against MS's 160, and the lines it swallowed are missing, so the reader showed that text twice). Many
+// times longer than the Mahāsaṅgīti line while the Mahāsaṅgīti does not abbreviate there (…pe…: an edition spelling the
+// passage out is right) - left out, so the reader treats it like a missing line. The table keeps it (MCP compares raw).
+function shiftedLine(edTxt, msTxt) {
+    msTxt = msTxt || '';
+    return edTxt.length > 4 * msTxt.length + 300 && !/…|(^|[^\p{L}])(pe|pa|peyyāla)([^\p{L}]|$)/u.test(msTxt);   // \b would split at ā, ṭ
+}
 function addEditions(data, suttaId, wanted) {
     const eds = [...new Set(String(wanted || '').split(',').map(e => e.trim()))].filter(e => EDITION_KEYS.includes(e));
     if (!eds.length) return;
@@ -1248,7 +1256,10 @@ function addEditions(data, suttaId, wanted) {
     } catch { return; }
     for (const seg of data.segments) {
         const row = {};
-        for (const ed of eds) { const t = byEd[ed].get(seg.segment); if (t !== undefined) row[ed] = t; }
+        for (const ed of eds) {
+            const t = byEd[ed].get(seg.segment);
+            if (t !== undefined && !shiftedLine(t, seg.root_text)) row[ed] = t;
+        }
         if (Object.keys(row).length) seg.editions = row;
     }
     data.editions = eds.filter(ed => byEd[ed].size);   // asked for and present in this text
