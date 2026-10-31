@@ -542,6 +542,8 @@
             Object.keys(patch).forEach(function (k) { next[k] = patch[k]; });
             next.at = Date.now();
             localStorage.setItem(STATE_KEY, JSON.stringify(next));
+            // the storage event reaches other pages only; Settings running this layer itself redraws on this one
+            window.dispatchEvent(new CustomEvent('dg:offline-state', { detail: next }));
         } catch (e) { /* quota/private mode — the settings row degrades to "unknown" */ }
     }
 

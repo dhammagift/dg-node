@@ -92,6 +92,12 @@
         // that owns the sheet is asked instead (same idea as the back arrow's dgSettingsSheetClose):
         // it collapses the sheet, and public/offline/app.js — which is already running up there —
         // starts the download.
+        // Settings opened as a page of its own runs the offline layer itself (settings/index.html): start it here.
+        if (window.self === window.top && typeof window.dgStartOfflineDownload === 'function') {
+            try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+            window.dgStartOfflineDownload(key === WANT_UPDATE_KEY ? 'update' : 'open');
+            return;
+        }
         if (window.self !== window.top) {
             try {
                 window.parent.postMessage(
@@ -177,6 +183,13 @@
         var next = null;
         try { next = JSON.parse(event.newValue || 'null'); } catch (e) { /* ignore */ }
         if (!(next && next.present) && deleteEl && deleteEl.style.display !== 'none') location.reload();
+    });
+
+    // Settings as a page of its own downloads here (goHomeWith): redraw the row once the library on disk changes.
+    var shownAs = function (st) { return st ? [!!st.present, st.build_id, (st.packs || []).join()].join('|') : 'none'; };
+    var shown = shownAs(state);
+    window.addEventListener('dg:offline-state', function (event) {
+        if (event.detail && event.detail.present && shownAs(event.detail) !== shown) location.reload();
     });
 
     // Selectable packs (owner 2026-10-29, mockup /assets/offline-packs-mockup.html): where the server publishes
