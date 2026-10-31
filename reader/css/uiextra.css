@@ -423,7 +423,7 @@
   /* "Differences" between prev and next (megareader.js) */
   #dg-diff-btn { all: unset; flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
     font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); color: var(--dg-text, inherit); white-space: nowrap; }
-  #dg-diff-btn[aria-pressed="true"] .dg-tgl { background: var(--dg-tblue, #3434be); border-color: var(--dg-tblue, #3434be); }
+  #dg-diff-btn[aria-pressed="true"] .dg-tgl { background: #42426a; border-color: #42426a; }   /* the contents button's dark blue (search/index.html --dark-blue) */
   #dg-diff-btn[aria-pressed="true"] .dg-tgl::after { transform: translateX(14px); }
   #dg-diff-btn:focus-visible { outline: 2px solid var(--dg-tblue, #3434be); outline-offset: 3px; border-radius: 6px; }
   #dg-diff-btn[hidden] { display: none; }

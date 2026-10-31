@@ -2365,7 +2365,8 @@
                 if (edsNow.length > 1) tsApplyEditions(edsNow.filter(function (x) { return 'ed:' + x !== last; }));
             } else {
                 var stNow = tsStack().filter(function (k) { return 'tr:' + k !== last; });
-                if (stNow.length) tsApply(stNow);   // the last translation stays: "Pāḷi only" is the pill's own switch
+                if (stNow.length) tsApply(stNow);
+                else dgSetPaliToggle('pli');   // the last translation: Pāḷi only (the pill's own state), the editions keep their columns
             }
             return;
         }

@@ -511,14 +511,23 @@ window.showPali = function() {
     if (target) {
         target.classList.remove("hide-pali");
         target.classList.add("hide-english", "hide-russian");
-        target.classList.remove('column-view');
+        // several editions keep their columns with the translations hidden (the grid is redrawn without them)
+        if (!(target.classList.contains('dg-eds') && (localStorage.getItem('viewMode') || 'alternate') === 'columns')) target.classList.remove('column-view');
     }
 };
 
 window.setLanguage = function(lang) {
+    // an editions grid drawn with (or without) the translations' columns: only a real change draws it again
+    const gridStale = suttaArea && suttaArea.classList.contains('dg-eds') && suttaArea.dataset.gridPaliOnly !== undefined
+        && (suttaArea.dataset.gridPaliOnly === '1') !== (lang === 'pli');
     if (lang === "pli-2nd") window.showPaliAndTranslation();
     else if (lang === "pli") window.showPali();
     else if (lang === "2nd") window.showEnglish();
+    // an editions grid counts the translations' columns: Pāḷi only and back draw it again, in place
+    if (gridStale && window._currentSlug && typeof window.buildSutta === 'function') {
+        const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
+        window.dgKeepHeader(window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); }));
+    }
 };
 
 window.toggleThePali = function() {
@@ -1862,8 +1871,10 @@ window.buildSutta = async function(rawSlug, opts) {
     const uiRu = window.isRu !== undefined ? !!window.isRu : READER_MODE.lang === 'ru';
     // Column view with three texts or more (editions + translations): one grid column per text, a pinned header with
     // the full names, sideways scrolling on a phone (reader/css/uiextra.css .dg-grid). Two texts keep the old halves.
-    const gridCols = (edMulti ? shownEds.length : 1) + orderedEntries.length;
-    const useGrid = gridCols >= 3 && !isMemModeRender && !isDevModeRender;
+    // Pāḷi only (the pill, or "−" on the last translation's column) with several editions: the grid is the editions alone
+    const trnCols = edMulti && localStorage.getItem('paliToggle') === 'pli' ? [] : orderedEntries;
+    const gridCols = (edMulti ? shownEds.length : 1) + trnCols.length;
+    const useGrid = (gridCols >= 3 || (edMulti && gridCols >= 2)) && !isMemModeRender && !isDevModeRender;
     const colOf = {};   // translation key -> its grid column
     orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = (edMulti ? shownEds.length : 1) + k + 1; });
     let editionsHead = '';
@@ -1871,7 +1882,7 @@ window.buildSutta = async function(rawSlug, opts) {
         // A tap on a column's name switches what the column shows (home.js, the column menu): another edition, or
         // another translator (owner 2026-10-31: «переключить по заголовку… и переводчиков»).
         const cells = (edMulti ? shownEds : [shownEds[0]]).map(e => [`ed:${e}`, edInfo(e)[uiRu ? 'ru' : 'en']])
-            .concat(orderedEntries.map(({ lang, entry }) => {
+            .concat(trnCols.map(({ lang, entry }) => {
                 const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
                 return [`tr:${entry.key}`, String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang];
             }));
@@ -1906,6 +1917,7 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     if (suttaArea) {
         suttaArea.classList.toggle('dg-diff-on', window.dgEditionsDiff());
+        suttaArea.dataset.gridPaliOnly = trnCols.length || !edMulti ? '0' : '1';
         suttaArea.classList.toggle('dg-grid', useGrid);
         suttaArea.classList.toggle('dg-eds', edMulti);
         suttaArea.style.setProperty('--dg-ncols', gridCols);
@@ -2157,6 +2169,7 @@ window.buildSutta = async function(rawSlug, opts) {
 
     // The pinned links row lives next to #sutta, not in it (see below) — take the previous text's
     // copy out first, or getElementById would find that one instead of the new one.
+    document.querySelector('#navigation-bottom > #bottom-links-container')?.remove();   // the previous text's, moved there below
     const prevTop = document.querySelector('#reader-pane > #top-links-container');
     const prevTopY = prevTop ? prevTop.style.top : '';
     if (prevTop) prevTop.remove();
@@ -2200,6 +2213,10 @@ window.buildSutta = async function(rawSlug, opts) {
         if (prevTopY) topContainer.style.top = prevTopY;
     }
     if (bottomContainer) bottomContainer.innerHTML = scLink;
+    // The bottom External links sit in the middle of the bottom prev/next row (owner 2026-10-31: «вместе с предыдущей и
+    // следующей»); a narrow phone wraps them to a row of their own (search/css/home.css).
+    const navBottom = document.getElementById('navigation-bottom');
+    if (bottomContainer && navBottom) navBottom.insertBefore(bottomContainer, document.getElementById('next2'));
 
     // Move the .dg-header-link items (Voice, the intact dropdown, optional Final) before the first icon.
     // Real direct children keep flex spacing consistent across browsers; nested menu links stay

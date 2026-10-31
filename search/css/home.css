@@ -4257,6 +4257,16 @@ body.dg-state-reader #sutta p .pli-lang { font-size: 15.5px; line-height: 1.62; 
 body.dg-state-reader #sutta p .right-column .quote, body.dg-state-reader #sutta .lang-2nd { font-size: 14.5px; line-height: 1.62; color: var(--dg-text-2); }
 body.dg-state-reader #sutta b.match, body.dg-state-reader #sutta .finder { color: var(--dg-match); font-weight: 600; }
 body.dg-state-reader #bottom-links-container { max-width: 45rem; margin: 0 auto; }
+/* in the bottom prev/next row (megareader.js): between the two arrows; the row must not clip its dropdown; a narrow
+   phone gives the links a row of their own under the arrows */
+body.dg-state-reader #navigation-bottom:has(> #bottom-links-container) { overflow: visible; align-items: center; }
+body.dg-state-reader #navigation-bottom > #bottom-links-container { margin: 0; flex: 0 1 auto; min-height: 0; }
+body.dg-state-reader #navigation-bottom > #bottom-links-container .sc-link { padding: 0; }
+@media (max-width: 479.98px) {
+    body.dg-state-reader #navigation-bottom:has(> #bottom-links-container) { flex-wrap: wrap !important; }
+    body.dg-state-reader #navigation-bottom > #bottom-links-container { order: 3; flex-basis: 100%; }
+    body.dg-state-reader #navigation-bottom > #bottom-links-container .sc-link { padding: 8px 0 4px; }
+}
 body.dg-state-reader #bottom-links-container .sc-link { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; padding: 6px 0 14px; margin: 0; }
 body.dg-state-reader #bottom-links-container .sc-link a { font-size: 14px; padding: 3px 7px; }
 body.dg-state-reader #reader-pane .links-area { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; padding: 18px 0 6px; }
