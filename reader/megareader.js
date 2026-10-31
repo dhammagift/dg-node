@@ -875,12 +875,18 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
     // own title line (reader/common.js addIconsTo01) is the way to start listening, one per
     // translation, and the header keeps the space.
     let externalLinks = '';
+    // which Pali editions each site gives, as the same short plates the reader and settings use (owner 2026-11-01)
+    const eds = (...codes) => `<span class="dg-link-eds">${codes.map(c => `<span>${c}</span>`).join('')}</span>`;
+    // their look set here, not in a stylesheet: an edited stylesheet would turn the reader's critical CSS stale
+    if (!document.getElementById('dg-link-eds-css')) document.head.insertAdjacentHTML('beforeend', '<style id="dg-link-eds-css">' +
+        '.dg-external-links-menu .dg-link-eds{display:inline-flex;gap:4px;margin-left:auto}' +
+        '.dg-external-links-menu .dg-link-eds span{padding:0 4px;border:1px solid var(--dg-border-strong,#ccc);border-radius:4px;font-size:10px;font-weight:600;letter-spacing:.04em;line-height:1.5;color:var(--dg-text-muted,#777)}</style>');
 
     if (typeof get4ntUrl === 'function') {
         const url4nt = get4ntUrl(slug);
         if (url4nt) {
             const onlineUrl4nt = url4nt.replace(/^\/4nt/, 'https://s.dhamma.gift');
-            externalLinks += `<a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4NT</a>`;
+            externalLinks += `<a target="_blank" class="s4ntLink sc-ext-link mirror-link" title="s.4nt.org" href="${onlineUrl4nt}" data-local="${url4nt}">4NT${eds('MS', 'BJT', 'VRI', 'SIAM')}</a>`;
         }
     }
 
@@ -889,16 +895,16 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
         const dprItem = dprLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
         if (dprItem && dprItem[1]) dprUrl = "https://d.dhamma.gift/_dprhtml/index.html?loc=" + dprItem[1];
     }
-    if (dprUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">Digital Pali Reader</a>`;
+    if (dprUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Myanmar and Thai Editions at DPR" href="${dprUrl}">Digital Pali Reader${eds('VRI', 'SIAM')}</a>`;
 
     let bjtUrl = null;
     if (typeof bjtLinksData !== 'undefined') {
         const bjtItem = bjtLinksData.find(item => item[0] === slug.split('&')[0].toLowerCase());
         if (bjtItem && bjtItem[1]) bjtUrl = "https://open.tipitaka.lk/latn/" + bjtItem[1];
     }
-    if (bjtUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Buddha Jayanti Tipiṭaka at tipitaka.lk" href="${bjtUrl}">Tipitaka.lk · BJT</a>`;
+    if (bjtUrl) externalLinks += `<a target="_blank" class="sc-ext-link" title="Buddha Jayanti Tipiṭaka at tipitaka.lk" href="${bjtUrl}">Tipitaka.lk${eds('BJT')}</a>`;
 
-    externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral</a>`;
+    externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral${eds('MS')}</a>`;
 
     // TBW follows the explicit local mode. BB and AI are local-only links, never public fallbacks.
     const isLocal = localStorage.getItem('forceLocal') === 'true';
@@ -909,7 +915,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
             const segSuffix = hashSeg ? '#' + hashSeg : '';
             const book = (slug.match(/^[a-z]+/) || [""])[0];
             const tbwUrl = isLocal ? `/bw/${book}/${slug}.html` : `https://thebuddhaswords.net/${book}/${slug}.html`;
-            externalLinks += `<a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">The Buddha’s Words</a>`;
+            externalLinks += `<a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">The Buddha’s Words${eds('MS')}</a>`;
             if (isLocal && !window.location.pathname.startsWith('/b/')) {
                 externalLinks += `<a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">BB &amp; Other Translations</a>`;
             }
