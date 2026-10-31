@@ -421,15 +421,20 @@
   .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
   /* "Differences" between prev and next (megareader.js) */
-  #dg-diff-btn { flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  #dg-diff-btn { all: unset; flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
     font: 600 13px/1.4 var(--dg-font, Lato, system-ui, sans-serif); color: var(--dg-text, inherit); white-space: nowrap; }
-  #dg-diff-btn input { display: inline-block !important; appearance: auto; width: 16px; height: 16px; margin: 0; accent-color: var(--dg-tblue, #3434be); cursor: pointer; }   /* !important: a stylesheet of the shell hides inputs in this row */
+  #dg-diff-btn[aria-pressed="true"] .dg-tgl { background: var(--dg-tblue, #3434be); border-color: var(--dg-tblue, #3434be); }
+  #dg-diff-btn[aria-pressed="true"] .dg-tgl::after { transform: translateX(14px); }
+  #dg-diff-btn:focus-visible { outline: 2px solid var(--dg-tblue, #3434be); outline-offset: 3px; border-radius: 6px; }
   #dg-diff-btn[hidden] { display: none; }
   /* "Pāḷi MS · BJT · SR · PTS" ran into "Пер. о с Пали" on one line (f3-ultra's review) */
   .dg-eds-byline > p > .pli-lang { margin-right: 1.2em; }
   /* "Show differences": the words most of the shown texts do not have (megareader.js markEditionDiffs) */
-  mark.dg-ed-diff { background: color-mix(in srgb, var(--dg-tblue, #3434be) 16%, transparent); color: inherit; border-radius: 3px; padding: 0 1px;
+  mark.dg-ed-diff { background: transparent; color: inherit; border-radius: 3px; padding: 0 1px; box-shadow: inset 0 0 0 transparent;
+    transition: background-color .45s ease, box-shadow .45s ease; }
+  #sutta.dg-diff-on mark.dg-ed-diff { background: color-mix(in srgb, var(--dg-tblue, #3434be) 16%, transparent);
     box-shadow: inset 0 -1.5px 0 color-mix(in srgb, var(--dg-tblue, #3434be) 55%, transparent); }   /* the site's own blue, as the header's links */
+  @media (prefers-reduced-motion: reduce) { mark.dg-ed-diff { transition: none; } }
 
   /* Column view with three texts or more (megareader.js useGrid): one grid column per text - editions first, then
      each translation - a header with the full names pinned under the site header, and on a phone the text scrolls

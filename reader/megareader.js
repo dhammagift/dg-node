@@ -296,6 +296,15 @@ window.dgKeepHeader = function (p) {
 // shown texts of that segment do not have is highlighted; with two texts every difference. One edition alone is
 // compared with the Mahāsaṅgīti. Case, punctuation, quotes and ṁ/ṃ are not differences (core/edition-diff.js foldWords).
 window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDiff') === 'on'; } catch (e) { return false; } };
+// The marks are always in the text when two Pali texts are compared; the switch only shows them (#sutta.dg-diff-on),
+// so they fade in and out (owner 2026-10-31: «плавно появлялось, плавно исчезало») and no redraw is needed.
+window.dgSetEditionsDiff = function (on) {
+    try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (e) { /* private mode */ }
+    const s = document.getElementById('sutta');
+    if (s) s.classList.toggle('dg-diff-on', !!on);
+    const b = document.getElementById('dg-diff-btn');
+    if (b) b.setAttribute('aria-pressed', String(!!on));
+};
 const foldWord = w => w.normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[^\p{L}]+/gu, '');
 function lcsKept(a, b) {   // which words of a are in a longest common subsequence with b
     const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
@@ -1880,25 +1889,23 @@ window.buildSutta = async function(rawSlug, opts) {
     // "Differences" in the free middle of the prev/next row (owner 2026-10-31: «на видное место… большую кнопку»),
     // there whenever two Pali texts are compared (several editions, or one edition against the Mahāsaṅgīti)
     const navRow = document.getElementById('navigation');
-    let diffBtn = document.getElementById('dg-diff-btn');   // a checkbox with its label (owner: «в виде чекбокса»)
+    let diffBtn = document.getElementById('dg-diff-btn');   // a toggle, the shell's .dg-tgl in the header links' blue (owner)
     if (navRow && !diffBtn) {
-        diffBtn = document.createElement('label');
+        diffBtn = document.createElement('button');
+        diffBtn.type = 'button';
         diffBtn.id = 'dg-diff-btn';
-        diffBtn.innerHTML = '<input type="checkbox"><span></span>';
-        diffBtn.querySelector('input').addEventListener('change', e => {
-            try { e.target.checked ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (x) { /* private mode */ }
-            const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-            window.dgKeepHeader(window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); }));
-        });
+        diffBtn.innerHTML = '<span class="dg-tgl" aria-hidden="true"></span><span></span>';
+        diffBtn.addEventListener('click', () => window.dgSetEditionsDiff(diffBtn.getAttribute('aria-pressed') !== 'true'));
         navRow.insertBefore(diffBtn, document.getElementById('next'));
     }
     if (diffBtn) {
         diffBtn.hidden = !(edMulti || edSingle);
-        diffBtn.querySelector('span').textContent = uiRu ? 'Отличия' : 'Differences';
-        diffBtn.querySelector('input').checked = window.dgEditionsDiff();
+        diffBtn.lastChild.textContent = uiRu ? 'Отличия' : 'Differences';
+        diffBtn.setAttribute('aria-pressed', String(window.dgEditionsDiff()));
         diffBtn.title = uiRu ? 'Подсветить отличия изданий' : 'Highlight where the editions differ';
     }
     if (suttaArea) {
+        suttaArea.classList.toggle('dg-diff-on', window.dgEditionsDiff());
         suttaArea.classList.toggle('dg-grid', useGrid);
         suttaArea.classList.toggle('dg-eds', edMulti);
         suttaArea.style.setProperty('--dg-ncols', gridCols);
@@ -1907,7 +1914,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
     // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
-    const edDiff = window.dgEditionsDiff();
+    const edDiff = true;   // marks always drawn, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         if (!edSingle && !edMulti) return msText;
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));

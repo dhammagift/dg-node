@@ -2252,8 +2252,8 @@
             return;
         }
         if (e.target.closest('[data-ts-diff]')) {
-            try { window.dgEditionsDiff() ? localStorage.removeItem('dgEditionsDiff') : localStorage.setItem('dgEditionsDiff', 'on'); } catch (x) { /* private mode */ }
-            tsApplyEditions(window.getEditions());
+            window.dgSetEditionsDiff(!window.dgEditionsDiff());
+            tsRender();
             return;
         }
         if (!row) return;
@@ -2819,9 +2819,8 @@
                 });
                 host.appendChild(edRow);
                 host.appendChild(toggleRow(t('quick.editionsDiff', 'Подсветить отличия'), window.dgEditionsDiff(), function (on) {
-                    try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (x) { /* private mode */ }
+                    window.dgSetEditionsDiff(on);
                     notifySaved();
-                    if (typeof window.buildSutta === 'function' && window._currentSlug) window.buildSutta(window._currentSlug);
                 }));
             }
         }
