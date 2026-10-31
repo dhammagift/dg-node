@@ -1594,6 +1594,16 @@ async function prepareTextData(slug) {
       paliIast = stripForPaliVoice(rawDomText);
     }
     
+    // Every Pali line and every translation on screen is read, in screen order (owner 2026-10-31: «читается только первый
+    // пали… только первый перевод… все должны читаться»): several editions (megareader.js .dg-ed-line, one per edition,
+    // "—" gaps skipped) each go to the Pali voice; several translations each go to their language's voice.
+    const textOf = el => { const c = el.cloneNode(true); c.querySelectorAll('.variant, .not_translate, sup, .ref, a.copyLink').forEach(v => v.remove()); return c.textContent.replace(/<[^>]*>/g, '').trim(); };
+    const edLines = paliElement ? Array.from(paliElement.querySelectorAll(':scope > .dg-ed-line')).filter(l => !l.classList.contains('is-gap') && textOf(l)) : [];
+    const palis = edLines.length > 1
+      ? edLines.map(l => { const raw = textOf(l); return { dev: cleanTextForTTS(window.convertPaliToDevanagari ? window.convertPaliToDevanagari(raw) : raw), iast: stripForPaliVoice(raw), element: l }; })
+      : (paliDev ? [{ dev: paliDev, iast: paliIast, element: paliElement }] : []);
+    const translations = segTranslations.map(el => ({ text: cleanTextForTTS(textOf(el)), element: el })).filter(t => t.text);
+
     if (trnEl1) {
       const clone = trnEl1.cloneNode(true);
       clone.querySelectorAll('.variant, .not_translate, sup, .ref').forEach(v => v.remove());
@@ -1615,7 +1625,9 @@ async function prepareTextData(slug) {
         translation2: translation2,
         paliElement: paliElement || null,
         translationElement: trnEl1 || null,
-        translationElement2: trnEl2 || null
+        translationElement2: trnEl2 || null,
+        palis: palis,
+        translations: translations
       });
     }
   });
@@ -1638,21 +1650,16 @@ function createPlaylistFromData(textData, mode) {
   const translationLang = detectTranslationLang();
   
   textData.forEach(item => {
+    // every Pali line of the segment (one per edition shown), then every translation, each in its own voice
     const addPali = () => {
-        if (item.paliDev) {
-            let lang = detectDynamicLang(item.paliDev, 'pi-dev', true);
-            playlist.push({
-              text: item.paliDev, iast: item.paliIast, lang: lang, element: item.paliElement, id: item.id
-            });
-        }
+        (item.palis || []).forEach(pl => {
+            playlist.push({ text: pl.dev, iast: pl.iast, lang: detectDynamicLang(pl.dev, 'pi-dev', true), element: pl.element, id: item.id });
+        });
     };
     const addTrn = () => {
-        if (item.translation) {
-            let lang = detectDynamicLang(item.translation, translationLang, false);
-            playlist.push({
-              text: item.translation, lang: lang, element: item.translationElement, id: item.id
-            });
-        }
+        (item.translations || []).forEach(t => {
+            playlist.push({ text: t.text, lang: detectDynamicLang(t.text, translationLang, false), element: t.element, id: item.id });
+        });
     };
     const addTrn2 = () => {
         if (item.translation2) {
