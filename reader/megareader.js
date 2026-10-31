@@ -181,9 +181,12 @@ const TRANSLATOR_TAGS = {
     pannavaro: 'PNV', tel: 'TEL', translatorMs: 'MS', myagkih: 'MYG', adelina: 'ADL', gemini: 'AI', ai: 'AI',
     mahachula: 'MCU', siamrath: 'SRT', jayasaro: 'JAY', naratharo: 'NAR', sabbamitta: 'SBM'
 };
+// Written with a capital first letter only (Suj, Tns, O), the editions' plates in capitals (MS, BJT, VRI): a translator
+// must not read as one more edition (owner 2026-10-31: «Махасангити и Танисаро Бхикку — это не одно и то же»).
 function translatorTag(id) {
     const [base, ...rest] = String(id || '').split('+');
-    const tag = TRANSLATOR_TAGS[base] || base.slice(0, 3).toUpperCase();
+    let tag = TRANSLATOR_TAGS[base] || base.slice(0, 3);
+    if (tag !== 'AI') tag = tag.charAt(0).toUpperCase() + tag.slice(1).toLowerCase();
     return rest.includes('edited') ? tag + '+' : tag;
 }
 const STACK_KEY = 'dgReadingStack';
