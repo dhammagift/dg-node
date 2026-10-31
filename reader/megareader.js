@@ -416,32 +416,31 @@ window.getTranslatorChoice = getTranslatorChoice;
 // project's default instead. Only languages whose translation on screen is NOT the default go
 // into ?translators= (same default rule as core/search-core.js filterPreferredTranslators); the
 // address bar itself stays untouched, so the sender's own mode/language switching is unaffected.
+// A shared link carries exactly what is on the sender's screen (owner 2026-10-31: «поделиться прям тем конкретным, что мы
+// имеем сейчас»): every translation in its line order (?translators=, the languages follow from the keys; several =
+// ?mode=multi&langs=), the Pali editions (?editions=) and the Pali script (?script=). The interface language is the
+// recipient's own and is not in it (?lang= named the reading language as if it were the site's).
 function readerShareUrl(href) {
-    const stack = READER_MODE.stack, avail = READER_MODE.availableTranslators;
-    if (!stack || !stack.length || !window._currentSlug) return href;
+    if (!window._currentSlug) return href;
     let u;
     try { u = new URL(href, location.origin); } catch (e) { return href; }
     const slug = decodeURIComponent(u.pathname).replace(/\/+$/, '').split('/').pop().split(':')[0];
     if (slug.toLowerCase() !== String(window._currentSlug).toLowerCase()) return href;
+    const stack = READER_MODE.stack || [];
     const langOf = k => k.slice(0, k.indexOf('_'));
     const langs = [...new Set(stack.map(langOf))];
-    const prio = window.translatorPriority || {};
-    const keys = [];   // languages to name
-    for (const lang of langs) {
-        const shown = stack.filter(k => langOf(k) === lang);
-        const pool = (avail || []).filter(k => langOf(k) === lang);
-        let def = (prio[lang] || []).find(k => pool.includes(k));
-        if (!def && lang === 'en') def = pool.find(k => k !== 'en_sujato');
-        if (!def && pool.length === 1) def = pool[0];
-        // ponytail: a language without a priority entry has no client-known default — always named
-        if (shown.length === 1 && shown[0] === def) continue;
-        keys.push(lang);
-    }
-    if (!keys.length) return u.href;
-    // stack order, so interleaved lines (ru_o, en_sujato, ru_sv) come out the same way
-    u.searchParams.set('translators', stack.filter(k => keys.includes(langOf(k))).join(','));
-    // multi: the recipient's own languages would otherwise decide the columns
-    if (READER_MODE.modeKey === 'multi' || u.searchParams.has('langs')) u.searchParams.set('langs', langs.join(','));
+    ['translators', 'langs', 'lang', 'mode', 'editions', 'script'].forEach(k => u.searchParams.delete(k));
+    const special = isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey);
+    if (special) u.searchParams.set('mode', READER_MODE.modeKey);   // memorize / devanagari: the mode is the view
+    if (stack.length && !special) {
+        u.searchParams.set('translators', stack.join(','));
+        if (stack.length > 1) { u.searchParams.set('mode', 'multi'); u.searchParams.set('langs', langs.join(',')); }
+    } else if (READER_MODE.lang) u.searchParams.set('lang', READER_MODE.lang);
+    const eds = getEditions();
+    if (!special && !(eds.length === 1 && eds[0] === 'ms')) u.searchParams.set('editions', eds.join(','));
+    let script = '';
+    try { script = (new URLSearchParams(location.search).get('script') || localStorage.getItem('selectedScript') || '').toLowerCase(); } catch (e) { /* private mode */ }
+    if (script && script !== 'isopali') u.searchParams.set('script', script);
     return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
 }
 window.dgReaderShareUrl = readerShareUrl;
