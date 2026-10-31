@@ -309,6 +309,12 @@ function setEditions(list) {
 }
 window.getEditions = getEditions;
 window.setEditions = setEditions;
+// The edition line last tapped (voice.js: the reading goes down that edition; the tap itself marks the whole Pali span)
+document.addEventListener('click', e => {
+    const l = e.target.closest && e.target.closest('.dg-ed-line');
+    if (l) window.dgLastEdLine = l;
+    else if (e.target.closest && e.target.closest('.pli-lang')) window.dgLastEdLine = null;
+}, true);
 // The DG app with its offline library: is this edition's pack (ed-<id>, Sippa's build) on the device? null = no offline
 // library here (the site): nothing to mark. The window marks the others "online" (offline they cannot be shown).
 window.dgEditionOnDevice = function (id) {

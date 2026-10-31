@@ -1543,6 +1543,9 @@ async function prepareTextData(slug) {
       return Math.max(0, k);
   };
   const startsOnPali = !!startEl && startEl.matches('.pli-lang, [lang="pi"]');
+  // which edition line of the Pali was tapped (megareader.js remembers it: the tap marks the whole Pali span active)
+  const tappedEd = startsOnPali && window.dgLastEdLine && startEl.contains(window.dgLastEdLine) ? window.dgLastEdLine.dataset.ed : null;
+  const paliEd = tappedEd || (window.getEditions ? window.getEditions()[0] : 'ms');
   const trnCol = startsOnPali ? 0 : columnOf(translationElements);
   const paliCol = startsOnPali ? columnOf(paliElements) : 0;
 
@@ -1594,15 +1597,20 @@ async function prepareTextData(slug) {
       paliIast = stripForPaliVoice(rawDomText);
     }
     
-    // Every Pali line and every translation on screen is read, in screen order (owner 2026-10-31: «читается только первый
-    // пали… только первый перевод… все должны читаться»): several editions (megareader.js .dg-ed-line, one per edition,
-    // "—" gaps skipped) each go to the Pali voice; several translations each go to their language's voice.
-    const textOf = el => { const c = el.cloneNode(true); c.querySelectorAll('.variant, .not_translate, sup, .ref, a.copyLink').forEach(v => v.remove()); return c.textContent.replace(/<[^>]*>/g, '').trim(); };
-    const edLines = paliElement ? Array.from(paliElement.querySelectorAll(':scope > .dg-ed-line')).filter(l => !l.classList.contains('is-gap') && textOf(l)) : [];
-    const palis = edLines.length > 1
-      ? edLines.map(l => { const raw = textOf(l); return { dev: cleanTextForTTS(window.convertPaliToDevanagari ? window.convertPaliToDevanagari(raw) : raw), iast: stripForPaliVoice(raw), element: l }; })
-      : (paliDev ? [{ dev: paliDev, iast: paliIast, element: paliElement }] : []);
-    const translations = segTranslations.map(el => ({ text: cleanTextForTTS(textOf(el)), element: el })).filter(t => t.text);
+    // Several Pali editions on screen (megareader.js .dg-ed-line, one per edition): the reading goes down the edition it
+    // was started on (owner 2026-10-31: «нажали пали 2 - пали 2», as a translation's speaker reads that translation);
+    // a segment without that edition's line reads the Mahāsaṅgīti's. With one Pali text the JSON/DOM line above stays.
+    const edLines = paliElement ? Array.from(paliElement.querySelectorAll(':scope > .dg-ed-line')) : [];
+    if (edLines.length > 1) {
+      const textOf = el => { const c = el.cloneNode(true); c.querySelectorAll('.variant, .not_translate, sup, .ref, a.copyLink').forEach(v => v.remove()); return c.textContent.replace(/<[^>]*>/g, '').trim(); };
+      const line = edLines.find(l => l.dataset.ed === paliEd && !l.classList.contains('is-gap'))
+        || edLines.find(l => l.dataset.ed === 'ms') || edLines.find(l => !l.classList.contains('is-gap'));
+      const raw = line ? textOf(line) : '';
+      if (raw) {
+        paliDev = cleanTextForTTS(window.convertPaliToDevanagari ? window.convertPaliToDevanagari(raw) : raw);
+        paliIast = stripForPaliVoice(raw);
+      }
+    }
 
     if (trnEl1) {
       const clone = trnEl1.cloneNode(true);
@@ -1625,9 +1633,7 @@ async function prepareTextData(slug) {
         translation2: translation2,
         paliElement: paliElement || null,
         translationElement: trnEl1 || null,
-        translationElement2: trnEl2 || null,
-        palis: palis,
-        translations: translations
+        translationElement2: trnEl2 || null
       });
     }
   });
@@ -1650,16 +1656,21 @@ function createPlaylistFromData(textData, mode) {
   const translationLang = detectTranslationLang();
   
   textData.forEach(item => {
-    // every Pali line of the segment (one per edition shown), then every translation, each in its own voice
     const addPali = () => {
-        (item.palis || []).forEach(pl => {
-            playlist.push({ text: pl.dev, iast: pl.iast, lang: detectDynamicLang(pl.dev, 'pi-dev', true), element: pl.element, id: item.id });
-        });
+        if (item.paliDev) {
+            let lang = detectDynamicLang(item.paliDev, 'pi-dev', true);
+            playlist.push({
+              text: item.paliDev, iast: item.paliIast, lang: lang, element: item.paliElement, id: item.id
+            });
+        }
     };
     const addTrn = () => {
-        (item.translations || []).forEach(t => {
-            playlist.push({ text: t.text, lang: detectDynamicLang(t.text, translationLang, false), element: t.element, id: item.id });
-        });
+        if (item.translation) {
+            let lang = detectDynamicLang(item.translation, translationLang, false);
+            playlist.push({
+              text: item.translation, lang: lang, element: item.translationElement, id: item.id
+            });
+        }
     };
     const addTrn2 = () => {
         if (item.translation2) {
