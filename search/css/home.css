@@ -4235,7 +4235,8 @@ body.dg-state-reader #reader-pane .navigation a { color: var(--dg-tblue); displa
 body.dg-state-reader #reader-pane .navigation a:hover { text-decoration: underline; }
 body.dg-state-reader #navigation { border-bottom: 1px solid var(--dg-border); }
 body.dg-state-reader #navigation-bottom { border-top: 1px solid var(--dg-border); padding-top: 12px; max-width: 45rem; margin: 0 auto; }
-body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-width: 60ch; text-align: center; font-size: 13px; line-height: 1.55; color: var(--dg-match); }
+/* the interface's own blue, not the match red (owner 2026-10-31: «предупреждение тоже синим»; was var(--dg-match)) */
+body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-width: 60ch; text-align: center; font-size: 13px; line-height: 1.55; color: var(--dg-tblue, #3434be); }
 body.dg-state-reader .warning-container p.warning a { color: inherit; }
 body.dg-state-reader .warning-container .close-warning { color: var(--dg-match); padding-left: 4px; cursor: pointer; }
 body.dg-state-reader #sutta { max-width: 45rem; margin: 0 auto; padding-bottom: 40px; }

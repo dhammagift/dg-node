@@ -37,6 +37,33 @@ function t(path, fallback) {
     return value === undefined ? fallback : value;
 }
 
+// A shared link's view for this visit only (readerShareUrl: ?view=columns|lines, ?variants=1|0, ?pali=pli|2nd|pli-2nd,
+// ?diff=1|0 - owner 2026-10-31: the mode travels with the link, a personal tool like the dictionary does not). The
+// recipient's saved settings are not touched: these four keys are read through a per-tab override (sessionStorage
+// dgShareView) until the recipient changes one of them, which drops its override. One place instead of every reader
+// of these keys (megareader, settings.js, switchView.js, home.js).
+(function () {
+    const map = {
+        view: ['viewMode', v => v === 'columns' ? 'columns' : v === 'lines' ? 'alternate' : null],
+        variants: ['variantVisibility', v => v === '1' ? 'visible' : v === '0' ? 'hidden' : null],
+        pali: ['paliToggle', v => ['pli', '2nd', 'pli-2nd'].includes(v) ? v : null],
+        diff: ['dgEditionsDiff', v => v === '1' ? 'on' : v === '0' ? '' : null],
+    };
+    let over = {};
+    try {
+        over = JSON.parse(sessionStorage.getItem('dgShareView') || '{}') || {};
+        const q = new URLSearchParams(location.search);
+        let any = false;
+        for (const p in map) if (q.has(p)) { const v = map[p][1](q.get(p)); if (v !== null) { over[map[p][0]] = v; any = true; } }
+        if (any) sessionStorage.setItem('dgShareView', JSON.stringify(over));
+    } catch (e) { return; }   // no storage: the saved settings as always
+    const keys = Object.values(map).map(m => m[0]);
+    const S = Storage.prototype, get = S.getItem, set = S.setItem, rem = S.removeItem;
+    const drop = k => { if (k in over) { delete over[k]; try { set.call(sessionStorage, 'dgShareView', JSON.stringify(over)); } catch (e) { /* ignore */ } } };
+    S.getItem = function (k) { return this === localStorage && keys.includes(k) && k in over ? (over[k] || null) : get.call(this, k); };
+    S.setItem = function (k, v) { if (this === localStorage && keys.includes(k)) drop(k); return set.call(this, k, v); };
+    S.removeItem = function (k) { if (this === localStorage && keys.includes(k)) drop(k); return rem.call(this, k); };
+})();
 const suttaArea = document.getElementById(window.MEGAREADER_SUTTA_ID || "sutta");
 const homeButton = document.getElementById("home-button");
 const fdgButton = document.getElementById("fdg-button");
@@ -441,6 +468,15 @@ function readerShareUrl(href) {
     let script = '';
     try { script = (new URLSearchParams(location.search).get('script') || localStorage.getItem('selectedScript') || '').toLowerCase(); } catch (e) { /* private mode */ }
     if (script && script !== 'isopali') u.searchParams.set('script', script);
+    // the view (read back by the override at the top of this file): columns or lines, variants, Pali/translation, differences
+    ['view', 'variants', 'pali', 'diff'].forEach(k => u.searchParams.delete(k));
+    if (!special) {
+        u.searchParams.set('view', (localStorage.getItem('viewMode') || 'alternate') === 'columns' ? 'columns' : 'lines');
+        u.searchParams.set('variants', localStorage.getItem('variantVisibility') === 'visible' ? '1' : '0');
+        const pali = localStorage.getItem('paliToggle') || 'pli-2nd';
+        if (pali !== 'pli-2nd') u.searchParams.set('pali', pali);
+        if (!(eds.length === 1) && window.dgEditionsDiff()) u.searchParams.set('diff', '1');
+    }
     return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
 }
 window.dgReaderShareUrl = readerShareUrl;

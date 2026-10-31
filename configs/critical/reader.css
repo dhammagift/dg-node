@@ -1350,7 +1350,7 @@ body.dg-state-reader #reader-pane .navigation { font-size: 13px; padding: 2px 0 
 body.dg-state-reader #reader-pane .navigation a { color: var(--dg-tblue); display: inline-flex; align-items: center; gap: 6px; }
 body.dg-state-reader #navigation { border-bottom: 1px solid var(--dg-border); }
 body.dg-state-reader #navigation-bottom { border-top: 1px solid var(--dg-border); padding-top: 12px; max-width: 45rem; margin: 0 auto; }
-body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-width: 60ch; text-align: center; font-size: 13px; line-height: 1.55; color: var(--dg-match); }
+body.dg-state-reader .warning-container p.warning { margin: 14px auto 0; max-width: 60ch; text-align: center; font-size: 13px; line-height: 1.55; color: var(--dg-tblue, #3434be); }
 body.dg-state-reader .warning-container p.warning a { color: inherit; }
 body.dg-state-reader #sutta { max-width: 45rem; margin: 0 auto; padding-bottom: 40px; }
 body.dg-state-reader #sutta header { margin: 22px auto 0; text-align: center; }
