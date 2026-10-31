@@ -932,11 +932,8 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
         }
         if (typeof thsuLinksData !== 'undefined') {
             const suOnlineItem = thsuLinksData.find(item => item[0] === slug);
-            if (suOnlineItem) {
-                const suLocalItem = typeof thsuLinksDataoffl !== 'undefined' && thsuLinksDataoffl.find(item => item[0] === slug);
-                const suLocalAttr = suLocalItem ? ` data-local="/tipitaka.theravada.su/dn/${suLocalItem[1]}"` : '';
-                externalLinks += `<a title="Theravada.su" target="_blank" class="sc-ext-link mirror-link" href="https://tipitaka.theravada.su/${suOnlineItem[1]}"${suLocalAttr}>Theravada.su</a>`;
-            }
+            // a direct link (owner 2026-11-01: no local copy in between); Dīgha Nikāya only, complete there
+            if (suOnlineItem) externalLinks += `<a title="Theravada.su" target="_blank" class="sc-ext-link" href="https://tipitaka.theravada.su/${suOnlineItem[1]}">Theravada.su</a>`;
         }
     }
 
