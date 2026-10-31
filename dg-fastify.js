@@ -1246,6 +1246,9 @@ function shiftedLine(edTxt, msTxt) {
     msTxt = msTxt || '';
     return edTxt.length > 4 * msTxt.length + 300 && !/…|(^|[^\p{L}])(pe|pa|peyyāla)([^\p{L}]|$)/u.test(msTxt);   // \b would split at ā, ṭ
 }
+// PTS lines end with the edition's paragraph marks and numbers ("…migadāye || || 2."): not text (f3-ultra's review).
+// The single "||" inside a line is its sentence stop and stays.
+const ptsClean = t => t.replace(/(\s*\|\|)+\s*(\d+\s*\.)?\s*$/, ' ');
 function addEditions(data, suttaId, wanted) {
     const eds = [...new Set(String(wanted || '').split(',').map(e => e.trim()))].filter(e => EDITION_KEYS.includes(e));
     if (!eds.length) return;
@@ -1258,7 +1261,7 @@ function addEditions(data, suttaId, wanted) {
         const row = {};
         for (const ed of eds) {
             const t = byEd[ed].get(seg.segment);
-            if (t !== undefined && !shiftedLine(t, seg.root_text)) row[ed] = t;
+            if (t !== undefined && !shiftedLine(t, seg.root_text)) row[ed] = ed === 'pts' ? ptsClean(t) : t;
         }
         if (Object.keys(row).length) seg.editions = row;
     }

@@ -2024,7 +2024,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const bylineTranslators = moreTranslators.length
         ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
         : (firstTranslator || '');
-    const translatorByline = `<div id="trn" class="byline">
+    const translatorByline = `<div id="trn" class="byline${edMulti ? ' dg-eds-byline' : ''}">
     <p><span class="pli-lang" lang="pi">Pāḷi ${shownEds.map(e => e === 'ms'
         ? '<a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a>'
         : `<span title="${edInfo(e)[uiRu ? 'ru' : 'en']}">${edInfo(e).tag}</span>`).join(' · ')}</span>
