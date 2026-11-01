@@ -58,7 +58,9 @@
     var IN_APP = /^(https?|capacitor):\/\/localhost$/.test(location.origin) && !!window.Capacitor;
     var PACKS_KEY = 'dg.offline.packs';
     var PACKS_BASE = window.DG_PACKS_BASE || null;
-    var PACKS_ON = window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP;
+    // Not on iOS's native SQL path (DgSharedLibrary): it opens the one library the shell downloads, no packs (a test build with
+    // DG_PACKS_BASE skipped that download and was left with nothing).
+    var PACKS_ON = !NATIVE_SQL && (window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP);
     function packsChoice() {
         try { var v = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); return Array.isArray(v) ? v : null; }
         catch (e) { return null; }
@@ -303,6 +305,9 @@
 
     // "Start it on this page if we can, otherwise hand it to whoever can."
     function requestDownload(kind) {
+        // Before this page knows whether it owns the pool (the previous page's lock may still be held for a moment): wait
+        // for the verdict, as the message path does, instead of telling the reader another tab has it.
+        if (probePending) { deferredRequest = kind; return; }
         // The frame also writes the intent keys before messaging (that is how a standalone settings
         // page asks). This message is the real request, so consume them — otherwise the next page
         // load would act on a click that has already been served.
@@ -344,12 +349,36 @@
         });
     });
     var OPEN_PACKS_KEY = 'dg.offline.openPacks';
+    var PACK_LANGS_KEY = 'dg.offline.packLangs';
     function packsPublished() {
         if (!PACKS_ON) return Promise.resolve(false);
         return fetch((PACKS_BASE || DIST_BASE) + '/packs-manifest.json', { cache: 'no-store' })
             .then(function (r) { return r.ok ? r.json() : null; })
-            .then(function (m) { return !!(m && Array.isArray(m.packs)); })
+            .then(function (m) {
+                if (!(m && Array.isArray(m.packs))) return false;
+                // Which languages each translation pack carries (tr-small: many), kept for offlineLangs() offline.
+                var langs = {};
+                m.packs.forEach(function (p) { if (p.kind === 'translation') langs[p.id] = p.langs || (p.lang ? [p.lang] : []); });
+                try { localStorage.setItem(PACK_LANGS_KEY, JSON.stringify(langs)); } catch (e) { /* private mode */ }
+                return true;
+            })
             .catch(function () { return false; });
+    }
+    if (PACKS_ON) packsPublished();
+
+    // The translation languages on this device. The single library is the ru+en slice; with packs, the languages of the
+    // translation packs held - only the Mahāsaṅgīti downloaded, a ru text came from the device without its Russian, online
+    // too (2026-11-01: the reader showed the Pali alone).
+    function offlineLangs() {
+        var st = null, map = {};
+        try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); map = JSON.parse(localStorage.getItem(PACK_LANGS_KEY) || '{}') || {}; } catch (e) { /* none */ }
+        if (!st || !Array.isArray(st.packs)) return OFFLINE_LANGS;
+        var out = [];
+        st.packs.forEach(function (id) {
+            var l = map[id] || (/^tr-([a-z]{2,3})$/.test(id) ? [id.slice(3)] : []);
+            l.forEach(function (x) { if (out.indexOf(x) === -1) out.push(x); });
+        });
+        return out;
     }
 
     // The same thing for code that would rather call it directly (the settings page cannot — it is a
@@ -988,7 +1017,8 @@
             var split = function (v) { return String(v || '').split(',').map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean); };
             var langs = split([qs.get('langs'), qs.get('lang')].join(','));
             if (!langs.length) langs = split(qs.get('translators'));
-            return langs.some(function (l) { return OFFLINE_LANGS.indexOf(l) === -1; });
+            var held = offlineLangs();
+            return langs.some(function (l) { return held.indexOf(l) === -1; });
         }
 
         // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS): offline only those whose pack

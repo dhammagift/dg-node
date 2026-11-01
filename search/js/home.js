@@ -2237,8 +2237,13 @@
             // nothing there (owner, iPhone 2026-10-31): the root with the _nativeRoute handoff opens the same place,
             // as public/offline/app.js reloadHere() does.
             var last = u.pathname.split('/').pop();
-            location.replace(window.dgOfflineReady && last.indexOf('.') !== -1 && !/\.html?$/.test(last)
-                ? '/?_nativeRoute=' + encodeURIComponent(u.pathname + u.search + u.hash) : u.toString());
+            if (window.dgOfflineReady && last.indexOf('.') !== -1 && !/\.html?$/.test(last)) {
+                location.replace('/?_nativeRoute=' + encodeURIComponent(u.pathname + u.search + u.hash));
+            } else if (u.toString() === location.href) {
+                location.reload();   // nothing to drop from the address (/dn22#dn22:1.1): replace() would only jump to the anchor
+            } else {
+                location.replace(u.toString());
+            }
             return;
         }
         if (e.target.closest('[data-ts-keep]')) {

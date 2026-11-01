@@ -100,6 +100,9 @@ function storedPacks(pool) {
 }
 // The schemas the open library reads: ['main'] for one database, ['main', '<pack id>', ...] for packs.
 let schemas = ['main'];
+// Every pack open besides the main one, edition packs too (schemas lists only those with texts: checkPacks read it and
+// never offered a changed ed-* pack as an update).
+let openPackIds = new Set();
 let openPackNames = new Set();   // the pack files `db` has open (set by openPacks)
 function cancelledError() { return Object.assign(new Error('download cancelled'), { cancelled: true }); }
 function nameToBuild(name) { return name.slice(DB_PREFIX.length, -'.db'.length); }
@@ -704,6 +707,7 @@ function adopt(candidate, from = ['main']) {
     db = candidate.handle;
     schemas = from;
     openPackNames = new Set();
+    openPackIds = new Set();
     core.init({ searchDb: nodeSqliteShim(db, from), DG_OFFLINE: '/offline-data/dhammagift' });
 
     // The same in-memory sutta index initServer() builds on the server, from the same query.
@@ -977,6 +981,7 @@ function openPacks(pool, packs) {
         if (db) { try { db.close(); } catch (_) {} }
         const suttas = adopt({ handle, meta }, from);
         openPackNames = new Set(packs.map(p => p.name));
+        openPackIds = new Set(packs.slice(1).map(p => p.id));
         return { suttas, build_id: meta.build_id, built_at: meta.built_at || null, packs: packs.map(p => p.id), present: true };
     } catch (e) {
         try { handle.close(); } catch (_) {}
@@ -1100,7 +1105,7 @@ async function packsMode(args) {
 async function checkPacks(packsBase) {
     const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
     if (!manifest || !Array.isArray(manifest.packs)) return { unknown: true };
-    const open = new Set(schemas.slice(1));
+    const open = openPackIds;
     const installed = Object.entries(storedPacks(await getPool()));
     const changed = manifest.packs.filter(p => (p.main || open.has(p.id)) &&
         !installed.some(([id, files]) => id === p.id && files.some(f => f.build === p.build_id)));
@@ -1244,6 +1249,8 @@ function convertTextResult(data, key, mode) {
         if (dual) seg.root_text_iso = seg.root_text;
         if (seg.root_text) seg.root_text = self.PaliScript.convert(seg.root_text, key);
         if (!dual && seg.variant) seg.variant = self.PaliScript.convert(seg.variant, key);
+        // the other editions' lines too, as dg-fastify.js does (offline they stayed Latin under a Devanagari MS line)
+        if (seg.editions) for (const ed in seg.editions) seg.editions[ed] = self.PaliScript.convert(seg.editions[ed], key);
     }
     return data;
 }
@@ -1618,6 +1625,7 @@ self.onmessage = async (event) => {
             }
             for (const files of Object.values(storedPacks(pool))) for (const f of files) { try { pool.unlink(f.name); deleted++; } catch (_) {} }
             schemas = ['main'];
+            openPackIds = new Set();
             await cleanScratchExcept(null);
             post({ id, ok: true, result: { deleted } });
         } catch (e) { post({ id, ok: false, error: e.message }); }
