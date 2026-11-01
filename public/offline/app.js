@@ -353,13 +353,27 @@
         if (asked === 'update') { requestDownload('update'); return; }
         // Packs published: the link opens the picker in Settings (offline-library-settings.js opens its dialog on this
         // flag) instead of downloading the default packs unasked.
+        offerDownload();
+    });
+    // The same from an address: /#offline-download (a link in a message, the owner trying the sheet on test).
+    if (location.hash === '#offline-download') {
+        var fromHash = function () { history.replaceState(history.state, '', location.pathname + location.search); offerDownload(); };
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fromHash); else fromHash();
+    }
+    // Packs published: the first-launch sheet with them (offline-status.js: what downloads by default, "Add ›" unfolds the
+    // rest - owner 2026-11-01), as the app asks; its Download is the consent. Else the single library, as before.
+    function offerDownload() {
         packsPublished().then(function (yes) {
             if (!yes) { requestDownload('open'); return; }
-            try { localStorage.setItem(OPEN_PACKS_KEY, '1'); } catch (e) { /* private mode: the row is still there */ }
-            if (window.DgHome && typeof window.DgHome.openSettingsSheet === 'function') window.DgHome.openSettingsSheet();
-            else location.href = (window.DgTextRouter && window.DgTextRouter.settingsUrl) ? window.DgTextRouter.settingsUrl() : '/settings/';
-        });
-    });
+            return fetch((PACKS_BASE || DIST_BASE) + '/packs-manifest.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (m) {
+                var main = (m.packs || []).filter(function (p) { return p.main; }).map(function (p) { return p.id; });
+                var chosen = packsChoice() || firstPacks('open') || [];
+                return new Promise(function (resolve) {
+                    window.dispatchEvent(new CustomEvent('dg:need-consent', { detail: { packs: m.packs, selected: main.concat(chosen), resolve: resolve } }));
+                });
+            }).then(function (ok) { if (ok) { agreedNow(); requestDownload('open'); } });
+        }).catch(function (e) { log('offering the download failed:', (e && e.message) || e); });
+    }
     var OPEN_PACKS_KEY = 'dg.offline.openPacks';
     var PACK_LANGS_KEY = 'dg.offline.packLangs';
     function packsPublished() {
