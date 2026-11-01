@@ -924,6 +924,7 @@ onReady(() => {
                 panel.style.left = phone ? '6px' : Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
                 panel.style.right = phone ? '6px' : 'auto';
                 panel.style.maxWidth = phone ? 'none' : '';
+                panel.style.width = phone ? 'auto' : '';   // the CSS width (a fixed px one) would beat left + right
                 panel.style.top = Math.round((br.bottom + 8) / z) + 'px';
             }
             if (isOpening) {
