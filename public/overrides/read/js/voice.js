@@ -2617,6 +2617,11 @@ window.refreshTtsLanguage = function () {
 };
 
 async function startPlayback(container, mode, slug, startIndex = 0) {
+  // The chip names what is read: a line tap picks the mode without a change event (or before the player was built
+  // from the saved one), and the chip said «Trn» over Pali being read (owner 2026-11-01, app, MS | BJT).
+  const modeSelect = document.getElementById('tts-mode-select'), shown = mode.replace('trn2', 'trn');
+  if (modeSelect && [...modeSelect.options].some(o => o.value === shown)) modeSelect.value = shown;
+  paintModeChip();
   const textData = await prepareTextData(slug);
   if (!textData.length) {
     console.warn('Нет данных для воспроизведения');
