@@ -638,7 +638,9 @@ onReady(() => {
                 if (firstContentBlock && (firstContentBlock === parentBlock || firstContentBlock.contains(el))) return false;
                 if (el !== (parentBlock && parentBlock.querySelector('.verse-line'))) return false;
             }
-            return el.innerText.trim().length > 0;
+            // textContent too: the paragraphs off the screen are not rendered (content-visibility: auto, the speed work of
+            // 2026-11-01), their innerText is "" - every point below the first screen fell out, the contents showed the title only
+            return (el.innerText || el.textContent).trim().length > 0;
         });
 
         var realHeaders = suttaContainer.querySelectorAll('h2, h3, h4, h5, h6');
@@ -648,8 +650,10 @@ onReady(() => {
         // Длинные плоские тексты без внутренних заголовков (например, длинная сутта одним
         // потоком) — берём 4 условные "четверти" по номеру сегмента как ориентиры, иначе TOC
         // был бы пустым/бесполезным для навигации по такому тексту.
-        if (realHeaders.length <= 3 && segments.length > 120 && !hasInternalHeaders) {
-            [0, 0.25, 0.5, 0.75].forEach(function (frac) {
+        // Shorter ones get the middle (owner 2026-11-01: a long text start, 25/50/75 % and the end - the end is .endsutta -,
+        // a short one start and middle).
+        if (realHeaders.length <= 3 && segments.length > 40 && !hasInternalHeaders) {
+            (segments.length > 120 ? [0, 0.25, 0.5, 0.75] : [0, 0.5]).forEach(function (frac) {
                 var targetIndex = Math.floor(segments.length * frac);
                 var found = segments[targetIndex];
                 for (var i = targetIndex; i < Math.min(targetIndex + 20, segments.length); i++) {
@@ -770,7 +774,7 @@ onReady(() => {
         var firstContentBlock = suttaContainer.querySelector('p, blockquote, .rule');
 
         headings.forEach(function (el) {
-            var text = el.innerText.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();
+            var text = (el.innerText || el.textContent).replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();   // off-screen: see getTOCNodes
             if (!text) return;
 
             if (el.tagName.startsWith('H')) currentLevel = parseInt(el.tagName.substring(1), 10);
@@ -909,16 +913,17 @@ onReady(() => {
             if (panel.innerHTML.trim() === '') buildFullTOC();
             var isOpening = !panel.classList.contains('active');
             panel.classList.toggle('active');
-            // Desktop: drop the panel right under its button instead of the far right corner of
-            // a wide screen (owner). Phones keep the CSS full-width placement.
-            if (window.innerWidth > 767.98) {
+            // Right under its button, on every screen (owner): the phones' fixed CSS top (60px) was set for a one-row
+            // header, and under today's two rows it opened over the search field (owner 2026-11-01: «должно быть под оглавлением»).
+            {
                 var br = btn.getBoundingClientRect();
                 var pw = panel.getBoundingClientRect().width || 320;
                 var z = (window.dgZoom ? window.dgZoom() : 1); // rects are screen px, style px get zoomed again (dg-apps#40)
-                panel.style.left = Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
-                panel.style.right = 'auto';
+                var phone = window.innerWidth <= 767.98;   // phones: the CSS full width (left/right 6px), only the top from the button
+                panel.style.left = phone ? '' : Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
+                panel.style.right = phone ? '' : 'auto';
                 panel.style.top = Math.round((br.bottom + 8) / z) + 'px';
-            } else { panel.style.left = ''; panel.style.right = ''; panel.style.top = ''; }
+            }
             if (isOpening) {
                 syncTOC();
                 setTimeout(function () {

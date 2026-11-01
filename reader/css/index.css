@@ -484,7 +484,9 @@ html[lang="ru"] .dg-external-links-ru { display: inline; }
   line-height: 1.5;
   white-space: nowrap;
   cursor: pointer;
-  transition: transform 140ms ease-out, border-color 160ms ease-out, background-color 160ms ease-out;
+  /* transform only: with the colours eased too, the theme's colours arriving after the first paint (dark) played as a
+     light-grey pill fading out on every reader load (owner 2026-11-01, his video frame by frame: «голый внеш. ссылки») */
+  transition: transform 140ms ease-out;
   -webkit-tap-highlight-color: transparent;
 }
 .dg-external-links-toggle:hover,
