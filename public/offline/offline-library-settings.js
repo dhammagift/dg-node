@@ -220,24 +220,8 @@
         var main = packs.filter(function (p) { return p.main; })[0];
         // The other Pali editions (ed-bjt, …, kind 'edition') are listed with the root texts, under the Mahāsaṅgīti.
         var isRoot = function (p) { return p.kind === 'root' || p.kind === 'edition'; };
-        // The Mahāsaṅgīti first (the base, it cannot be unticked), then the three national canons - Buddha Jayanti (Sri
-        // Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand) - and only then the composite editions, Mahāsaṅgīti 2005
-        // and PTS (owner 2026-11-01: «национальные каноны срочно поднять вверх»). Translations keep the manifest's order.
-        var ROOT_ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
-        var ROOT_INFO = {
-            // One look for the Pali texts in both lists (owner 2026-11-01): the plate the reader shows, the name, and under it the
-            // country (none for Mahāsaṅgīti 2005). No years, no "(VRI)" in the name.
-            'root-ms': { tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti', capRu: 'основа: оглавление и поиск', capEn: 'base: contents and search' },
-            'ed-bjt': { tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', capRu: 'Шри-Ланка', capEn: 'Sri Lanka' },
-            'ed-my': { tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', capRu: 'Мьянма', capEn: 'Myanmar' },
-            'ed-th': { tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', capRu: 'Таиланд', capEn: 'Thailand' },
-            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: '', capEn: '' },
-            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'Великобритания', capEn: 'UK' },
-        };
-        var rootOrder = function (a, b) {
-            var i = ROOT_ORDER.indexOf(a.id), j = ROOT_ORDER.indexOf(b.id);
-            return (i === -1 ? 99 : i) - (j === -1 ? 99 : j);
-        };
+        // Plates, names, countries and the order come with the manifest (build-search-db.js EDITION_TITLES): one place for
+        // both lists, this picker and the first-launch sheet (owner 2026-11-01).
         var langOf = function (p) { return p.lang || (/^tr-([a-z]{2,3})$/.exec(p.id) || [])[1] || null; };
         // Fixed self-names, as in the mockup: a browser's own data may lack some (Pablo's phone showed "Gsw", headless
         // Chromium "Lao", "Georgian"). Intl only for a language not listed here.
@@ -251,7 +235,6 @@
             catch (e) { return lang; }
         }
         function name(p) {
-            if (ROOT_INFO[p.id]) return ROOT_INFO[p.id][isRu ? 'ru' : 'en'];
             if (p.langs && p.langs.length > 1) return isRu ? 'Другие языки' : 'Other languages';
             if (p.title) return p.title[isRu ? 'ru' : 'en'] || p.title.en || p.id;
             if (isRoot(p)) return EDITIONS[p.edition || p.id.replace(/^root-/, '')] || p.id;
@@ -261,7 +244,7 @@
         // HTML: each language name kept on one line ("Tiếng / Việt" broke in the middle).
         function desc(p) {
             var bits = [];
-            if (ROOT_INFO[p.id]) { if (ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn']) bits.push(esc(ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn'])); }
+            if (p.note) bits.push(esc(p.note[isRu ? 'ru' : 'en'] || p.note.en));
             else if (p === main) bits.push(esc(L.core));
             if (p.langs && p.langs.length > 1) bits.push(esc(isRu ? p.langs.length + ' ' + (p.langs.length % 10 === 1 && p.langs.length % 100 !== 11 ? 'язык' : p.langs.length % 10 >= 2 && p.langs.length % 10 <= 4 && (p.langs.length % 100 < 12 || p.langs.length % 100 > 14) ? 'языка' : 'языков') : p.langs.length + ' languages'));
             // "6 991 текст", "7 284 текста", "7 605 текстов": the Russian plural by the last digits, not one suffix for all.
@@ -329,7 +312,7 @@
             var d = [desc(p), p === main || p.required ? L.required : '', tag].filter(Boolean).join(' · ');
             return '<li' + (has(p) && !on[p.id] ? ' class="pk-del"' : '') + '><label><input type="checkbox" data-id="' + esc(p.id) + '"'
                 + (on[p.id] ? ' checked' : '') + (p === main || p.required ? ' disabled' : '') + '>'
-                + '<span class="pk-name"><b>' + (ROOT_INFO[p.id] ? '<span class="pk-ed">' + ROOT_INFO[p.id].tag + '</span>' : '') + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + peek(p) + '</span>'
+                + '<span class="pk-name"><b>' + (p.tag ? '<span class="pk-ed">' + esc(p.tag) + '</span>' : '') + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + peek(p) + '</span>'
                 + '<span class="row-desc pk-size">' + mbOf(p.bytes) + ' ' + L.mb
                 + (has(p) && outdated.indexOf(p.id) === -1 ? '' : '<br><small style="opacity:.75">↓ ' + mbOf(p.bytes_gz || p.bytes) + ' ' + L.mb + '</small>')
                 + '</span></label></li>';
@@ -343,7 +326,7 @@
         function render() {
             var pl = plan(), changes = pl.add.length || pl.del.length || oldWhole;
             var size = sum(function (p) { return has(p) && mbOf(p.bytes); });
-            var list = function (f) { return '<ul class="dlg-list">' + packs.filter(f).sort(rootOrder).map(item).join('') + '</ul>'; };
+            var list = function (f) { return '<ul class="dlg-list">' + packs.filter(f).map(item).join('') + '</ul>'; };
             dlg.innerHTML = '<div class="dlg-head"><h3>' + (installed.length ? (isRu ? 'Офлайн-библиотека' : 'Offline library') : L.h) + '</h3>'
                 + '<p class="row-desc" style="margin:0">' + L.sub + '</p>'
                 + (installed.length ? '<p style="margin:8px 0 0"><button type="button" class="pk-delall" id="pkDelAll">' + L.delAll + ' (' + size + ' ' + L.mb + ')</button></p>' : '') + '</div>'

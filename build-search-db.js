@@ -698,12 +698,15 @@ function writeAtomic(file, obj) {
    ready, nothing is indexed on the device. packs-manifest.json is what switches the client from
    the single dg.db.gz to packs, so it is written last and only when this flag is given. */
 // The edition packs' names, as the reader shows them (reader/megareader.js READER_EDITIONS).
+// How the Pali texts are shown wherever packs are listed (the first-launch sheet, Settings' picker): the reader's plate,
+// the name, the country of a national canon - one place, in the manifest, so no list keeps its own copy (owner
+// 2026-11-01). The order of this list is the manifest's: the three national canons first, then the composite editions.
 const EDITION_TITLES = {
-    bjt: { ru: 'Будда Джаянти (Шри-Ланка)', en: 'Buddha Jayanti (Sri Lanka)' },
-    my: { ru: 'Чаттха Сангаяна (VRI)', en: 'Chaṭṭha Saṅgāyana (VRI)' },
-    th: { ru: 'Сиам Рат (1927)', en: 'Siam Rath (1927)' },
-    mso: { ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005' },
-    pts: { ru: 'Pali Text Society', en: 'Pali Text Society' },
+    bjt: { ru: 'Будда Джаянти', en: 'Buddha Jayanti', tag: 'BJT', note: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
+    my: { ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
+    th: { ru: 'Сиам Рат', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
+    mso: { ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', tag: 'MS05' },
+    pts: { ru: 'Pali Text Society', en: 'Pali Text Society', tag: 'PTS', note: { ru: 'Великобритания', en: 'UK' } },
 };
 
 /* One edition as a pack: dg.db's editions table and its index (read from sqlite_master, as writeOfflineDb does), that
@@ -748,6 +751,7 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const small = langs.filter(l => !own.includes(l));
     const defs = [
         { id: 'root-ms', kind: 'root', lang: 'pli', edition: 'ms', main: true, required: true, default: true,
+          title: { ru: 'Махасангити', en: 'Mahāsaṅgīti' }, tag: 'MS', note: { ru: 'основа: оглавление и поиск', en: 'base: contents and search' },
           has_vocab: true, where: "kind IN ('root', 'variant')", params: [], base: true },
         ...own.map(l => ({ id: `tr-${l}`, kind: 'translation', lang: l,
           where: "kind = 'translation' AND lang = ?", params: [l] })),
@@ -804,13 +808,17 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const edTotal = edCounts.reduce((a, r) => a + r.n, 0);
     edSrc.close();
     let edSum = 0;
+    const edOrder = Object.keys(EDITION_TITLES);
+    edCounts.sort((a, b) => (edOrder.indexOf(a.edition) + 1 || 99) - (edOrder.indexOf(b.edition) + 1 || 99));
     for (const { edition } of edCounts) {
         const id = `ed-${edition}`;
         const r = writeEditionDb(path.join(tmpDir, `${id}.db`), id, edition);
         const name = `${id}.${r.buildId}.db.gz`;
         const kept = gzipOrKeep(r.file, name), gz = kept.gz;
         if (kept.sha256) { r.bytes = kept.bytes; r.sha256 = kept.sha256; }
-        packs.push({ id, kind: 'edition', lang: 'pli', edition, title: EDITION_TITLES[edition] || { ru: edition, en: edition },
+        const info = EDITION_TITLES[edition] || { ru: edition, en: edition };
+        packs.push({ id, kind: 'edition', lang: 'pli', edition, title: { ru: info.ru, en: info.en }, tag: info.tag || edition.toUpperCase(),
+            ...(info.note ? { note: info.note } : {}),
             texts: r.texts, segments: r.segments, bytes: r.bytes, bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256,
             url: `packs/${name}`, build_id: r.buildId });
         edSum += r.segments;
