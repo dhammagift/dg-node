@@ -263,7 +263,7 @@
             on = {};
             packs.forEach(function (p) {
                 on[p.id] = p === main || p.required || (installed.length ? installed.indexOf(p.id) !== -1
-                    : Array.isArray(saved) ? saved.indexOf(p.id) !== -1 : !!p.default);
+                    : Array.isArray(saved) ? saved.indexOf(p.id) !== -1 : !!p.default || p.id === 'tr-' + (isRu ? 'ru' : 'en'));
             });
         }
         resetSelection();

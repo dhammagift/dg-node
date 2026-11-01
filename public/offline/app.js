@@ -61,6 +61,15 @@
     // Not on iOS's native SQL path (DgSharedLibrary): it opens the one library the shell downloads, no packs (a test build with
     // DG_PACKS_BASE skipped that download and was left with nothing).
     var PACKS_ON = !NATIVE_SQL && (window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP);
+    // A first download nobody picked packs for (the app's first-run sheet, the page's announcement): the Mahāsaṅgīti and the
+    // translation in the interface language - the Pali alone left the reader without any translation offline (2026-11-01).
+    // An update never takes these: with no selection it keeps the packs on disk.
+    function firstPacks(kind) {
+        if (kind === 'update' || packsChoice()) return null;
+        var ui = 'en';
+        try { ui = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru' ? 'ru' : 'en'; } catch (e) { /* private mode */ }
+        return ['tr-' + ui];
+    }
     function packsChoice() {
         try { var v = JSON.parse(localStorage.getItem(PACKS_KEY) || 'null'); return Array.isArray(v) ? v : null; }
         catch (e) { return null; }
@@ -695,7 +704,8 @@
         PACKS_FILE_BASE = null;
         if (PACKS_ON) {
             if (!platform.preparePacks) return Promise.resolve(false);
-            return call('packs-plan', workerOpts({ kind: kind })).then(function (files) {
+            var first = firstPacks(kind);
+            return call('packs-plan', workerOpts(first ? { kind: kind, packs: first } : { kind: kind })).then(function (files) {
                 if (!files || !files.length) return false;
                 return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, files: files, update: kind === 'update' }));
             }).then(function (fileBase) {
@@ -735,6 +745,8 @@
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
             var opts = workerOpts();
+            var first = PACKS_ON && firstPacks(kind);
+            if (first) opts.packs = first;
             return kind === 'update'
                 ? call('update', opts)
                 : call('open', Object.assign({ download: true }, opts));
