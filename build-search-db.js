@@ -132,6 +132,7 @@ function mergeReadings(sc, ours) {
 // order = which edition's wording spells out an abbreviated (…pe…) passage of the Mahāsaṅgīti
 const EDITION_LABEL = { my: 'my', bjt: 'bjt', th: 'th', mso: 'ms2005', pts: 'pts' };
 const ABBREV = new Set(['pe', 'peyyāla', 'pa', 'la']);
+const PE_NOTE = 'pe → spelled out in full', PE_NOTE_WORDS = 8, PE_NOTE_LONG = 20;   // see editionReadings
 const EDITORS_NOTE = new Set(['the', 'has', 'been', 'page', 'above', 'moved', 'content', 'omitted', 'reads', 'see', 'note', 'and', 'of', 'in', 'is']);
 const editionShifts = [];
 // Owner 2026-10-31: the default search set (4 nikāyas + the 6 Khuddaka books) - complete information first, speed
@@ -154,7 +155,7 @@ function editionReadings(rel, msSegs, variants) {
         // words an edition drew over from the neighbouring segments (its line cut a word or two off) are not readings
         const next = fold(msSegs[segIds[si + 1]]), prev = fold(msSegs[segIds[si - 1]]);
         if (!ms.length) continue;
-        const abbreviated = ms.includes('pe');
+        const abbreviated = ms.includes('pe') || msTxt.includes('…');   // "…pe…", or a bare "…" (dn11 suyāmo nāma devaputto …)
         const have = ' ' + foldWords(variants[seg] || '').join(' ') + ' ';
         const byReading = new Map();
         let spelledOut = false;   // one edition's wording of an abbreviated passage is enough
@@ -187,6 +188,16 @@ function editionReadings(rel, msSegs, variants) {
                     for (let k = Math.min(edw.length, prev.length); k > 0; k--) if (edw.slice(0, k).join(' ') === prev.slice(-k).join(' ')) { edw = edw.slice(k); break; }
                     if (!edw.length) continue;
                 }
+                // An edition spelling out what the Mahāsaṅgīti abbreviates (…pe…) is a note, not the passage: hundreds of
+                // words of sutta on the variant line, a screen of text in the search results (owner 2026-11-01 via Ultra:
+                // «не выкидывать, а помечать»), in English like the rest of the line. A short one, or a real insertion,
+                // stays as it is.
+                // In an abbreviated segment any long run is the spelled-out passage, whichever word it lines up with
+                // (dn11:9-66.2 "kevaṭṭa → <46 words>"); a very long one is, anywhere (dn3:2.2.20, 651 words).
+                if (edw.length >= PE_NOTE_LONG || (edw.length >= PE_NOTE_WORDS && abbreviated)) {
+                    (byReading.get(PE_NOTE) || byReading.set(PE_NOTE, []).get(PE_NOTE)).push(EDITION_LABEL[ed]);
+                    continue;
+                }
                 const edWords = edw.join(' ');
                 const msWords = msw.join(' ');   // without "pe": "pe → <the spelled-out passage>" is an insertion
                 if (!edWords && !msWords) continue;
@@ -195,7 +206,8 @@ function editionReadings(rel, msSegs, variants) {
                 (byReading.get(key) || byReading.set(key, []).get(key)).push(EDITION_LABEL[ed]);
             }
         }
-        if (byReading.size) out[seg] = [...byReading].map(([k, e]) => `${k} (${e.join(', ')})`).join(' | ');
+        // each edition once: several runs of one edition gave "(bjt, bjt, bjt)"
+        if (byReading.size) out[seg] = [...byReading].map(([k, e]) => `${k} (${[...new Set(e)].join(', ')})`).join(' | ');
     }
     return out;
 }
