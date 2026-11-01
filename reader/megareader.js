@@ -67,9 +67,16 @@ function t(path, fallback) {
     const keys = Object.values(map).map(m => m[0]);
     const S = Storage.prototype, get = S.getItem, set = S.setItem, rem = S.removeItem;
     const drop = k => { if (k in over) { delete over[k]; try { set.call(sessionStorage, 'dgShareView', JSON.stringify(over)); } catch (e) { /* ignore */ } } };
-    S.getItem = function (k) { return this === localStorage && keys.includes(k) && k in over ? (over[k] || null) : get.call(this, k); };
-    S.setItem = function (k, v) { if (this === localStorage && keys.includes(k)) drop(k); return set.call(this, k, v); };
-    S.removeItem = function (k) { if (this === localStorage && keys.includes(k)) drop(k); return rem.call(this, k); };
+    // Multi (where "Compare" opens) keeps its own lines/columns (owner 2026-11-01: «колонки по умолчанию, но если в мульти
+    // настроено в строку - в строку»): viewMode there is viewModeMulti, else the one chosen before, else columns.
+    const multi = k => k === 'viewMode' && window.READER_MODE && window.READER_MODE.modeKey === 'multi';
+    S.getItem = function (k) {
+        if (this !== localStorage) return get.call(this, k);
+        if (keys.includes(k) && k in over) return over[k] || null;
+        return multi(k) ? get.call(this, 'viewModeMulti') || get.call(this, k) || 'columns' : get.call(this, k);
+    };
+    S.setItem = function (k, v) { if (this === localStorage && keys.includes(k)) drop(k); return set.call(this, this === localStorage && multi(k) ? 'viewModeMulti' : k, v); };
+    S.removeItem = function (k) { if (this === localStorage && keys.includes(k)) drop(k); return rem.call(this, this === localStorage && multi(k) ? 'viewModeMulti' : k); };
 })();
 const suttaArea = document.getElementById(window.MEGAREADER_SUTTA_ID || "sutta");
 const homeButton = document.getElementById("home-button");
@@ -301,16 +308,25 @@ function cleanEditions(list) {
     const out = (Array.isArray(list) ? list : []).filter((e, i, a) => ids.includes(e) && a.indexOf(e) === i);
     return out.length ? out : ['ms'];
 }
+// Multi keeps its own editions once they are changed there (owner 2026-11-01: "Compare" opens multi with every edition,
+// the single reading keeps its own); until then multi reads the single list (the settings page's).
+const EDITIONS_KEY_MULTI = 'dgEditionsMulti';
+function editionsKey(writing) {
+    let own = false;
+    try { own = localStorage.getItem(EDITIONS_KEY_MULTI) !== null; } catch (e) { /* private mode */ }
+    return READER_MODE.modeKey === 'multi' && (writing || own) ? EDITIONS_KEY_MULTI : EDITIONS_KEY;
+}
 function getEditions() {
     const fromUrl = new URLSearchParams(location.search).get('editions');
     if (fromUrl) return cleanEditions(fromUrl.split(','));
-    try { return cleanEditions(JSON.parse(localStorage.getItem(EDITIONS_KEY))); } catch (e) { return ['ms']; }
+    try { return cleanEditions(JSON.parse(localStorage.getItem(editionsKey()))); } catch (e) { return ['ms']; }
 }
 function setEditions(list) {
     list = cleanEditions(list);
+    const key = editionsKey(true);
     try {
-        if (list.length === 1 && list[0] === 'ms') localStorage.removeItem(EDITIONS_KEY);
-        else localStorage.setItem(EDITIONS_KEY, JSON.stringify(list));
+        if (key === EDITIONS_KEY && list.length === 1 && list[0] === 'ms') localStorage.removeItem(key);
+        else localStorage.setItem(key, JSON.stringify(list));
     } catch (e) { /* private mode */ }
     // the address must not keep overriding the choice just made
     const u = new URL(location.href);
@@ -1933,6 +1949,15 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
+    // "Compare" the first time (common.js): multi with every translation this text has in the reader's languages, then
+    // drawn again with them; the main translation stays first
+    let compareSeed = null;
+    try { compareSeed = sessionStorage.getItem('dgCompareSeed'); sessionStorage.removeItem('dgCompareSeed'); } catch (e) { /* private mode */ }
+    if (compareSeed && READER_MODE.modeKey === 'multi' && READER_MODE.availableTranslators) {
+        const mine = getEnabledLangs(), have = getStack();
+        const more = READER_MODE.availableTranslators.filter(k => mine.includes(k.slice(0, k.indexOf('_'))) && !have.includes(k));
+        if (more.length) { setStack(have.concat(more)); return window.buildSutta(rawSlug, opts); }
+    }
     // the Pali editions THIS text is in (the Translations window marks the rest); null = not known (the DG app offline:
     // its library holds only the packs it downloaded, the corpus list comes with /api/text-online when online)
     READER_MODE.availableEditions = Array.isArray(suttaData.availableEditions) ? ['ms'].concat(suttaData.availableEditions)

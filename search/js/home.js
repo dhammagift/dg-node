@@ -2172,7 +2172,9 @@
         // иначе текст остался бы на предпоследнем состоянии галочек.
         if (tsBusy) { tsPending = next; return; }
         tsBusy = true;
-        var wantMode = next.length > 1 ? 'multi' : 'single';
+        // several texts are multi, the Pali editions counted too: multi keeps its own editions (megareader.js editionsKey),
+        // and one translation beside several editions fell back to single and lost them
+        var wantMode = next.length > 1 || (rm.modeKey === 'multi' && window.getEditions().length > 1) ? 'multi' : 'single';
         var firstLang = next.length ? tsLangOf(next[0]) : rm.lang;
         var params = new URLSearchParams(document.location.search);
         params.delete('translators');   // стек главнее ссылки, из которой пришли
@@ -2229,7 +2231,7 @@
             try {
                 // paliToggle too: "−" on the last translation leaves Pāḷi only, and Default did not bring the
                 // translations back (Ultra's review 2026-11-01); a shared link's view goes with it (dgShareView)
-                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions', 'paliToggle', 'dgColOrder']
+                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions', 'dgEditionsMulti', 'paliToggle', 'dgColOrder']
                     .forEach(function (k) { localStorage.removeItem(k); });
                 sessionStorage.removeItem('dgReadingStackLocal');
                 sessionStorage.removeItem('dgShareView');

@@ -555,62 +555,33 @@ onReady(() => {
         }
     });
 
-    // --- СРАВНИТЬ (COMPARE) - ЛОКАЛЬНАЯ И ОНЛАЙН ВЕРСИИ ---
+    // --- СРАВНИТЬ (COMPARE) ---
+    // Compare (owner 2026-11-01): this text at this line in multi - its own place, kept there (columns by default, the
+    // texts, their order); a new step of the history, Back returns to the reading. The first time, while multi holds
+    // one text or none, it opens with every Pali edition and every translation in the reader's languages
+    // (megareader.js dgCompareSeed). Was the 4nt comparison site in a new tab.
     document.getElementById('sm-compare').addEventListener('click', (e) => {
         e.stopPropagation();
         menu.classList.add('segment-menu-hidden');
         if (!currentContext) return;
-
-        const urlParams = new URLSearchParams(window.location.search);
-        // URL чистый (/dn22), не ?q=dn22 — реальный слаг лежит в window._currentSlug.
-        let slug = window._currentSlug;
-        const sParam = urlParams.get('s');
-
+        let u;
+        try { u = new URL(currentContext.url, window.location.origin); } catch (err) { return; }
+        // the segment's own link names its text, in the reader and in the search results alike
+        const slug = (decodeURIComponent(u.pathname).split('/').pop().split(':')[0] || window._currentSlug || '').toLowerCase();
+        const seg = currentContext.hash.split(':').pop();
         if (!slug) return;
-
-        slug = slug.split('&')[0].toLowerCase();
-
-        if (typeof get4ntUrl === 'function') {
-            let url4nt = get4ntUrl(slug);
-
-            if (url4nt) {
-                try {
-                    const anchorBase = url4nt.split('#')[1] || slug;
-                    const urlWithoutHash = url4nt.split('#')[0];
-
-                    const parsedUrl = new URL(urlWithoutHash, window.location.origin);
-
-                    if (!window.isLocalHost) {
-                        parsedUrl.protocol = 'https:';
-                        parsedUrl.hostname = 's.dhamma.gift';
-                        parsedUrl.pathname = parsedUrl.pathname.replace(/^\/4nt/, '');
-                    }
-
-                    const newParams = new URLSearchParams();
-                    newParams.set('cols', 'pali,pali_royal_iast,pali_myanmar_iast,pali_bjt_iast');
-
-                    if (sParam) {
-                        newParams.set('s', sParam);
-                    }
-
-                    parsedUrl.search = newParams.toString();
-
-                    if (slug.includes('-')) {
-                        parsedUrl.hash = `#tr-${currentContext.hash}`;
-                    } else {
-                        parsedUrl.hash = `#tr-${anchorBase}:${currentContext.hash}`;
-                    }
-
-                    window.open(parsedUrl.href, '_blank');
-                } catch (err) {
-                    console.error('Ошибка при формировании ссылки для сравнения:', err);
-                }
-            } else {
-                console.warn('Функция get4ntUrl не вернула ссылку для slug:', slug);
+        try {
+            let stack = [];
+            try { stack = JSON.parse(localStorage.getItem('dgReadingStack') || '[]') || []; } catch (err) { /* broken */ }
+            if (localStorage.getItem('dgEditionsMulti') === null && stack.length <= 1) {
+                localStorage.setItem('dgEditionsMulti', JSON.stringify((window.DG_EDITIONS || [{ id: 'ms' }]).map(x => x.id)));
+                sessionStorage.setItem('dgCompareSeed', '1');
             }
-        } else {
-            console.error('Функция get4ntUrl не определена на странице.');
-        }
+        } catch (err) { /* private mode: multi as it is */ }
+        const path = '/' + slug + ':' + seg + '?mode=multi';
+        // In the apps /sn56.11 is no file (the dot reads as an extension): the root with the _nativeRoute handoff, as Default does
+        if (window.dgOfflineReady && slug.indexOf('.') !== -1) window.location.href = '/?_nativeRoute=' + encodeURIComponent(path);
+        else window.location.href = path;
     });
 });
 
