@@ -2087,11 +2087,13 @@ window.buildSutta = async function(rawSlug, opts) {
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
         // plates on headings too once plates are on: the translations' title lines carry theirs (owner 2026-10-31)
-        if (!edSingle && !edMulti) return platesOn ? `<span class="dg-ed-line dg-tag" data-ed="ms" data-tag="MS">${msText}</span>` : msText;
+        // the copy links inside the line: after a line (display:block, uiextra.css) the link fell to a line of its own,
+        // under the title's speaker (owner 2026-11-01: «динамик и скрепка на одной строчке»)
+        if (!edSingle && !edMulti) return platesOn ? `<span class="dg-ed-line dg-tag" data-ed="ms" data-tag="MS">${linkStart}${msText}${linkEnd}</span>` : linkStart + msText + linkEnd;
         if (edSingle) {
             const t = (edMaps[shownEds[0]] || {})[segment];
-            if (t !== undefined) return `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${t.trim()}</span>`;
-            return `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${msText}</span>`;
+            if (t !== undefined) return `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${linkStart}${t.trim()}${linkEnd}</span>`;
+            return `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${linkStart}${msText}${linkEnd}</span>`;
         }
         let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
         if (edDiff && !heading) texts = markEditionDiffs(texts);
@@ -2169,9 +2171,7 @@ window.buildSutta = async function(rawSlug, opts) {
             const pliSpanClass = isMemMode ? pliClass + ' dict-ignore' : pliClass;
             // Several editions: every edition line carries the segment's copy links itself (lines and columns alike),
             // so each line keeps its context menu at its start and after its end (owner 2026-10-31)
-            inner += edMulti
-                ? `<span class="${pliSpanClass}" lang="pi">${editionLines(segment, pliContent, linkToCopyStart, linkToCopy)}`
-                : `<span class="${pliSpanClass}" lang="pi">${linkToCopyStart}${editionLines(segment, pliContent)}${linkToCopy}`;
+            inner += `<span class="${pliSpanClass}" lang="pi">${editionLines(segment, pliContent, linkToCopyStart, linkToCopy)}`;
             // dualScript mode (dev/dev_en): variant stays attached to the ISO/Latin line below
             // (matches prod's devanagari.js), not the script-converted main line here. The variant line belongs to the
             // MS text: gone when MS itself is not shown.

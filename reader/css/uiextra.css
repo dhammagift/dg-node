@@ -419,6 +419,12 @@
   .dg-ed-line + .dg-ed-line { margin-top: .2em; }
   .dg-ed-line.is-empty { display: none; }
   .dg-ed-line.is-gap { color: var(--dg-text-muted, #8a8a8f); }
+  /* The titles' plates in one column with the text's, at the left edge (owner 2026-11-01: «чтобы они все были на уровне…
+     ровно и одинаково с самого начала текста»): centred, each plate sat before its own title wherever it began. The
+     title stays centred between equal side paddings; the plate is centred on the title's first line (--dg-line: that
+     line's height, a registered length so 1lh is the title's, not the small plate's). */
+  #sutta:not(.column-view) :is(header, h1) .dg-tag { position: relative; padding-inline: 2.6rem; --dg-line: 1lh; }
+  #sutta:not(.column-view) :is(header, h1) .dg-tag::before { position: absolute; left: 0; top: calc(var(--dg-line) / 2 - .8em); margin: 0; }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
   /* "Differences" between prev and next (megareader.js) */
   #dg-diff-btn { all: unset; flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
@@ -1930,3 +1936,6 @@ body.dark .mem-bubble::after {
 body.dark .mem-bubble::before {
   border-color: #555 transparent transparent transparent;
 }
+
+/* the titles' plates (#sutta header .dg-tag): the height of the title's own line, computed there; top level, as @property must be */
+@property --dg-line { syntax: '<length>'; inherits: true; initial-value: 24px; }
