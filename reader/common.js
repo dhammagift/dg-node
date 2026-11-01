@@ -920,8 +920,10 @@ onReady(() => {
                 var pw = panel.getBoundingClientRect().width || 320;
                 var z = (window.dgZoom ? window.dgZoom() : 1); // rects are screen px, style px get zoomed again (dg-apps#40)
                 var phone = window.innerWidth <= 767.98;   // phones: the CSS full width (left/right 6px), only the top from the button
-                panel.style.left = phone ? '' : Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
-                panel.style.right = phone ? '' : 'auto';
+                // (phones set here, not left to the CSS: its max-width 100vw - 40px grows with the page zoom and ran off the screen)
+                panel.style.left = phone ? '6px' : Math.max(6, Math.min(br.left, window.innerWidth - pw - 12)) / z + 'px';
+                panel.style.right = phone ? '6px' : 'auto';
+                panel.style.maxWidth = phone ? 'none' : '';
                 panel.style.top = Math.round((br.bottom + 8) / z) + 'px';
             }
             if (isOpening) {
