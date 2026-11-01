@@ -284,14 +284,17 @@ window.setReadingStack = setStack;
    = each line in every chosen edition (plates in lines, one column each in the column view). ?editions= in the
    address wins (a shared link), else the saved choice (settings, quick settings, the Translations window). */
 const EDITIONS_KEY = 'dgEditions';
+// The names agreed with the owner for every place (2026-11-01, build-search-db.js EDITION_TITLES): no years, no "(VRI)",
+// the country a caption of its own - beside the name in a tight menu (dgEditionLabel), left out in the columns' names.
 const READER_EDITIONS = [
-    { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
-    { id: 'bjt', tag: 'BJT', ru: 'Buddha Jayanti (Шри-Ланка)', en: 'Buddha Jayanti (Sri Lanka)' },
-    { id: 'my', tag: 'VRI', ru: 'Chaṭṭha Saṅgāyana (VRI, Мьянма)', en: 'Chaṭṭha Saṅgāyana (VRI, Myanmar)' },
-    { id: 'th', tag: 'SR', ru: 'Siam Rath (Таиланд, 1927)', en: 'Siam Rath (Thailand, 1927)' },
-    { id: 'mso', tag: 'MS05', ru: 'Mahāsaṅgīti 2005 (печатная)', en: 'Mahāsaṅgīti 2005 (printed)' },
-    { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society' },
+    { id: 'ms', tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti' },
+    { id: 'bjt', tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', country: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
+    { id: 'my', tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', country: { ru: 'Мьянма', en: 'Myanmar' } },
+    { id: 'th', tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
+    { id: 'mso', tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005' },
+    { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', country: { ru: 'Великобритания', en: 'UK' } },
 ];
+window.dgEditionLabel = (ed, ru) => ed[ru ? 'ru' : 'en'] + (ed.country ? ` (${ed.country[ru ? 'ru' : 'en']})` : '');
 window.DG_EDITIONS = READER_EDITIONS;
 function cleanEditions(list) {
     const ids = READER_EDITIONS.map(e => e.id);
@@ -2338,7 +2341,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const translatorByline = `<div id="trn" class="byline${edMulti ? ' dg-eds-byline' : ''}">
     <p><span class="pli-lang" lang="pi">Pāḷi ${shownEds.map(e => e === 'ms'
         ? '<a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a>'
-        : `<span title="${edInfo(e)[uiRu ? 'ru' : 'en']}">${edInfo(e).tag}</span>`).join(' · ')}</span>
+        : `<span title="${window.dgEditionLabel(edInfo(e), uiRu)}">${edInfo(e).tag}</span>`).join(' · ')}</span>
     <span class="right-column">${bylineTranslators}</span></p></div>`;
 
     let cleanSlugReady = slug;

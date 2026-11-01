@@ -2056,7 +2056,7 @@
                         '<span class="dg-ts-hnd" data-ts-drag><i></i><i></i><i></i><i></i><i></i><i></i></span>' +
                         '<span class="dg-ts-ord">' + (on ? i + 1 : '') + '</span>' +
                         '<button type="button" class="dg-ts-tick" role="checkbox" aria-checked="' + on + '"></button>' +
-                        '<span class="dg-ts-name">' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en']) + '</span>' +
+                        '<span class="dg-ts-name">' + esc(window.dgEditionLabel(ed, menuLang() === 'ru')) + '</span>' +
                         '<span class="dg-ts-tag' + (onlineOnly ? ' is-local' : '') + '"' + (onlineOnly ? ' title="' + esc(tsStr('edOnline')) + '"' : '') + '>' +
                         esc(missing ? tsStr('edMissing') : onlineOnly ? ed.tag + ' · ' + tsStr('edOnlineTag') : ed.tag) + '</span>' +
                         '<button type="button" class="dg-ts-star' + (i === 0 ? ' is-main' : '') + '" title="' + esc(tsStr('edMain')) + '">' + (i === 0 ? '★' : '☆') + '</button>' +
@@ -2469,7 +2469,7 @@
     function colMenuGroups(skip) {
         var ru = menuLang() === 'ru', avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
         var eds = (window.DG_EDITIONS || []).filter(function (x) { return (!avail || avail.indexOf(x.id) !== -1) && skip.indexOf('ed:' + x.id) === -1; })
-            .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
+            .map(function (x) { return ['ed:' + x.id, window.dgEditionLabel(x, ru), x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
         var trs = tsAvailable().filter(function (k) { return skip.indexOf('tr:' + k) === -1; }).sort(tsByRank)
             .map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
         return [['ed', 'Pāḷi', eds], ['tr', ru ? 'Переводы' : 'Translations', trs]];
@@ -2906,7 +2906,7 @@
                         var missing = !!avail && avail.indexOf(ed.id) === -1;
                         var onlineOnly = !missing && window.dgEditionOnDevice && window.dgEditionOnDevice(ed.id) === false;   // the app: not downloaded
                         return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + (onlineOnly ? ' is-local' : '') + '" data-ed="' + ed.id + '"' +
-                            ' title="' + esc(ed[menuLang() === 'ru' ? 'ru' : 'en'] + (onlineOnly ? ' — ' + tsStr('edOnline') : '')) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + (onlineOnly ? ' •' : '') + '</button>';
+                            ' title="' + esc(window.dgEditionLabel(ed, menuLang() === 'ru') + (onlineOnly ? ' — ' + tsStr('edOnline') : '')) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + (onlineOnly ? ' •' : '') + '</button>';
                     }).join('');
                 };
                 paintEds();
