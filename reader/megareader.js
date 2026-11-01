@@ -366,6 +366,9 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
         '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,#e3a008 30%,transparent)}' +
         // single letters inside a word: no padding, the word keeps its shape
         'mark.dg-ed-diff.dg-ed-ch{padding:0;border-radius:2px}' +
+        // where letters are missing: a thin bar, no width while Differences is off (the text does not move)
+        'mark.dg-ed-gap{display:inline-block;width:0;height:1.05em;vertical-align:-.18em;transition:width .45s ease,background-color .45s ease}' +
+        '#sutta.dg-diff-on mark.dg-ed-gap{width:.3em;margin:0 .03em}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
@@ -440,8 +443,10 @@ function markEditionDiffs(texts) {
         // Only the letters that differ (owner 2026-11-01: «разница только в некоторых буквах… сразу подчеркивать разницу»):
         // a run of minority words is set against the words between the same agreeing neighbours in the text closest
         // to it, letter by letter. A word with no differing letter (a join or a split: "ten' upasaṅkami", "sakkāyo'ti") is
-        // not marked; a word with nothing set against it (one the others do not have) is marked whole.
-        const chars = new Array(toks[i].length).fill(null);
+        // not marked; a word with nothing set against it (one the others do not have) is marked whole. Letters only the
+        // other text has leave a thin mark where they are missing (owner 2026-11-01: sāvatthiṃ / sāvatthiyaṃ was marked
+        // whole in one edition and not at all in another).
+        const chars = new Array(toks[i].length).fill(null), gaps = toks[i].map(() => new Set());
         for (let s = 0; s < minor.length; s++) {
             if (!minor[s]) continue;
             let e = s; while (e + 1 < minor.length && minor[e + 1]) e++;
@@ -462,23 +467,34 @@ function markEditionDiffs(texts) {
                 const score = same / Math.max(mine.length, theirs.length);
                 if (score > .5 && (!best || score > best.score)) best = { score, cm, theirs: theirs.length };
             }
-            // a letter only the other text has leaves nothing here to mark: the words stay marked whole
-            if (best && (best.cm.some(k => k < 0) || best.theirs === mine.length)) {
+            if (best) {
                 for (let x = s; x <= e; x++) chars[x] = new Set();
                 best.cm.forEach((k, q) => { if (k < 0) chars[mine[q][0]].add(mine[q][1]); });
+                const taken = new Set(best.cm.filter(k => k >= 0));
+                for (let t = 0; t < best.theirs; t++) {   // a letter of theirs not here: a gap before the next letter of ours
+                    if (taken.has(t)) continue;
+                    let q = best.cm.findIndex(k => k > t);
+                    if (q < 0) q = mine.length;
+                    if (q > 0 && best.cm[q - 1] < 0) continue;   // right after a letter of ours marked: a changed letter, marked already
+                    if (q < mine.length) gaps[mine[q][0]].add(mine[q][1]);
+                    else if (mine.length) gaps[mine[q - 1][0]].add(mine[q - 1][1] + 1);
+                }
             }
             s = e;
         }
         return toks[i].map((w, x) => {
             if (!minor[x]) return w;
             if (!chars[x]) return `<mark class="dg-ed-diff">${w}</mark>`;
-            if (!chars[x].size) return w;
+            if (!chars[x].size && !gaps[x].size) return w;
+            const gap = '<mark class="dg-ed-diff dg-ed-ch dg-ed-gap"></mark>', cs = Array.from(w.normalize('NFC'));
             let out = '', open = false;
-            Array.from(w.normalize('NFC')).forEach((c, k) => {
+            cs.forEach((c, k) => {
                 const on = chars[x].has(k);
+                if (!on && !open && gaps[x].has(k)) out += gap;   // beside a marked letter it says nothing more
                 if (on !== open) { out += on ? '<mark class="dg-ed-diff dg-ed-ch">' : '</mark>'; open = on; }
                 out += c;
             });
+            if (!open && gaps[x].has(cs.length)) out += gap;
             return out + (open ? '</mark>' : '');
         }).join(' ');
     });
