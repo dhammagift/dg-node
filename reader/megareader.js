@@ -370,6 +370,7 @@ window.dgSetEditionsDiff = function (on) {
     try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (e) { /* private mode */ }
     const s = document.getElementById('sutta');
     if (s) s.classList.toggle('dg-diff-on', !!on);
+    if (on) runEditionDiffs();   // the marks of this text, if not drawn yet
     const b = document.getElementById('dg-diff-btn');
     if (b) b.setAttribute('aria-pressed', String(!!on));
 };
@@ -385,6 +386,37 @@ function lcsMatch(a, b) {   // for each item of a, the index of its partner in a
 }
 // A word's letters as [index in the word, folded letter]: punctuation and quotes are never a difference
 const foldChars = w => Array.from(w.normalize('NFC')).map((c, k) => [k, c.toLowerCase().replace(/[ṃŋ]/, 'ṁ')]).filter(([, c]) => /\p{L}/u.test(c));
+// The marks are a layer over the drawn text (owner 2026-11-01, via Ultra: the text first, the marks after it): not in the
+// render - the letter-level comparison of a long text held its loading for ~0.4 s - but only while Differences is on,
+// after the text is drawn, a few segments per idle slice, each line's text swapped for its marked copy as it is ready.
+// edDiffSets: each segment's texts as the render drew them; its lines carry data-dd (the set's index), in order.
+let edDiffSets = [], edDiffJob = 0;
+function runEditionDiffs() {
+    const job = ++edDiffJob, sets = edDiffSets;
+    if (!sets.length || !suttaArea) return;
+    const lines = {};
+    suttaArea.querySelectorAll('.dg-ed-line[data-dd]').forEach(el => (lines[el.dataset.dd] = lines[el.dataset.dd] || []).push(el));
+    const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 16));
+    let i = 0;
+    const slice = deadline => {
+        if (job !== edDiffJob) return;   // a new render, or the comparison started again
+        do {
+            const texts = sets[i], marked = markEditionDiffs(texts);
+            (lines[i] || []).forEach((el, k) => {
+                const t = texts[k];
+                if (typeof t !== 'string' || marked[k] === t) return;
+                const node = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim() === t.trim());
+                if (!node) return;
+                const tpl = document.createElement('template');
+                tpl.innerHTML = marked[k];
+                node.replaceWith(tpl.content);
+            });
+            i++;
+        } while (i < sets.length && deadline.timeRemaining() > 2);
+        if (i < sets.length) idle(slice); else if (edDiffSets === sets) edDiffSets = [];   // all drawn: nothing left to do
+    };
+    idle(slice);
+}
 // texts: one line per text (undefined = no line). Returns the texts with the minority words in <mark>; a line with
 // markup of its own (a search hit's <b>) is left as it is.
 function markEditionDiffs(texts) {
@@ -2113,7 +2145,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // The Pali part of one segment. MS only: the text as it was. One other edition: its line, or the MS line plated "MS"
     // where it has none. Several: one line per edition, plated (CSS hides the plates in the grid, where the header
     // names the column); a line an edition lacks is "—", a heading it lacks stays empty (no plates on headings).
-    const edDiff = true;   // marks always drawn with several editions, shown by #sutta.dg-diff-on (dgSetEditionsDiff)
+    edDiffSets = []; edDiffJob++;   // this render's Differences, drawn after it (runEditionDiffs)
     function editionLines(segment, msText, linkStart = '', linkEnd = '') {
         const heading = /^0\./.test(segment.slice(segment.indexOf(':') + 1));
         // plates on headings too once plates are on: the translations' title lines carry theirs (owner 2026-10-31)
@@ -2125,11 +2157,11 @@ window.buildSutta = async function(rawSlug, opts) {
             if (t !== undefined) return `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${linkStart}${t.trim()}${linkEnd}</span>`;
             return `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${linkStart}${msText}${linkEnd}</span>`;
         }
-        let texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
-        if (edDiff && !heading) texts = markEditionDiffs(texts);
+        const texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
+        const dd = !heading && texts.filter(t => typeof t === 'string' && t.trim()).length > 1 ? ` data-dd="${edDiffSets.push(texts) - 1}"` : '';
         return shownEds.map((e, k) => {
             const t = texts[k];
-            const tag = ` data-tag="${edInfo(e).tag}"`;
+            const tag = ` data-tag="${edInfo(e).tag}"${dd}`;
             const cls = 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'; a heading's too
             const c = colIndex[`ed:${e}`] || k + 1;
             if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${c}"${tag}>${heading ? '' : '—'}</span>`;
@@ -2383,6 +2415,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const keepLeft = prevArticle && suttaArea.dataset.slug === slug ? prevArticle.scrollLeft : 0;
     suttaArea.dataset.slug = slug;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
+    if (window.dgEditionsDiff()) runEditionDiffs();
     if (keepLeft) { const a = suttaArea.querySelector(':scope > article'); if (a) a.scrollLeft = keepLeft; }
     followHeader();   // the column header's place under the site header (placeColsHead)
     document.documentElement.classList.remove('dg-eds-loading');   // the editions are drawn (search/index.html)
