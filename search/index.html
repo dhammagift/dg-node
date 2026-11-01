@@ -1540,12 +1540,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // Пропускаем, если это прямой заход на URL ридера (routeFromUrl() уже отработал синхронно
   // и выставил dg-state-reader ДО этого load-хендлера) — иначе фокус в поле съедал хоткеи
   // ридера сразу после открытия (owner: "горячие клавиши не работают").
+  // A field the person tapped before the page finished loading is theirs: the blur below took the focus and the keyboard
+  // away from them (owner 2026-11-01: «клавиатура открывается и потом сворачивается… я поставил фокус пальцем»).
+  var dgFieldTapped = false;
+  document.addEventListener('pointerdown', function (e) { if (e.target && e.target.id === 'paliauto') dgFieldTapped = true; }, true);
   window.addEventListener('load', function () {
     var el = document.getElementById('paliauto');
     // Touch screens: no focus at all. The native autofocus attribute does fire there, and a field
     // left focused brought the on-screen keyboard up over the next text opened from History (tablet).
     if (window.matchMedia('(hover: none) and (pointer: coarse)').matches) {
-      if (el && document.activeElement === el) el.blur();
+      if (el && document.activeElement === el && !dgFieldTapped) el.blur();
       return;
     }
     if (document.body.classList.contains('dg-state-reader')) return;
