@@ -580,7 +580,9 @@ onReady(() => {
                 sessionStorage.setItem('dgCompareSeed', '1');
             }
         } catch (err) { /* private mode: multi as it is */ }
-        const path = '/' + slug + ':' + seg + '?mode=multi';
+        // Differences on: comparing is what was asked for (owner 2026-11-01: «разница должна быть включена сразу»); ?diff=1 is
+        // the share links' per-visit override (megareader.js), the reader's own saved choice stays as it was
+        const path = '/' + slug + ':' + seg + '?mode=multi&diff=1';
         // In the apps /sn56.11 is no file (the dot reads as an extension): the root with the _nativeRoute handoff, as Default does
         if (window.dgOfflineReady && slug.indexOf('.') !== -1) window.location.href = '/?_nativeRoute=' + encodeURIComponent(path);
         else window.location.href = path;
