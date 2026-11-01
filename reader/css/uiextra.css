@@ -462,7 +462,7 @@
     min-width: var(--dg-gridw);
     align-items: start;
   }
-  #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: 1; }
+  #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: var(--c, 1); }   /* --c: its place (megareader.js dgColOrder) */
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang { display: contents; }
   #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); grid-row: 1; margin: 0; }
   /* a title row's speaker sits inside its first edition line (reader/common.js), on the title's line, lines and grid alike */

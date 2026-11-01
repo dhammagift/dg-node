@@ -2229,7 +2229,7 @@
             try {
                 // paliToggle too: "−" on the last translation leaves Pāḷi only, and Default did not bring the
                 // translations back (Ultra's review 2026-11-01); a shared link's view goes with it (dgShareView)
-                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions', 'paliToggle']
+                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions', 'paliToggle', 'dgColOrder']
                     .forEach(function (k) { localStorage.removeItem(k); });
                 sessionStorage.removeItem('dgReadingStackLocal');
                 sessionStorage.removeItem('dgShareView');
@@ -2369,6 +2369,14 @@
     /* Column view: a tap on a column's name opens a short list of what else that column can show - the other editions
        (that this text is in) for a Pali column, the text's other translators for a translation column - and the pick
        takes the column's place (owner 2026-10-31: «переключить по заголовку… и переводчиков»). */
+    // the columns' places across kinds (megareader.js dgColOrder): the keys in the header's order, saved as the pattern
+    function colShown() {
+        return [].map.call(document.querySelectorAll('.dg-cols-head [data-col-cell]'), function (c) { return c.dataset.colCell; });
+    }
+    function colOrderSet(keys) { try { localStorage.setItem('dgColOrder', JSON.stringify(keys)); } catch (x) { /* private mode */ } }
+    function colOrderRename(from, to) {
+        try { var o = JSON.parse(localStorage.getItem('dgColOrder') || 'null'); if (o) colOrderSet(o.map(function (k) { return k === from ? to : k; })); } catch (x) { /* private mode */ }
+    }
     function colMenuClose() {
         var m = document.querySelector('.dg-colmenu');
         if (m) m.remove();
@@ -2380,6 +2388,10 @@
             var from = pick.parentNode.dataset.from, to = pick.dataset.pick, after = pick.parentNode.dataset.after;
             colMenuClose();
             if (after) {   // "+": the pick goes in right after that column
+                try {   // ...in the saved places too, else it stood at the end
+                    var o = JSON.parse(localStorage.getItem('dgColOrder') || 'null');
+                    if (o) { o.splice(o.indexOf(after) + 1, 0, to); colOrderSet(o); }
+                } catch (x) { /* private mode */ }
                 if (after.indexOf('ed:') === 0) {
                     var e1 = window.getEditions(), at = e1.indexOf(after.slice(3)) + 1;
                     e1.splice(at, 0, to.slice(3));
@@ -2392,6 +2404,20 @@
                 return;
             }
             if (from === to) return;
+            var shownNow = colShown(), fi = shownNow.indexOf(from), ti = shownNow.indexOf(to);
+            if (ti !== -1) {   // a text already on screen: the two columns change places (owner 2026-11-01: «в любую колонку… всё, что уже выбрано»)
+                if (from.slice(0, 3) !== to.slice(0, 3)) {
+                    shownNow[fi] = to; shownNow[ti] = from;
+                    colOrderSet(shownNow);
+                    tsApplyEditions(window.getEditions());   // a redraw where it is being read, the lists unchanged
+                } else if (from.indexOf('ed:') === 0) {
+                    tsApplyEditions(window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : 'ed:' + x === to ? from.slice(3) : x; }));
+                } else {
+                    tsApply(tsStack().map(function (k) { return 'tr:' + k === from ? to.slice(3) : 'tr:' + k === to ? from.slice(3) : k; }));
+                }
+                return;
+            }
+            colOrderRename(from, to);
             if (from.indexOf('ed:') === 0) {
                 var eds = window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : x; });
                 tsApplyEditions(eds.filter(function (x, i) { return eds.indexOf(x) === i; }));
@@ -2447,6 +2473,12 @@
         } else {
             items = tsAvailable().slice().sort(tsByRank).map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
         }
+        // ...and the texts of the other kind already on screen: the pick swaps the two columns
+        colShown().forEach(function (k) {
+            if (k.slice(0, 3) === key.slice(0, 3)) return;
+            var b = document.querySelector('.dg-cols-head [data-col="' + k + '"]');
+            items.push([k, b ? b.textContent : k, ru ? '⇄ поменять местами' : '⇄ swap']);
+        });
         colMenuOpen(cell, key, items, false);
     });
     // the menu under a column's name (switch: which text this column shows) or under its "+" (add: which text goes right of it)
@@ -2465,9 +2497,9 @@
         anchor.setAttribute('aria-expanded', 'true');
     }
     window.addEventListener('scroll', colMenuClose, { passive: true });
-    /* Dragging a column's name sideways moves the column (owner 2026-10-31: «колонки… draggable»): editions among the
-       editions, translations among the translations (the grid draws the Pali first). A move of less than 8 px is a tap
-       and opens the column menu. Pointer events: mouse and finger alike. */
+    /* Dragging a column's name sideways moves the column (owner 2026-10-31: «колонки… draggable»), anywhere: a Pali text
+       may go after a translation (owner 2026-11-01). A move of less than 8 px is a tap and opens the column menu.
+       Pointer events: mouse and finger alike. */
     var colDrag = null, colDragJustEnded = false;
     document.addEventListener('pointerdown', function (e) {
         var name = e.target.closest('.dg-col-cell > [data-col]');
@@ -2482,11 +2514,9 @@
             colMenuClose();
             colDrag.cell.classList.add('is-drag');
         }
-        var cells = [].slice.call(colDrag.cell.parentNode.querySelectorAll('[data-col-cell]'));
-        var group = colDrag.key.slice(0, 3);
-        cells.forEach(function (c) { c.classList.remove('is-drop', 'is-drop-end'); });
-        var mates = cells.filter(function (c) { return c.dataset.colCell.slice(0, 3) === group; });
-        var at = mates.length;   // drop index among the column's own group
+        var mates = [].slice.call(colDrag.cell.parentNode.querySelectorAll('[data-col-cell]'));
+        mates.forEach(function (c) { c.classList.remove('is-drop', 'is-drop-end'); });
+        var at = mates.length;   // drop index among all the columns
         for (var i = 0; i < mates.length; i++) {
             var r = mates[i].getBoundingClientRect();
             if (e.clientX < r.left + r.width / 2) { at = i; break; }
@@ -2501,21 +2531,17 @@
         setTimeout(function () { colDragJustEnded = false; }, 400);
         var cells = [].slice.call(d.cell.parentNode.querySelectorAll('[data-col-cell]'));
         cells.forEach(function (c) { c.classList.remove('is-drag', 'is-drop', 'is-drop-end'); });
-        var group = d.key.slice(0, 3);
-        var keys = cells.map(function (c) { return c.dataset.colCell; }).filter(function (k) { return k.slice(0, 3) === group; });
+        var keys = cells.map(function (c) { return c.dataset.colCell; });
         var from = keys.indexOf(d.key), to = d.target == null ? from : d.target;
         if (to > from) to--;   // the index counted the column itself
         if (to === from) return;
         keys.splice(from, 1); keys.splice(to, 0, d.key);
-        var ids = keys.map(function (k) { return k.slice(3); });
-        if (group === 'ed:') {
-            // the grid shows the chosen editions this text has; the others keep their place after them
-            var rest = window.getEditions().filter(function (x) { return ids.indexOf(x) === -1; });
-            tsApplyEditions(ids.concat(rest));
-        } else {
-            var restT = tsStack().filter(function (k) { return ids.indexOf(k) === -1; });
-            tsApply(ids.concat(restT));
-        }
+        colOrderSet(keys);   // which kind stands where; the lists below say which text of a kind comes first
+        var ids = function (g) { return keys.filter(function (k) { return k.slice(0, 3) === g; }).map(function (k) { return k.slice(3); }); };
+        // the grid shows the chosen editions this text has; the others keep their place after them
+        var edIds = ids('ed:'), eds = edIds.concat(window.getEditions().filter(function (x) { return edIds.indexOf(x) === -1; }));
+        var trIds = ids('tr:'), stack = tsStack(), trs = trIds.concat(stack.filter(function (k) { return trIds.indexOf(k) === -1; }));
+        if (trs.join() !== stack.join()) { window.setEditions(eds); tsApply(trs); } else tsApplyEditions(eds);
     });
     // a cancelled drag (the browser took the touch for a scroll) ends it too, else the next sideways touch reordered
     // the columns with the stale one (Ultra's review 2026-11-01)

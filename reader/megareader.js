@@ -497,6 +497,17 @@ document.addEventListener('scroll', e => {
     const head = a.parentElement.querySelector(':scope > .dg-cols-head > .dg-cols-head-in');
     if (head) head.style.transform = `translateX(${-a.scrollLeft}px)`;
 }, true);
+// The columns' order across kinds (owner 2026-11-01: «колонки-то не должно быть привязано»): a Pali text may stand after
+// a translation. Saved (home.js, the column menu and drag) is the pattern of the places, which kind stands where; which
+// edition or translation fills them is still the editions' and translations' own order, so adding, removing or
+// reordering one of them keeps the pattern. Nothing saved: the Pali first, as before.
+window.dgColOrder = function (keys) {
+    let saved = [];
+    try { saved = JSON.parse(localStorage.getItem('dgColOrder') || '[]') || []; } catch (e) { /* private mode */ }
+    const rank = k => { const i = saved.indexOf(k); return i === -1 ? 1000 + keys.indexOf(k) : i; };
+    const fill = { ed: keys.filter(k => k.startsWith('ed:')), tr: keys.filter(k => k.startsWith('tr:')) };
+    return keys.slice().sort((a, b) => rank(a) - rank(b)).map(k => fill[k.slice(0, 2)].shift());
+};
 // The edition TTS reads (voice.js): the first chosen one; its missing lines fall back to MS there too.
 // Memorize and Devanagari show MS only, so they read MS (Ultra's review 2026-11-01), the same rule as edsAsked.
 window.dgReadEdition = () => (isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey)) ? 'ms' : getEditions()[0];
@@ -2030,8 +2041,12 @@ window.buildSutta = async function(rawSlug, opts) {
     const trnCols = edMulti && localStorage.getItem('paliToggle') === 'pli' ? [] : orderedEntries;
     const gridCols = (edMulti ? shownEds.length : 1) + trnCols.length;
     const useGrid = (gridCols >= 3 || (edMulti && gridCols >= 2)) && !isMemModeRender && !isDevModeRender;
+    // every column's place: the Pali first by default, or where the reader put them (window.dgColOrder)
+    const colKeys = window.dgColOrder((edMulti ? shownEds : [shownEds[0]]).map(e => `ed:${e}`).concat(trnCols.map(({ entry }) => `tr:${entry.key}`)));
+    const colIndex = {};   // column key ("ed:pts", "tr:ru_o") -> its grid column
+    colKeys.forEach((k, i) => { colIndex[k] = i + 1; });
     const colOf = {};   // translation key -> its grid column
-    orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = (edMulti ? shownEds.length : 1) + k + 1; });
+    orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = colIndex[`tr:${entry.key}`] || (edMulti ? shownEds.length : 1) + k + 1; });
     let editionsHead = '', colsHead = '';
     if (useGrid) {
         // A tap on a column's name switches what the column shows (home.js, the column menu): another edition, or
@@ -2040,7 +2055,8 @@ window.buildSutta = async function(rawSlug, opts) {
             .concat(trnCols.map(({ lang, entry }) => {
                 const raw = (window.siteTranslators && window.siteTranslators[lang] && window.siteTranslators[lang][entry.translatorId]) || entry.translatorId;
                 return [`tr:${entry.key}`, String(raw).replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim() + ' · ' + lang];
-            }));
+            }))
+            .sort((a, b) => colIndex[a[0]] - colIndex[b[0]]);
         // Each name can be dragged sideways to move its column (home.js); the last column carries + (open the
         // Translations window to add a text) and − (drop this column) (owner 2026-10-31).
         // every column: − drops it, + adds a text to its right (owner 2026-10-31: «на каждой колонке»); − first, + nearer
@@ -2101,8 +2117,9 @@ window.buildSutta = async function(rawSlug, opts) {
             const t = texts[k];
             const tag = ` data-tag="${edInfo(e).tag}"`;
             const cls = 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'; a heading's too
-            if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${k + 1}"${tag}>${heading ? '' : '—'}</span>`;
-            return `<span class="${cls}" data-ed="${e}" style="--c:${k + 1}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
+            const c = colIndex[`ed:${e}`] || k + 1;
+            if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${c}"${tag}>${heading ? '' : '—'}</span>`;
+            return `<span class="${cls}" data-ed="${e}" style="--c:${c}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
         }).join('');
     }
 
@@ -2171,7 +2188,8 @@ window.buildSutta = async function(rawSlug, opts) {
             const pliSpanClass = isMemMode ? pliClass + ' dict-ignore' : pliClass;
             // Several editions: every edition line carries the segment's copy links itself (lines and columns alike),
             // so each line keeps its context menu at its start and after its end (owner 2026-10-31)
-            inner += `<span class="${pliSpanClass}" lang="pi">${editionLines(segment, pliContent, linkToCopyStart, linkToCopy)}`;
+            const pliCol = useGrid && !edMulti ? ` style="--c:${colIndex[`ed:${shownEds[0]}`] || 1}"` : '';
+            inner += `<span class="${pliSpanClass}" lang="pi"${pliCol}>${editionLines(segment, pliContent, linkToCopyStart, linkToCopy)}`;
             // dualScript mode (dev/dev_en): variant stays attached to the ISO/Latin line below
             // (matches prod's devanagari.js), not the script-converted main line here. The variant line belongs to the
             // MS text: gone when MS itself is not shown.
