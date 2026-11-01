@@ -10,6 +10,10 @@
 let dgScrollToken = 0;
 window.dgScrollToElement = function (el, offset, instant, done) {
     const token = ++dgScrollToken;
+    // our own scroll, not the reader's: the auto-hiding header (search/index.html) must not take its corrections
+    // for a move back up and slide in at the end (owner 2026-11-01, dn2 opened from a search)
+    window.dgScrollingTo = token;
+    const finish = () => { if (window.dgScrollingTo === token) setTimeout(() => { if (window.dgScrollingTo === token) window.dgScrollingTo = 0; }, 100); if (done) done(); };
     const targetY = () => {
         const r = el.getBoundingClientRect();
         return Math.max(0, window.pageYOffset + r.top - (offset === 'center' ? (window.innerHeight - r.height) / 2 : offset));
@@ -19,10 +23,10 @@ window.dgScrollToElement = function (el, offset, instant, done) {
     const settle = () => {
         if (token !== dgScrollToken) return;
         if (Math.abs(targetY() - window.pageYOffset) > 40 && tries++ < 5) { go('instant'); setTimeout(settle, 350); }
-        else if (done) done();
+        else finish();
     };
     // The reader takes over: any manual scroll input cancels the pending corrections.
-    const cancel = () => { if (token === dgScrollToken) dgScrollToken++; };
+    const cancel = () => { if (token === dgScrollToken) dgScrollToken++; if (window.dgScrollingTo === token) window.dgScrollingTo = 0; };
     ['wheel', 'touchstart', 'keydown'].forEach(ev => window.addEventListener(ev, cancel, { once: true, passive: true }));
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => {
         if (token !== dgScrollToken) return;

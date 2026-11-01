@@ -1968,6 +1968,13 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // of a second per jump between find-on-page matches (2026-10-06).
       var hide = document.body.classList.contains('dg-header-hidden');
       if (viewportMoved()) { lastY = y; upRun = 0; return; }   // the browser's own bar moved the page, not the reader
+      // the page's own jump to a place (smoothScroll.js dgScrollToElement, its corrections included): not a move back up -
+      // away from the top the header stays out of the way (owner 2026-11-01: it slid in at the end of opening dn2)
+      if (window.dgScrollingTo) {
+        lastY = y; upRun = 0;
+        if ((y >= bandHeight) !== hide) document.body.classList.toggle('dg-header-hidden', y >= bandHeight);
+        return;
+      }
       upRun = delta < 0 ? upRun - delta : 0;
       if (y < bandHeight) hide = false;
       else if (delta > DOWN_THRESHOLD) hide = true;
