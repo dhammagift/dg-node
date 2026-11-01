@@ -781,6 +781,16 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
         packs.push({ ...pub, texts: r.texts, segments: r.segments, fts: 'trigram', bytes: r.bytes,
             bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256, url: `packs/${name}`, build_id: r.buildId });
         console.log(`pack ${d.id}: ${r.segments} rows, ${(r.bytes / 1048576).toFixed(0)} MB, gz ${(gz.bytes / 1048576).toFixed(0)} MB`);
+        // A pack of many languages says how many texts each one brings: "21 languages" alone told a reader nothing (owner
+        // 2026-11-01) - the sheet and the picker unfold it per language.
+        if (d.langs && d.langs.length) {
+            const db = new DatabaseSync(`file:${OUT_PATH}?mode=ro`, { readOnly: true });
+            const rows = db.prepare(`SELECT lang, count(DISTINCT sutta_id) n FROM texts WHERE kind = 'translation' AND lang IN (${d.langs.map(() => '?').join(',')})
+                AND (translator IS NULL OR translator NOT IN (${OFFLINE_EXCLUDED_TRANSLATORS.map(() => '?').join(',')})) GROUP BY lang ORDER BY n DESC, lang`)
+                .all(...d.langs, ...OFFLINE_EXCLUDED_TRANSLATORS);
+            db.close();
+            packs[packs.length - 1].lang_texts = Object.fromEntries(rows.map(x => [x.lang, x.n]));
+        }
     }
     // Every row of the offline copy is in exactly one pack: a row left out would silently vanish offline.
     const sum = packs.reduce((a, p) => a + p.segments, 0);

@@ -166,8 +166,17 @@
         #dgConsentSheet .dgc-cb.lock { opacity: .55; }
         #dgConsentSheet .dgc-row { position: relative; }
         #dgConsentSheet .dgc-nm { flex: 1; min-width: 0; }
-        #dgConsentSheet .dgc-nm span { display: block; font-size: 13.5px; font-weight: 500; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-nm > span { display: block; font-size: 13.5px; font-weight: 500; color: var(--dgc-ink); }
         #dgConsentSheet .dgc-tag { display: inline-block; font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; line-height: 1; padding: 3px 5px; margin-right: 7px; border: 1px solid var(--dgc-faint); color: var(--dgc-muted); border-radius: 5px; vertical-align: 2px; }
+        #dgConsentSheet .dgc-peek { display: inline-block; width: auto; flex: none; background: none; border: 0; padding: 4px 0 0; font-size: 12px; font-weight: 600; color: var(--dgc-accent); cursor: pointer; }
+        #dgConsentSheet { position: relative; }
+        #dgConsentSheet .dgc-pop { position: absolute; left: 0; right: 0; bottom: 0; max-height: 100%; z-index: 2; box-shadow: 0 -18px 40px -12px rgba(0,0,0,.45); background: var(--dgc-surface); border-radius: 20px; padding: 20px 18px 16px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
+        #dgConsentSheet .dgc-pop-h b { display: block; font-size: 16.5px; font-weight: 600; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-pop-h span { font-size: 12.5px; color: var(--dgc-muted); }
+        #dgConsentSheet .dgc-langs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; align-content: start; overflow: auto; min-height: 0; flex: 0 1 auto; background: var(--dgc-sunk); border: 1px solid var(--dgc-rule); border-radius: 12px; padding: 12px; font-size: 13.5px; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-langs > span { display: flex; justify-content: space-between; gap: 8px; }
+        #dgConsentSheet .dgc-langs i { font-style: normal; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        #dgConsentSheet .dgc-langs em { font-style: normal; color: var(--dgc-faint); font-variant-numeric: tabular-nums; flex: none; }
         #dgConsentSheet .dgc-nm small { display: block; font-size: 11.5px; color: var(--dgc-muted); margin-top: 1px; }
         #dgConsentSheet .dgc-sz { flex: none; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--dgc-ink); }
         #dgConsentSheet .dgc-sz small { display: block; font-size: 11px; color: var(--dgc-faint); }
@@ -656,19 +665,41 @@
             if (INFO[p.id]) return INFO[p.id][ru ? 'ru' : 'en'];
             if (p.main) return 'Mahāsaṅgīti';
             if (p.title) return ru ? p.title.ru : p.title.en;
-            if (p.id === 'tr-small') return ru ? 'Ещё ' + (p.langs || []).length + ' языков' : (p.langs || []).length + ' more languages';
+            if (p.langs && p.langs.length > 1) return ru ? 'Другие языки' : 'Other languages';
             return self[p.lang] || p.lang || p.id;
         };
         var texts = function (n) {
-            if (!ru) return (n || 0).toLocaleString('en') + ' texts';
+            if (!ru) return (n || 0).toLocaleString('en') + (n === 1 ? ' text' : ' texts');
             var d = n % 10, h = n % 100;
             return (n || 0).toLocaleString('ru') + (d === 1 && h !== 11 ? ' текст' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? ' текста' : ' текстов');
+        };
+        // A pack of many languages: which ones, and how many texts each (owner 2026-11-01: «21 язык — эффектно, но
+        // бессмысленно… кнопочку, чтобы подсмотреть»). The counts come from the manifest (lang_texts).
+        var NATIVE = { ka: 'ქართული', lo: 'ລາວ', my: 'မြန်မာ', gsw: 'Schwiizertüütsch', id: 'Bahasa Indonesia', jpn: '日本語' };
+        var langName = function (l) {
+            if (NATIVE[l]) return NATIVE[l];
+            try { var n = new Intl.DisplayNames([l], { type: 'language' }).of(l); return n.charAt(0).toUpperCase() + n.slice(1); } catch (e) { return l; }
+        };
+        var langsOf = function (p) {
+            if (!(p.langs && p.langs.length > 1)) return '';
+            var lt = p.lang_texts || {}, ls = p.langs.slice().sort(function (a, b) { return (lt[b] || 0) - (lt[a] || 0); });
+            return '<button type="button" class="dgc-peek" data-peek="' + p.id + '">' + (ru ? 'Какие языки ›' : 'Which languages ›') + '</button>';
+        };
+        // ...shown in a layer over the sheet, not unfolding it a second time (owner 2026-11-01)
+        var langsLayer = function (p) {
+            var lt = p.lang_texts || {}, ls = p.langs.slice().sort(function (a, b) { return (lt[b] || 0) - (lt[a] || 0); });
+            // language and number, nothing more (owner 2026-11-01: «язык — число… догадаются, что это количество текстов»)
+            return '<div class="dgc-pop-h"><b>' + name(p) + '</b></div>' +
+                '<div class="dgc-langs">' + ls.map(function (l) { return '<span><i>' + langName(l) + '</i><em>' + (lt[l] || '') + '</em></span>'; }).join('') + '</div>' +
+                '<div class="dgc-actions"><button type="button" class="dgc-ghost dgc-pop-x">' + (ru ? '‹ Назад' : '‹ Back') + '</button></div>';
         };
         var row = function (p) {
             return '<label class="dgc-row"><input type="checkbox" data-pack="' + p.id + '"' + (on[p.id] ? ' checked' : '') + (p.main || p.required ? ' disabled' : '') + '>' +
                 '<span class="dgc-cb' + (p.main || p.required ? ' lock' : '') + '" data-cb="' + p.id + '"></span>' +
                 '<span class="dgc-nm"><span>' + (INFO[p.id] ? '<i class="dgc-tag">' + INFO[p.id].tag + '</i>' : '') + name(p) + '</span><small>' +
-                (INFO[p.id] && INFO[p.id][ru ? 'capRu' : 'capEn'] ? INFO[p.id][ru ? 'capRu' : 'capEn'] + ' · ' : '') + texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
+                (INFO[p.id] && INFO[p.id][ru ? 'capRu' : 'capEn'] ? INFO[p.id][ru ? 'capRu' : 'capEn'] + ' · ' : '') +
+                (p.langs && p.langs.length > 1 ? (ru ? p.langs.length + ' ' + (p.langs.length % 10 === 1 && p.langs.length % 100 !== 11 ? 'язык' : p.langs.length % 10 >= 2 && p.langs.length % 10 <= 4 && (p.langs.length % 100 < 12 || p.langs.length % 100 > 14) ? 'языка' : 'языков') : p.langs.length + ' languages') + ' · ' : '') +
+                texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small>' + langsOf(p) + '</span>' +
                 '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
         };
         // the base, then the three national canons, then the composite editions (owner 2026-11-01; offline-library-settings.js too)
@@ -729,6 +760,17 @@
             }
             draw();
             q('.dgc-link').addEventListener('click', function () { open = !open; draw(); });
+            q('.dgc-list').addEventListener('click', function (ev) {
+                var b = ev.target.closest && ev.target.closest('[data-peek]');
+                if (!b) return;
+                ev.preventDefault(); ev.stopPropagation();   // inside the row's label: the tap must not tick the pack
+                var p = packs.filter(function (x) { return x.id === b.getAttribute('data-peek'); })[0];
+                var pop = document.createElement('div');
+                pop.className = 'dgc-pop';
+                pop.innerHTML = langsLayer(p);
+                q('#dgConsentSheet') ? q('#dgConsentSheet').appendChild(pop) : overlay.firstChild.appendChild(pop);
+                pop.querySelector('.dgc-pop-x').addEventListener('click', function () { pop.remove(); });
+            });
             q('.dgc-list').addEventListener('change', function (ev) {
                 var box = ev.target.closest && ev.target.closest('input[data-pack]');
                 if (box) { on[box.getAttribute('data-pack')] = box.checked; draw(); }

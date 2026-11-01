@@ -252,7 +252,7 @@
         }
         function name(p) {
             if (ROOT_INFO[p.id]) return ROOT_INFO[p.id][isRu ? 'ru' : 'en'];
-            if (p.langs && p.langs.length > 1) return L.more(p.langs.length);   // counted here: the plural is ours to get right
+            if (p.langs && p.langs.length > 1) return isRu ? 'Другие языки' : 'Other languages';
             if (p.title) return p.title[isRu ? 'ru' : 'en'] || p.title.en || p.id;
             if (isRoot(p)) return EDITIONS[p.edition || p.id.replace(/^root-/, '')] || p.id;
             var lang = langOf(p);
@@ -263,11 +263,21 @@
             var bits = [];
             if (ROOT_INFO[p.id]) { if (ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn']) bits.push(esc(ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn'])); }
             else if (p === main) bits.push(esc(L.core));
-            if (p.langs && p.langs.length > 1) bits.push(p.langs.map(function (l) { return '<span style="white-space:nowrap">' + esc(nativeName(l)) + '</span>'; }).join(' · '));
+            if (p.langs && p.langs.length > 1) bits.push(esc(isRu ? p.langs.length + ' ' + (p.langs.length % 10 === 1 && p.langs.length % 100 !== 11 ? 'язык' : p.langs.length % 10 >= 2 && p.langs.length % 10 <= 4 && (p.langs.length % 100 < 12 || p.langs.length % 100 > 14) ? 'языка' : 'языков') : p.langs.length + ' languages'));
             // "6 991 текст", "7 284 текста", "7 605 текстов": the Russian plural by the last digits, not one suffix for all.
             var tw = function (n) { var d = n % 10, h = n % 100; return d === 1 && h !== 11 ? ' текст' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? ' текста' : ' текстов'; };
             if (p.texts) bits.push(esc(p.texts.toLocaleString(isRu ? 'ru' : 'en') + (isRu ? tw(p.texts) : L.texts)));
             return bits.join(' · ');
+        }
+        // A pack of many languages: which ones and how many texts each (owner 2026-11-01), behind a small link.
+        function peek(p) {
+            if (!(p.langs && p.langs.length > 1)) return '';
+            var lt = p.lang_texts || {}, ls = p.langs.slice().sort(function (a, b) { return (lt[b] || 0) - (lt[a] || 0); });
+            var tw = function (n) { var d = n % 10, h = n % 100; return n.toLocaleString(isRu ? 'ru' : 'en') + (isRu ? (d === 1 && h !== 11 ? ' текст' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? ' текста' : ' текстов') : (n === 1 ? ' text' : ' texts')); };
+            return '<button type="button" class="pk-peek" data-peek="' + esc(p.id) + '">' + (isRu ? 'Какие языки ›' : 'Which languages ›') + '</button>'
+                + '<template data-langs="' + esc(p.id) + '"><div class="pk-pop"><p class="pk-pop-h">' + esc(name(p)) + '</p><div class="pk-langs">' + ls.map(function (l) {
+                    return '<span><i>' + esc(nativeName(l)) + '</i><em>' + (lt[l] || '') + '</em></span>';
+                }).join('') + '</div><div class="pk-pop-f"><button type="button" class="btn pk-pop-x">' + (isRu ? '‹ Назад' : '‹ Back') + '</button></div></div></template>';
         }
         var mbOf = function (b) { return Math.max(1, Math.round((b || 0) / 1048576)); };
 
@@ -300,7 +310,7 @@
             var st = document.createElement('style');
             st.id = 'pkStyle';
             st.textContent = '.pk-sec{margin:0;padding:10px 18px 6px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-3)}'
-                + '.pk-name{flex:1;min-width:0}.pk-name b{display:block;font-weight:400}.pk-ed{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;line-height:1;padding:3px 5px;margin-right:7px;border:1px solid currentColor;border-radius:5px;opacity:.6;vertical-align:2px}.pk-size{white-space:nowrap;margin:0!important;text-align:right}'
+                + '.pk-peek{display:block;background:none;border:0;padding:4px 0 0;font:inherit;font-size:12.5px;font-weight:600;color:var(--bs-link-color,#0d8a72);cursor:pointer}#pkDlg{position:relative}.pk-pop{position:absolute;left:0;right:0;bottom:0;max-height:100%;z-index:3;box-shadow:0 -18px 40px -12px rgba(0,0,0,.35);border-radius:inherit;background:var(--bs-body-bg,#fff);display:flex;flex-direction:column;padding:18px;gap:12px;box-sizing:border-box}.pk-pop-h{margin:0;font-size:18px;font-weight:600}.pk-langs{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;overflow:auto;min-height:0;font-size:14px}.pk-langs span{display:flex;justify-content:space-between;gap:8px}.pk-langs i{font-style:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pk-langs em{font-style:normal;opacity:.6;font-variant-numeric:tabular-nums}.pk-pop-f{display:flex}.pk-pop-f .btn{flex:1;justify-content:center;text-align:center}.pk-name{flex:1;min-width:0}.pk-name b{display:block;font-weight:400}.pk-ed{display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.04em;line-height:1;padding:3px 5px;margin-right:7px;border:1px solid currentColor;border-radius:5px;opacity:.6;vertical-align:2px}.pk-size{white-space:nowrap;margin:0!important;text-align:right}'
                 + '.pk-tag-have{color:var(--accent)}.pk-tag-del{color:#c0392b}.pk-tag-new{font-style:italic}'
                 + '.pk-delall{background:none;border:0;padding:0;font:inherit;font-size:13px;color:#c0392b;cursor:pointer;text-decoration:underline}'
                 + '#pkDlg li.pk-del b{text-decoration:line-through;opacity:.7}#pkGo{min-width:132px;justify-content:center}#pkGo[disabled]{opacity:.5;cursor:default}'
@@ -319,7 +329,7 @@
             var d = [desc(p), p === main || p.required ? L.required : '', tag].filter(Boolean).join(' · ');
             return '<li' + (has(p) && !on[p.id] ? ' class="pk-del"' : '') + '><label><input type="checkbox" data-id="' + esc(p.id) + '"'
                 + (on[p.id] ? ' checked' : '') + (p === main || p.required ? ' disabled' : '') + '>'
-                + '<span class="pk-name"><b>' + (ROOT_INFO[p.id] ? '<span class="pk-ed">' + ROOT_INFO[p.id].tag + '</span>' : '') + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + '</span>'
+                + '<span class="pk-name"><b>' + (ROOT_INFO[p.id] ? '<span class="pk-ed">' + ROOT_INFO[p.id].tag + '</span>' : '') + esc(name(p)) + '</b>' + (d ? '<span class="row-desc" style="margin:0">' + d + '</span>' : '') + peek(p) + '</span>'
                 + '<span class="row-desc pk-size">' + mbOf(p.bytes) + ' ' + L.mb
                 + (has(p) && outdated.indexOf(p.id) === -1 ? '' : '<br><small style="opacity:.75">↓ ' + mbOf(p.bytes_gz || p.bytes) + ' ' + L.mb + '</small>')
                 + '</span></label></li>';
@@ -348,6 +358,16 @@
             go.textContent = !changes ? L.nothing
                 : pl.add.length && pl.add.every(has) && !pl.del.length ? L.refresh
                 : pl.add.length && pl.del.length ? L.upd : pl.add.length || oldWhole ? L.get : L.rm;
+            dlg.querySelectorAll('[data-peek]').forEach(function (b) {
+                b.onclick = function (ev) {
+                    ev.preventDefault(); ev.stopPropagation();   // inside the row's label: no tick
+                    // a layer over the dialog, not a second unfolding (owner 2026-11-01): language and number only
+                    var t = dlg.querySelector('template[data-langs="' + b.getAttribute('data-peek') + '"]');
+                    var pop = t.content.firstChild.cloneNode(true);
+                    dlg.appendChild(pop);
+                    pop.querySelector('.pk-pop-x').onclick = function (e2) { e2.preventDefault(); pop.remove(); };
+                };
+            });
             dlg.querySelectorAll('input[data-id]').forEach(function (cb) {
                 cb.onchange = function () {
                     on[cb.getAttribute('data-id')] = cb.checked;
