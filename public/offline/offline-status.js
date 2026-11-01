@@ -149,6 +149,27 @@
            and is allowed to wrap rather than being clipped by the number-sized rule above. */
         /* With two size figures the languages take their own full-width line. */
         #dgConsentSheet .dgc-fig:nth-child(3).dgc-fig-wide { grid-column: 1 / -1; }
+        /* Packs (owner 2026-11-01, mockup v2): what downloads by default, "Add ›" unfolds the list in this same sheet. */
+        #dgConsentSheet { max-height: calc(100dvh - 40px); overflow: hidden; box-sizing: border-box; }
+        #dgConsentSheet .dgc-fig-wide.dgc-comp { display: flex; align-items: center; gap: 10px; }
+        #dgConsentSheet .dgc-comp > dl { margin: 0; flex: 1; min-width: 0; }
+        #dgConsentSheet .dgc-link { flex: none; width: auto; background: none; border: 0; padding: 6px 2px; color: var(--dgc-accent); font-size: 13px; white-space: nowrap; }
+        #dgConsentSheet .dgc-list { background: var(--dgc-sunk); border: 1px solid var(--dgc-rule); border-radius: 12px; overflow: auto; min-height: 0; flex: 1 1 auto; max-height: 52dvh; }
+        #dgConsentSheet .dgc-gh { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--dgc-faint); padding: 10px 12px 4px; }
+        #dgConsentSheet .dgc-row { display: flex; align-items: center; gap: 11px; padding: 9px 12px; border-top: 1px solid var(--dgc-rule); cursor: pointer; margin: 0; }
+        #dgConsentSheet .dgc-gh + .dgc-row { border-top: 0; }
+        /* the page's own checkbox styles must not reach these: a drawn box, the real input under it for taps and keys */
+        #dgConsentSheet .dgc-row input { position: absolute; opacity: 0; width: 1px; height: 1px; pointer-events: none; }
+        #dgConsentSheet .dgc-cb { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--dgc-faint); flex: none; display: flex; align-items: center; justify-content: center; box-sizing: border-box; }
+        #dgConsentSheet .dgc-cb.on { background: var(--dgc-accent); border-color: var(--dgc-accent); }
+        #dgConsentSheet .dgc-cb.on::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: 0; border-right: 0; transform: rotate(-45deg) translate(1px, -1px); }
+        #dgConsentSheet .dgc-cb.lock { opacity: .55; }
+        #dgConsentSheet .dgc-row { position: relative; }
+        #dgConsentSheet .dgc-nm { flex: 1; min-width: 0; }
+        #dgConsentSheet .dgc-nm span { display: block; font-size: 13.5px; font-weight: 500; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-nm small { display: block; font-size: 11.5px; color: var(--dgc-muted); margin-top: 1px; }
+        #dgConsentSheet .dgc-sz { flex: none; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-sz small { display: block; font-size: 11px; color: var(--dgc-faint); }
         #dgConsentSheet .dgc-fig-wide dd {
             font-size: 13.5px; font-weight: 500; line-height: 1.35;
             font-variant-numeric: normal;
@@ -550,6 +571,7 @@
     // choosing (Esc, tapping outside) counts as "not now": declining is recoverable from
     // Settings, while starting a ~170MB transfer nobody asked for is not.
     function askConsent(ru, detail) {
+        if (detail && Array.isArray(detail.packs) && detail.packs.length) return askPacksConsent(ru, detail);
         var mb = sizeMb(detail && detail.bytes);
         var approx = (detail && detail.bytes) ? '' : '~';
         var gzMb = detail && detail.bytesGz ? sizeMb(detail.bytesGz) : null;
@@ -614,6 +636,109 @@
             overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(false); });
             document.addEventListener('keydown', onKey, true);
             buttons[1].focus();
+        });
+    }
+
+    // The library in packs (a build with DG_PACKS_BASE): the same sheet, saying what downloads by default - the
+    // Mahāsaṅgīti and the interface language's translation - and "Add ›" unfolds the packs in this same sheet, totals and
+    // contents following the ticks (owner 2026-11-01, mockup v2: «одна плашка маленькая аккуратная… с возможностью её
+    // развернуть»). Download keeps the choice where app.js reads it (dg.offline.packs); Settings shows the same list later.
+    function askPacksConsent(ru, detail) {
+        var packs = detail.packs, on = {};
+        (detail.selected || []).forEach(function (id) { on[id] = true; });
+        packs.forEach(function (p) { if (p.main || p.required) on[p.id] = true; });
+        var MB = function (b) { return Math.round((b || 0) / 1048576); };
+        var unit = '<span>' + (ru ? 'МБ' : 'MB') + '</span>';
+        var self = { en: 'English', ru: 'Русский', de: 'Deutsch', th: 'ไทย' };
+        var inLang = { en: ru ? 'английский' : 'English', ru: ru ? 'русский' : 'Russian', de: ru ? 'немецкий' : 'German', th: ru ? 'тайский' : 'Thai' };
+        var name = function (p) {
+            if (p.main) return 'Mahāsaṅgīti';
+            if (p.title) return ru ? p.title.ru : p.title.en;
+            if (p.id === 'tr-small') return ru ? 'Ещё ' + (p.langs || []).length + ' языков' : (p.langs || []).length + ' more languages';
+            return self[p.lang] || p.lang || p.id;
+        };
+        var texts = function (n) {
+            if (!ru) return (n || 0).toLocaleString('en') + ' texts';
+            var d = n % 10, h = n % 100;
+            return (n || 0).toLocaleString('ru') + (d === 1 && h !== 11 ? ' текст' : d >= 2 && d <= 4 && (h < 12 || h > 14) ? ' текста' : ' текстов');
+        };
+        var row = function (p) {
+            return '<label class="dgc-row"><input type="checkbox" data-pack="' + p.id + '"' + (on[p.id] ? ' checked' : '') + (p.main || p.required ? ' disabled' : '') + '>' +
+                '<span class="dgc-cb' + (p.main || p.required ? ' lock' : '') + '" data-cb="' + p.id + '"></span>' +
+                '<span class="dgc-nm"><span>' + name(p) + '</span><small>' + (p.main ? (ru ? 'основа: оглавление, поиск · ' : 'core: contents, search · ') : '') +
+                texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
+                '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
+        };
+        var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; });
+        var trs = packs.filter(function (p) { return p.kind === 'translation'; });
+        return new Promise(function (resolve) {
+            var previouslyFocused = document.activeElement;
+            var overlay = document.createElement('div');
+            overlay.id = 'dgConsent';
+            overlay.innerHTML =
+                '<div id="dgConsentSheet" role="alertdialog" aria-modal="true" aria-labelledby="dgConsentTitle" aria-describedby="dgConsentBody">' +
+                  '<div class="dgc-eyebrow">' + (ru ? 'Офлайн-библиотека' : 'Offline library') + '</div>' +
+                  '<p class="dgc-title" id="dgConsentTitle">' + (ru ? 'Скачать тексты для работы без сети?' : 'Download the texts for offline use?') + '</p>' +
+                  // what the reader gets, not how a download works (owner 2026-11-01: «расскажи о нашем проекте… ты любишь наш проект»)
+                  '<p class="dgc-body" id="dgConsentBody">' + (ru ? 'Весь Палийский канон с поиском и оглавлением — с вами и без интернета. По желанию добавьте другие издания пали и переводы на 25 языках.'
+                        : 'The whole Pali Canon with search and contents, with you even offline. Add other Pali editions and translations in 25 languages if you like.') + '</p>' +
+                  '<div class="dgc-list" hidden><div class="dgc-gh">' + (ru ? 'Корневые тексты (пали)' : 'Root texts (Pali)') + '</div>' + roots.map(row).join('') +
+                    (trs.length ? '<div class="dgc-gh">' + (ru ? 'Переводы' : 'Translations') + '</div>' + trs.map(row).join('') : '') + '</div>' +
+                  '<dl class="dgc-figures">' +
+                    '<div class="dgc-fig"><dt>' + (ru ? 'Скачать' : 'Download') + '</dt><dd class="dgc-gz"></dd></div>' +
+                    '<div class="dgc-fig"><dt>' + (ru ? 'На устройстве' : 'On device') + '</dt><dd class="dgc-dev"></dd></div>' +
+                    '<div class="dgc-fig dgc-fig-wide dgc-comp"><dl><dt class="dgc-cl"></dt><dd class="dgc-cd"></dd></dl>' +
+                      '<button type="button" class="dgc-link"></button></div>' +
+                  '</dl>' +
+                  '<div class="dgc-actions">' +
+                    '<button type="button" class="dgc-ghost">' + (ru ? 'Не сейчас' : 'Not now') + '</button>' +
+                    '<button type="button" class="dgc-primary">' + (ru ? 'Скачать' : 'Download') + '</button>' +
+                  '</div>' +
+                '</div>';
+            document.body.appendChild(overlay);
+            requestAnimationFrame(function () { overlay.classList.add('show'); });
+            var q = function (sel) { return overlay.querySelector(sel); };
+            var open = false;
+            function draw() {
+                var picked = packs.filter(function (p) { return on[p.id]; });
+                q('.dgc-gz').innerHTML = MB(picked.reduce(function (a, p) { return a + (p.bytes_gz || 0); }, 0)) + unit;
+                q('.dgc-dev').innerHTML = MB(picked.reduce(function (a, p) { return a + (p.bytes || 0); }, 0)) + unit;
+                q('.dgc-cl').textContent = open ? (ru ? 'Выбрано' : 'Selected') : (ru ? 'По умолчанию' : 'By default');
+                q('.dgc-cd').textContent = picked.map(function (p) {
+                    return p.main ? 'Mahāsaṅgīti (' + (ru ? 'пали' : 'Pali') + ')' : p.kind === 'translation' && inLang[p.lang] ? inLang[p.lang] + (ru ? ' перевод' : ' translation') : name(p);
+                }).join(' · ');
+                q('.dgc-body').hidden = open;
+                overlay.querySelectorAll('[data-cb]').forEach(function (el) { el.classList.toggle('on', !!on[el.getAttribute('data-cb')]); });
+                q('.dgc-list').hidden = !open;
+                q('.dgc-link').textContent = open ? (ru ? '‹ Свернуть' : '‹ Fold') : (ru ? 'Добавить ›' : 'Add ›');
+            }
+            draw();
+            q('.dgc-link').addEventListener('click', function () { open = !open; draw(); });
+            q('.dgc-list').addEventListener('change', function (ev) {
+                var box = ev.target.closest && ev.target.closest('input[data-pack]');
+                if (box) { on[box.getAttribute('data-pack')] = box.checked; draw(); }
+            });
+            var settled = false;
+            function close(answer) {
+                if (settled) return;
+                settled = true;
+                if (answer) {
+                    try {
+                        localStorage.setItem('dg.offline.packs', JSON.stringify(packs.filter(function (p) { return on[p.id] && !p.main; }).map(function (p) { return p.id; })));
+                    } catch (e) { /* private mode: the defaults download */ }
+                }
+                document.removeEventListener('keydown', onKey, true);
+                overlay.classList.remove('show');
+                setTimeout(function () { overlay.remove(); }, 200);
+                if (previouslyFocused && previouslyFocused.focus) previouslyFocused.focus();
+                resolve(answer);
+            }
+            function onKey(ev) { if (ev.key === 'Escape') { ev.preventDefault(); close(false); } }
+            q('.dgc-ghost').addEventListener('click', function () { close(false); });
+            q('.dgc-primary').addEventListener('click', function () { close(true); });
+            overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(false); });
+            document.addEventListener('keydown', onKey, true);
+            q('.dgc-primary').focus();
         });
     }
 
