@@ -932,6 +932,9 @@ html.dg-eds-loading #reader-pane::after { content: ""; position: fixed; z-index:
    second (owner: "сначала неграмотно отрисовывается"). */
 body.dg-state-reader.dg-busy #reader-pane > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area),
 #reader-pane.reader-pending > :is(#dg-rsub-line, hr, #navigation-bottom, .links-area) { visibility: hidden; }
+/* the footer (copyright) too: with the text still hidden it was the only thing under the header, on the whole screen, before
+   the spinner (owner 2026-11-01) */
+body.dg-state-reader.dg-busy #dg-footer, body:has(#reader-pane.reader-pending) #dg-footer { visibility: hidden; }
 /* The bell is always shown in the reader once a text is open (home.js dgRenderReaderSubs) — keep its
    slot while loading, or the icon row is one button short and the title pill wraps only later. */
 body.dg-state-reader.dg-busy #reader-toolbar .dg-rbell[hidden], #reader-pane.reader-pending #reader-toolbar .dg-rbell[hidden] { display: block !important; visibility: hidden; } /* !important: Bootstrap's [hidden] */
