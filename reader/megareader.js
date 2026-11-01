@@ -53,6 +53,8 @@ function t(path, fallback) {
         variants: ['variantVisibility', v => v === '1' ? 'visible' : v === '0' ? 'hidden' : null],
         pali: ['paliToggle', v => ['pli', '2nd', 'pli-2nd'].includes(v) ? v : null],
         diff: ['dgEditionsDiff', v => v === '1' ? 'on' : v === '0' ? '' : null],
+        // the columns' places, a Pali text after a translation (dgColOrder): "ed:ms,tr:ru_o,ed:pts"
+        cols: ['dgColOrder', v => /^(?:(?:ed|tr):[\w.+-]+,?)+$/.test(v) ? JSON.stringify(v.split(',').filter(Boolean)) : null],
     };
     let over = {};
     try {
@@ -562,15 +564,18 @@ function readerShareUrl(href) {
     try { script = (new URLSearchParams(location.search).get('script') || localStorage.getItem('selectedScript') || '').toLowerCase(); } catch (e) { /* private mode */ }
     if (script && script !== 'isopali') u.searchParams.set('script', script);
     // the view (read back by the override at the top of this file): columns or lines, variants, Pali/translation, differences
-    ['view', 'variants', 'pali', 'diff'].forEach(k => u.searchParams.delete(k));
+    ['view', 'variants', 'pali', 'diff', 'cols'].forEach(k => u.searchParams.delete(k));
     if (!special) {
         u.searchParams.set('view', (localStorage.getItem('viewMode') || 'alternate') === 'columns' ? 'columns' : 'lines');
         u.searchParams.set('variants', localStorage.getItem('variantVisibility') === 'visible' ? '1' : '0');
         // always, the defaults too: a recipient on "Pāḷi only" got no translation from a link that left pali= out
         u.searchParams.set('pali', localStorage.getItem('paliToggle') || 'pli-2nd');
         if (eds.length > 1) u.searchParams.set('diff', window.dgEditionsDiff() ? '1' : '0');
+        // the columns as they stand, once the reader has moved them (owner 2026-11-01: «порядок конечно нужно передавать»)
+        const cols = [...document.querySelectorAll('.dg-cols-head [data-col-cell]')].map(c => c.dataset.colCell);
+        if (cols.length && localStorage.getItem('dgColOrder')) u.searchParams.set('cols', cols.join(','));
     }
-    return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
+    return u.href.replace(/%2C/gi, ',').replace(/%3A/gi, ':');   // a comma and a colon are legal in a query and read better
 }
 window.dgReaderShareUrl = readerShareUrl;
 // Языки, которых нет в сохранённом порядке (юзер ещё не переключал), остаются в порядке сервера

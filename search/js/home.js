@@ -2235,7 +2235,7 @@
                 sessionStorage.removeItem('dgShareView');
             } catch (x) { /* private mode */ }
             var u = new URL(location.href);
-            ['mode', 'langs', 'translators', 'editions', 'view', 'variants', 'pali', 'diff'].forEach(function (k) { u.searchParams.delete(k); });
+            ['mode', 'langs', 'translators', 'editions', 'view', 'variants', 'pali', 'diff', 'cols'].forEach(function (k) { u.searchParams.delete(k); });
             // In the apps /sn56.11 is no file (the dot reads as an extension, the WebView fails it), so "Default" did
             // nothing there (owner, iPhone 2026-10-31): the root with the _nativeRoute handoff opens the same place,
             // as public/offline/app.js reloadHere() does.
