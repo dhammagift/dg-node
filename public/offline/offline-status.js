@@ -669,7 +669,10 @@
                 texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
                 '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
         };
-        var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; });
+        // the base, then the three national canons, then the composite editions (owner 2026-11-01; offline-library-settings.js too)
+        var ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
+        var rank = function (p) { var i = ORDER.indexOf(p.id); return i === -1 ? 99 : i; };
+        var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; }).sort(function (a, b) { return rank(a) - rank(b); });
         var trs = packs.filter(function (p) { return p.kind === 'translation'; });
         return new Promise(function (resolve) {
             var previouslyFocused = document.activeElement;

@@ -220,6 +220,14 @@
         var main = packs.filter(function (p) { return p.main; })[0];
         // The other Pali editions (ed-bjt, …, kind 'edition') are listed with the root texts, under the Mahāsaṅgīti.
         var isRoot = function (p) { return p.kind === 'root' || p.kind === 'edition'; };
+        // The Mahāsaṅgīti first (the base, it cannot be unticked), then the three national canons - Buddha Jayanti (Sri
+        // Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand) - and only then the composite editions, Mahāsaṅgīti 2005
+        // and PTS (owner 2026-11-01: «национальные каноны срочно поднять вверх»). Translations keep the manifest's order.
+        var ROOT_ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
+        var rootOrder = function (a, b) {
+            var i = ROOT_ORDER.indexOf(a.id), j = ROOT_ORDER.indexOf(b.id);
+            return (i === -1 ? 99 : i) - (j === -1 ? 99 : j);
+        };
         var langOf = function (p) { return p.lang || (/^tr-([a-z]{2,3})$/.exec(p.id) || [])[1] || null; };
         // Fixed self-names, as in the mockup: a browser's own data may lack some (Pablo's phone showed "Gsw", headless
         // Chromium "Lao", "Georgian"). Intl only for a language not listed here.
@@ -313,7 +321,7 @@
         function render() {
             var pl = plan(), changes = pl.add.length || pl.del.length || oldWhole;
             var size = sum(function (p) { return has(p) && mbOf(p.bytes); });
-            var list = function (f) { return '<ul class="dlg-list">' + packs.filter(f).map(item).join('') + '</ul>'; };
+            var list = function (f) { return '<ul class="dlg-list">' + packs.filter(f).sort(rootOrder).map(item).join('') + '</ul>'; };
             dlg.innerHTML = '<div class="dlg-head"><h3>' + (installed.length ? (isRu ? 'Офлайн-библиотека' : 'Offline library') : L.h) + '</h3>'
                 + '<p class="row-desc" style="margin:0">' + L.sub + '</p>'
                 + (installed.length ? '<p style="margin:8px 0 0"><button type="button" class="pk-delall" id="pkDelAll">' + L.delAll + ' (' + size + ' ' + L.mb + ')</button></p>' : '') + '</div>'
