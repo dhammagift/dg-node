@@ -34,8 +34,20 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 
 - [Search for "kacchapa"](https://dhamma.gift/kacchapa): every text where a Pali word (or a translation word) occurs, with the matching lines; diacritics are optional
 
+## Listen
+
+- [Voice](https://dhamma.gift/docs/tts/): any text read aloud in Pali, English or Russian with neural voices, free: the Pali, the translation or both, line by line
+- [Sutta podcasts](https://dhamma.gift/docs/podcasts/): the Suttas and Vinaya read aloud, a new episode every day, in Pali, English and Russian (Apple Podcasts, YouTube Music, Amazon Music, RSS)
+- [Memo](https://dhamma.gift/docs/memo/): a passage as an audio session phrase by phrase, with repeats and pauses, as MP3; first-letter cues for learning it by heart
+
+## Tools
+
+- [MCP server for AI assistants](https://dhamma.gift/docs/tech/mcp/): `https://api.dhamma.gift/mcp`; search the canon, read a text, compare translations, answer with quotes and links
+- [API](https://dhamma.gift/api-docs/): the search and the texts as JSON
+- [Telegram bot](https://dhamma.gift/docs/telegram-bot/): search and read the Suttas in any chat, and the Uposatha days for your city
+- [Pali dictionary](https://dhamma.gift/docs/dictionary/): many Pali and Sanskrit dictionaries on one page; a tap on a word in the reader opens its entry
+- [Apps](https://dhamma.gift/apps): Dhamma.Gift, Uposatha calendar and Dictionary for Android and iOS
+
 ## Optional
 
 - [Sitemap](https://dhamma.gift/sitemap.xml): all text pages
-- [Pali dictionary](https://dhamma.gift/dict/)
-- [Apps](https://dhamma.gift/apps): Dhamma.Gift, Uposatha calendar and Dictionary for Android and iOS

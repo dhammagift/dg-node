@@ -4134,7 +4134,9 @@ const SITE_LD = [
         applicationCategory: 'ReferenceApplication', operatingSystem: 'Web, Android, iOS', inLanguage: ['en', 'ru'],
         description: 'Search the Pali Canon (Sutta and Vinaya) in Pali and 25 languages, read suttas with translations side by side, listen and memorize.',
         featureList: ['Search of the Sutta and Vinaya in Pali and translations', 'Reader with Pali and translations side by side',
-            'Translator comparison', 'Voice (text to speech)', 'Memorization mode', 'Pali dictionary', 'Offline Android and iOS apps'],
+            'Translator comparison', 'Voice (text to speech)', 'Sutta podcasts in Pali, English and Russian', 'Memorization mode',
+            'Key terms read by the Suttas\' own definitions (glossary, rationale)', 'Pali dictionary', 'MCP server for AI assistants',
+            'Telegram bot', 'Offline Android and iOS apps'],
         installUrl: ['https://play.google.com/store/apps/details?id=gift.dhamma.twa', 'https://apps.apple.com/app/dhamma-gift/id6813706217'],
         publisher: { '@id': SITE + '/#organization' } },
 ];
