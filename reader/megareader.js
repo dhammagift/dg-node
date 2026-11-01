@@ -402,18 +402,29 @@ function runEditionDiffs() {
     const lines = {};
     suttaArea.querySelectorAll('.dg-ed-line[data-dd]').forEach(el => (lines[el.dataset.dd] = lines[el.dataset.dd] || []).push(el));
     const idle = window.requestIdleCallback || (f => setTimeout(() => f({ timeRemaining: () => 8 }), 16));
-    let i = 0;
+    // what is on the screen first, then on down and round to the top: a text opened at a search hit far down got its
+    // marks last (owner 2026-11-01, dn2 from kacchap); asked again each slice, as the page may still be moving there
+    const done = new Uint8Array(sets.length);
+    let left = sets.length;
+    const onScreen = () => {
+        const el = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+        const seg = el && el.closest && el.closest('span[id]');
+        const line = el && el.closest && (el.closest('[data-dd]') || (seg && seg.querySelector('[data-dd]')));
+        return line ? +line.dataset.dd : 0;
+    };
     const slice = deadline => {
         if (job !== edDiffJob) return;   // a new render, or the comparison started again
+        let i = onScreen();
         do {
+            while (done[i]) i = (i + 1) % sets.length;
+            done[i] = 1; left--;
             const els = lines[i] || [];
             // the lines' text as drawn: a search hit's own marks (<b>) inside it are kept, the comparison reads past them
             const nodes = els.map(el => el.classList.contains('is-gap') ? null : textNodesOf(el));
             const marks = diffMarks(nodes.map(ns => ns && ns.map(n => n.nodeValue).join('')));
             els.forEach((el, k) => { if (nodes[k] && marks[k]) paintMarks(el, marks[k]); });
-            i++;
-        } while (i < sets.length && deadline.timeRemaining() > 2);
-        if (i < sets.length) idle(slice); else if (edDiffSets === sets) edDiffSets = [];   // all drawn: nothing left to do
+        } while (left && deadline.timeRemaining() > 2);
+        if (left) idle(slice); else if (edDiffSets === sets) edDiffSets = [];   // all drawn: nothing left to do
     };
     idle(slice);
 }
