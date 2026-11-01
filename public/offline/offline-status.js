@@ -680,8 +680,8 @@
                   '<div class="dgc-eyebrow">' + (ru ? 'Офлайн-библиотека' : 'Offline library') + '</div>' +
                   '<p class="dgc-title" id="dgConsentTitle">' + (ru ? 'Скачать тексты для работы без сети?' : 'Download the texts for offline use?') + '</p>' +
                   // what the reader gets, not how a download works (owner 2026-11-01: «расскажи о нашем проекте… ты любишь наш проект»)
-                  '<p class="dgc-body" id="dgConsentBody">' + (ru ? 'Весь Палийский канон с поиском и оглавлением — с вами и без интернета. По желанию добавьте другие издания пали и переводы на 25 языках.'
-                        : 'The whole Pali Canon with search and contents, with you even offline. Add other Pali editions and translations in 25 languages if you like.') + '</p>' +
+                  '<p class="dgc-body" id="dgConsentBody">' + (ru ? 'Вы можете добавить другие редакции Палийского канона и другие переводы.'
+                        : 'You can add other editions of the Pali Canon and other translations.') + '</p>' +
                   '<div class="dgc-list" hidden><div class="dgc-gh">' + (ru ? 'Корневые тексты (пали)' : 'Root texts (Pali)') + '</div>' + roots.map(row).join('') +
                     (trs.length ? '<div class="dgc-gh">' + (ru ? 'Переводы' : 'Translations') + '</div>' + trs.map(row).join('') : '') + '</div>' +
                   '<dl class="dgc-figures">' +
