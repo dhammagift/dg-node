@@ -952,9 +952,10 @@ function inspectPack(pool, name, build, expectedBytes) {
 
 // Main, then every other pack ATTACHed under its id, and the TEMP VIEW `texts` over all of them (see packedQuery).
 // temp_store=memory: the view's temp schema must not take a pool slot.
-// A pack (packs-manifest.json) carries its id in meta; the single dg.db has none.
+// Packs: the editions live in their ed-* packs (or nowhere), never in the main schema; the single published database has
+// them all there. (Its meta has a pack_id too - 'all' - so that does not tell them apart.)
 function isPackDb() {
-    try { return !!db.selectObject("SELECT value FROM main.meta WHERE key = 'pack_id'"); } catch (e) { return false; }
+    try { return !db.selectObject("SELECT 1 AS c FROM main.sqlite_master WHERE type = 'table' AND name = 'editions'"); } catch (e) { return false; }
 }
 function openPacks(pool, packs) {
     const handle = new pool.OpfsSAHPoolDb(packs[0].name);
