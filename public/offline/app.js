@@ -1049,6 +1049,16 @@
         // slice's English fallback in the app.
         // The reader sends every saved pick in ?translators= whatever the language asked, so a pick counts only for
         // a language the request shows: a saved th_siamrath must not send every ?lang=en text online.
+        var toldMissing = '';
+        function notMissingTwice(missing) {
+            var key = missing.join(',');
+            if (!key || key === toldMissing || typeof window.showBubbleNotification !== 'function') return;
+            toldMissing = key;
+            var ru = false;
+            try { ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru'; } catch (e) { /* none */ }
+            window.showBubbleNotification(ru ? 'Без интернета: перевода (' + key + ') нет в офлайн-библиотеке — показан пали'
+                : 'Offline: the ' + key + ' translation is not in the offline library - showing the Pali', 5000);
+        }
         function langNeedsOnline(qs, search) {
             var split = function (v) { return String(v || '').split(',').map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean); };
             var langs = split([qs.get('langs'), qs.get('lang')].join(','));
@@ -1058,7 +1068,13 @@
             // Offline the server cannot answer: the device does with what it holds (ultra's review 2026-11-01: the search
             // always asks ru,en and failed outright with only one of them, or none, downloaded). A text in none of the asked
             // languages still says it needs the internet - a silent substitute was what the owner did not want.
-            if (navigator.onLine === false) return !(search || langs.some(function (l) { return held.indexOf(l) !== -1; }));
+            // Offline: the device answers with what it holds - the Pali and any translation on it - and says which language is
+            // missing. Sent to the server it only failed, and the reader retried it in a loop on an empty page (an English
+            // library, ?lang=ru: run 41285132777 and the site, 2026-11-01).
+            if (navigator.onLine === false) {
+                if (!search) notMissingTwice(langs.filter(function (l) { return held.indexOf(l) === -1; }));
+                return false;
+            }
             return true;
         }
 
