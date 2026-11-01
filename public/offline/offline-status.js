@@ -491,12 +491,15 @@
         // networkDone in db-worker.js) and what is left is unpacking it — no percentage worth
         // showing for that, it is a few hundred ms of local CPU, not more waiting on a connection.
         var importing = detail.phase === 'import';
+        // 'apply': a set of packs already on the device being unpacked one after another - one bar over all of them
+        // ("File 3 of 9"), never the empty import bar per pack (db-worker.js applyPacks' progressView)
+        var applying = detail.phase === 'apply';
         // titleRu/titleEn: an explicit override for a download this event shape also carries but
         // that isn't the main database — script-engine.js's engine install (app.js's
         // ensureScriptMode()) reuses this exact card/event rather than a second one, distinguished
         // only by its own title text (kind: 'script-engine' is otherwise unused here, present for
         // any future listener that does need to tell them apart).
-        card.querySelector('.dgdl-title').textContent = importing
+        card.querySelector('.dgdl-title').textContent = importing || applying
             ? (ru ? 'Распаковка и применение' : 'Unpacking and applying')
             : (detail.titleRu && detail.titleEn ? (ru ? detail.titleRu : detail.titleEn)
                                                  : (ru ? 'Загрузка офлайн-библиотеки' : 'Downloading the offline library'));
@@ -523,6 +526,7 @@
         card.classList.toggle('indeterminate', pct === null);
         if (pct !== null) card.querySelector('.dgdl-fill').style.width = pct + '%';
         var subText = importing ? ''
+            : applying ? (detail.totalSteps > 1 ? (ru ? 'Файл ' + detail.step + ' из ' + detail.totalSteps : 'File ' + detail.step + ' of ' + detail.totalSteps) : '')
             : total
                 ? (ru ? formatMb(loaded) + ' МБ из ' + formatMb(total) + ' МБ'
                       : formatMb(loaded) + ' MB of ' + formatMb(total) + ' MB')
@@ -541,7 +545,7 @@
 
         // The rotation runs while bytes are crossing the network, and stops for the import phase
         // (nothing to read then: it is local CPU) and once the library is ready.
-        if (!detail.done && !importing) startFacts(card); else stopFacts();
+        if (!detail.done && !importing && !applying) startFacts(card); else stopFacts();
 
         clearTimeout(dlHideTimer);
         // detail.done is set on downloadInto()'s own final post(), not inferred from loaded/total —

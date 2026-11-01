@@ -1070,8 +1070,14 @@ async function applyPacks(pool, packsBase, want, fileBase) {
         const target = packNameFor(p.id, p.build_id), scratchName = scratchOf(p), share = p.bytes_gz || p.bytes || 0;
         const step = { pack: p.id, index: i + 1, count: missing.length };
         post(Object.assign({ type: 'downloading' }, step));
-        progressView = msg => Object.assign({}, msg, step, msg.total > 0 && total > 0
-            ? { loaded: Math.round(done + share * Math.min(1, msg.loaded / msg.total)), total, done: false } : {});
+        // One steady bar for the whole set: each pack's own "unpacking" step (total 0) flipped the card to an empty bar and
+        // a different title and back, pack after pack - it looked broken or stuck (owner 2026-11-01). Its unpacking counts as
+        // that pack done; the title stays one: "Applying" for files already on the device (the app's own transfer), else
+        // "Downloading".
+        const steady = fileBase ? 'apply' : 'download';
+        progressView = msg => total > 0
+            ? Object.assign({}, msg, step, { loaded: Math.round(done + share * (msg.total > 0 ? Math.min(1, msg.loaded / msg.total) : 1)), total, phase: steady, done: false })
+            : Object.assign({}, msg, step, { phase: steady });
         try {
             await downloadInto(pool, new URL(p.url || p.file, new URL(`${fileBase || packsBase}/`, self.location.href)).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
         } catch (e) {
