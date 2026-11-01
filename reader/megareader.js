@@ -29,8 +29,13 @@ async function ensureReaderLangConfig(lang) {
     }
     return READER_LANG_CACHE[key];
 }
+// The interface's language, not the reading one (owner 2026-11-01: an English page with a Russian first translation showed
+// the warning in Russian) - the same rule as uiLang in buildSutta.
+function readerUiLang() {
+    return (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || (() => { try { return localStorage.getItem('dhammaLanguage'); } catch (e) { return null; } })() || 'en';
+}
 function t(path, fallback) {
-    var lang = (window.READER_MODE && window.READER_MODE.lang) || localStorage.getItem('dhammaLanguage') || 'en';
+    var lang = readerUiLang();
     var cfg = READER_LANG_CACHE[lang];
     if (!cfg) return fallback;
     var value = path.split('.').reduce(function (v, k) { return (v == null) ? undefined : v[k]; }, cfg);
@@ -1782,7 +1787,7 @@ window.buildSutta = async function(rawSlug, opts) {
     }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
     // t() (warning text below) reads this — must be ready before that, see the cache's comment.
-    await ensureReaderLangConfig(READER_MODE.lang);
+    await ensureReaderLangConfig(readerUiLang());
     if (stale()) return false;
 
     const texttype = suttaData.category || "sutta";
@@ -1973,7 +1978,7 @@ window.buildSutta = async function(rawSlug, opts) {
     const edInfo = id => READER_EDITIONS.find(e => e.id === id);
     // the interface's language (dhamma-i18n.js), not the reading one: an English page with a Russian translation (or a
     // Thai one) read "Отличия" and Russian column names (owner 2026-10-31)
-    const uiLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || (() => { try { return localStorage.getItem('dhammaLanguage'); } catch (e) { return null; } })() || 'en';
+    const uiLang = readerUiLang();
     const uiRu = uiLang === 'ru';
     // Column view with three texts or more (editions + translations): one grid column per text, a pinned header with
     // the full names, sideways scrolling on a phone (reader/css/uiextra.css .dg-grid). Two texts keep the old halves.
