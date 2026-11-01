@@ -349,7 +349,11 @@ async function downloadArchiveThenImport(pool, url, name, expectedWireBytes, exp
                 signal: controller.signal,
                 headers: have > 0 && !localCopy ? { Range: `bytes=${have}-` } : undefined,
             });
-            if (!response.ok) throw new Error(`dg.db.gz: HTTP ${response.status}`);
+            // gone from the server (an old pack, or a manifest ahead of its files): no use trying again, and named by its own
+            // file - a pack's 404 was reported as "dg.db.gz", six times over (f3-ultra's review 2026-11-01)
+            const fileName = String(url).split('?')[0].split('/').pop() || 'dg.db.gz';
+            if ([403, 404, 410].includes(response.status)) throw Object.assign(new Error(`${fileName}: HTTP ${response.status}`), { mismatch: true });
+            if (!response.ok) throw new Error(`${fileName}: HTTP ${response.status}`);
             // 200 to a Range request: the server ignored it or the file changed — start over.
             if (have > 0 && response.status === 200) { scratch.truncate(0); have = 0; }
             const total = expectedWireBytes || (have + (Number(response.headers.get('Content-Length')) || 0));
@@ -1113,10 +1117,12 @@ async function packsMode(args) {
 }
 
 // "Is anything new?" for packs: the open ones whose build the manifest has moved on from, and their download size.
-async function checkPacks(packsBase) {
+async function checkPacks(packsBase, want) {
     const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
     if (!manifest || !Array.isArray(manifest.packs)) return { unknown: true };
-    const open = openPackIds;
+    // ...and the packs the reader chose but this device does not hold: a first download that stopped half-way (one pack
+    // gone from the server) was adopted as complete and the rest was never fetched (f3-ultra's review 2026-11-01)
+    const open = new Set([...openPackIds, ...(Array.isArray(want) ? want : [])]);
     const installed = Object.entries(storedPacks(await getPool()));
     const changed = manifest.packs.filter(p => (p.main || open.has(p.id)) &&
         !installed.some(([id, files]) => id === p.id && files.some(f => f.build === p.build_id)));
@@ -1547,7 +1553,7 @@ self.onmessage = async (event) => {
     if (op === 'check') {
         try {
             if (!db) throw new Error('database not opened');
-            if (await packsMode(args)) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase) }); return; }
+            if (await packsMode(args)) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase, args.packs) }); return; }
             const local = db.selectObject("SELECT value FROM meta WHERE key = 'build_id'");
             const manifest = await fetchManifest(args.distBase);
             post({ id, ok: true, result: manifest ? {

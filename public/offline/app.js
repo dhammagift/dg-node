@@ -317,6 +317,8 @@
 
     // "Start it on this page if we can, otherwise hand it to whoever can."
     function requestDownload(kind) {
+        // one transfer at a time: the link and the address both offering it started download() twice (f3-ultra's review)
+        if (downloadInFlight) { log('a download is already running'); return; }
         // Before this page knows whether it owns the pool (the previous page's lock may still be held for a moment): wait
         // for the verdict, as the message path does, instead of telling the reader another tab has it.
         if (probePending) { deferredRequest = kind; return; }
@@ -362,9 +364,22 @@
     }
     // Packs published: the first-launch sheet with them (offline-status.js: what downloads by default, "Add ›" unfolds the
     // rest - owner 2026-11-01), as the app asks; its Download is the consent. Else the single library, as before.
+    var offering = false;
     function offerDownload() {
+        if (offering || downloadInFlight) return;   // the link and the address together opened two sheets (f3-ultra)
+        offering = true;
         packsPublished().then(function (yes) {
             if (!yes) { requestDownload('open'); return; }
+            // A library already here: what to add or remove is Settings' picker, not the first-download sheet - its
+            // Download would only reopen what is on disk (f3-ultra's review 2026-11-01).
+            var st = null;
+            try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (e) { /* none */ }
+            if (st && st.present) {
+                try { localStorage.setItem(OPEN_PACKS_KEY, '1'); } catch (e) { /* private mode: the row is still there */ }
+                if (window.DgHome && typeof window.DgHome.openSettingsSheet === 'function') window.DgHome.openSettingsSheet();
+                else location.href = (window.DgTextRouter && window.DgTextRouter.settingsUrl) ? window.DgTextRouter.settingsUrl() : '/settings/';
+                return;
+            }
             return fetch((PACKS_BASE || DIST_BASE) + '/packs-manifest.json', { cache: 'no-store' }).then(function (r) { return r.json(); }).then(function (m) {
                 var main = (m.packs || []).filter(function (p) { return p.main; }).map(function (p) { return p.id; });
                 var chosen = packsChoice() || firstPacks('open') || [];
@@ -372,7 +387,8 @@
                     window.dispatchEvent(new CustomEvent('dg:need-consent', { detail: { packs: m.packs, selected: main.concat(chosen), resolve: resolve } }));
                 });
             }).then(function (ok) { if (ok) { agreedNow(); requestDownload('open'); } });
-        }).catch(function (e) { log('offering the download failed:', (e && e.message) || e); });
+        }).catch(function (e) { log('offering the download failed:', (e && e.message) || e); })
+          .then(function () { offering = false; });
     }
     var OPEN_PACKS_KEY = 'dg.offline.openPacks';
     var PACK_LANGS_KEY = 'dg.offline.packLangs';
@@ -616,9 +632,25 @@
     // Download / open / update
     // ---------------------------------------------------------------------------------------
 
+    var resumedMissing = false;
     function markLocal(opened) {
         local = true;
-        try { localStorage.setItem(LIBRARY_KEY, '1'); localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
+        // Packs the reader chose that this device does not hold yet (a first download stopped half-way: one pack missing on
+        // the server, the app killed between two packs): the agreed transfer is not finished - it goes on, once per page,
+        // instead of the half being taken for the whole (f3-ultra's review 2026-11-01).
+        var chosen = PACKS_ON ? (packsChoice() || []) : [];
+        var held = (opened && opened.packs) || [];
+        var missing = chosen.filter(function (id) { return held.indexOf(id) === -1; });
+        try { localStorage.setItem(LIBRARY_KEY, '1'); if (!missing.length) localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ }
+        if (missing.length && !resumedMissing && navigator.onLine !== false) {
+            var agreed = false;
+            try { agreed = localStorage.getItem(STARTED_KEY) === '1'; } catch (e) { /* private mode */ }
+            if (agreed) {
+                resumedMissing = true;
+                log('the chosen packs are not all here yet (' + missing.join(', ') + ') - continuing the download');
+                setTimeout(function () { requestDownload('update'); }, 0);
+            }
+        }
         // Always: a reader who installed the library before the dictionary existed must still get it.
         // The call is idempotent and cheap on a visit where the files are already cached (a match per
         // file and nothing else).

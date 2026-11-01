@@ -580,7 +580,18 @@
     // contract window.confirm() had, minus the blocking. Anything that dismisses without
     // choosing (Esc, tapping outside) counts as "not now": declining is recoverable from
     // Settings, while starting a ~170MB transfer nobody asked for is not.
+    var consentOpen = null;
     function askConsent(ru, detail) {
+        // One sheet at a time (two offers at once stacked two, f3-ultra's review 2026-11-01), and never under the rating
+        // invitation (dg-apps native-bridge.js #dgrAsk): the library question is the one that matters, the invitation comes again.
+        if (consentOpen) return consentOpen;
+        var rate = document.getElementById('dgrAsk');
+        if (rate) rate.remove();
+        consentOpen = askConsentNow(ru, detail);
+        consentOpen.then(function () { consentOpen = null; }, function () { consentOpen = null; });
+        return consentOpen;
+    }
+    function askConsentNow(ru, detail) {
         if (detail && Array.isArray(detail.packs) && detail.packs.length) return askPacksConsent(ru, detail);
         var mb = sizeMb(detail && detail.bytes);
         var approx = (detail && detail.bytes) ? '' : '~';
