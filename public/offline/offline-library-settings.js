@@ -226,13 +226,13 @@
         var ROOT_ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
         var ROOT_INFO = {
             // One look for the Pali texts in both lists (owner 2026-11-01): the plate the reader shows, the name, and under it the
-            // country for a national canon or what the composite editions are. No years, no "(VRI)" in the name.
+            // country (none for Mahāsaṅgīti 2005). No years, no "(VRI)" in the name.
             'root-ms': { tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti', capRu: 'основа: оглавление и поиск', capEn: 'base: contents and search' },
             'ed-bjt': { tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', capRu: 'Шри-Ланка', capEn: 'Sri Lanka' },
             'ed-my': { tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', capRu: 'Мьянма', capEn: 'Myanmar' },
             'ed-th': { tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', capRu: 'Таиланд', capEn: 'Thailand' },
-            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: 'сводная редакция', capEn: 'composite edition' },
-            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'сводная редакция, Великобритания', capEn: 'composite edition, UK' },
+            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: '', capEn: '' },
+            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'Великобритания', capEn: 'UK' },
         };
         var rootOrder = function (a, b) {
             var i = ROOT_ORDER.indexOf(a.id), j = ROOT_ORDER.indexOf(b.id);
@@ -261,7 +261,7 @@
         // HTML: each language name kept on one line ("Tiếng / Việt" broke in the middle).
         function desc(p) {
             var bits = [];
-            if (ROOT_INFO[p.id]) bits.push(esc(ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn']));
+            if (ROOT_INFO[p.id]) { if (ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn']) bits.push(esc(ROOT_INFO[p.id][isRu ? 'capRu' : 'capEn'])); }
             else if (p === main) bits.push(esc(L.core));
             if (p.langs && p.langs.length > 1) bits.push(p.langs.map(function (l) { return '<span style="white-space:nowrap">' + esc(nativeName(l)) + '</span>'; }).join(' · '));
             // "6 991 текст", "7 284 текста", "7 605 текстов": the Russian plural by the last digits, not one suffix for all.

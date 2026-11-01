@@ -668,20 +668,20 @@
             return '<label class="dgc-row"><input type="checkbox" data-pack="' + p.id + '"' + (on[p.id] ? ' checked' : '') + (p.main || p.required ? ' disabled' : '') + '>' +
                 '<span class="dgc-cb' + (p.main || p.required ? ' lock' : '') + '" data-cb="' + p.id + '"></span>' +
                 '<span class="dgc-nm"><span>' + (INFO[p.id] ? '<i class="dgc-tag">' + INFO[p.id].tag + '</i>' : '') + name(p) + '</span><small>' +
-                (INFO[p.id] ? INFO[p.id][ru ? 'capRu' : 'capEn'] + ' · ' : '') + texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
+                (INFO[p.id] && INFO[p.id][ru ? 'capRu' : 'capEn'] ? INFO[p.id][ru ? 'capRu' : 'capEn'] + ' · ' : '') + texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
                 '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
         };
         // the base, then the three national canons, then the composite editions (owner 2026-11-01; offline-library-settings.js too)
         var ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
         var INFO = {
             // One look for the Pali texts in both lists (owner 2026-11-01): the plate the reader shows, the name, and under it the
-            // country for a national canon or what the composite editions are. No years, no "(VRI)" in the name.
+            // country (none for Mahāsaṅgīti 2005). No years, no "(VRI)" in the name.
             'root-ms': { tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti', capRu: 'основа: оглавление и поиск', capEn: 'base: contents and search' },
             'ed-bjt': { tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', capRu: 'Шри-Ланка', capEn: 'Sri Lanka' },
             'ed-my': { tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', capRu: 'Мьянма', capEn: 'Myanmar' },
             'ed-th': { tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', capRu: 'Таиланд', capEn: 'Thailand' },
-            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: 'сводная редакция', capEn: 'composite edition' },
-            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'сводная редакция, Великобритания', capEn: 'composite edition, UK' },
+            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: '', capEn: '' },
+            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'Великобритания', capEn: 'UK' },
         };
         var rank = function (p) { var i = ORDER.indexOf(p.id); return i === -1 ? 99 : i; };
         var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; }).sort(function (a, b) { return rank(a) - rank(b); });
