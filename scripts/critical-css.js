@@ -105,7 +105,9 @@ async function main() {
             // the sources are the stylesheets the served <head> links (plain or preload-as-style, ?v= included):
             // what scripts add later (jquery-ui, datatables, the reader's CSS prefetched on home) loads then as now,
             // and a header listing them never matched the head the server compares it with (f3-ultra)
-            const html = await resp.text();
+            // the served HTML fetched again: a page that changes its own address after load (a range, a redirect in
+            // the reader) leaves no body on the navigation response
+            const html = await resp.text().catch(() => page.context().request.get(o.base + url).then(r => r.text()));
             const headLinked = new Set([...html.slice(0, html.indexOf('</head>')).matchAll(/<link\b[^>]*>/g)]
                 .map(m => m[0]).filter(t => /rel="stylesheet"|rel="preload"[^>]*as="style"|as="style"[^>]*rel="preload"/.test(t))
                 .map(t => (/href="([^"]+)"/.exec(t) || [])[1]).filter(Boolean)
