@@ -167,6 +167,7 @@
         #dgConsentSheet .dgc-row { position: relative; }
         #dgConsentSheet .dgc-nm { flex: 1; min-width: 0; }
         #dgConsentSheet .dgc-nm span { display: block; font-size: 13.5px; font-weight: 500; color: var(--dgc-ink); }
+        #dgConsentSheet .dgc-tag { display: inline-block; font-style: normal; font-size: 10.5px; font-weight: 600; letter-spacing: .04em; line-height: 1; padding: 3px 5px; margin-right: 7px; border: 1px solid var(--dgc-faint); color: var(--dgc-muted); border-radius: 5px; vertical-align: 2px; }
         #dgConsentSheet .dgc-nm small { display: block; font-size: 11.5px; color: var(--dgc-muted); margin-top: 1px; }
         #dgConsentSheet .dgc-sz { flex: none; text-align: right; font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--dgc-ink); }
         #dgConsentSheet .dgc-sz small { display: block; font-size: 11px; color: var(--dgc-faint); }
@@ -652,6 +653,7 @@
         var self = { en: 'English', ru: 'Русский', de: 'Deutsch', th: 'ไทย' };
         var inLang = { en: ru ? 'английский' : 'English', ru: ru ? 'русский' : 'Russian', de: ru ? 'немецкий' : 'German', th: ru ? 'тайский' : 'Thai' };
         var name = function (p) {
+            if (INFO[p.id]) return INFO[p.id][ru ? 'ru' : 'en'];
             if (p.main) return 'Mahāsaṅgīti';
             if (p.title) return ru ? p.title.ru : p.title.en;
             if (p.id === 'tr-small') return ru ? 'Ещё ' + (p.langs || []).length + ' языков' : (p.langs || []).length + ' more languages';
@@ -665,12 +667,22 @@
         var row = function (p) {
             return '<label class="dgc-row"><input type="checkbox" data-pack="' + p.id + '"' + (on[p.id] ? ' checked' : '') + (p.main || p.required ? ' disabled' : '') + '>' +
                 '<span class="dgc-cb' + (p.main || p.required ? ' lock' : '') + '" data-cb="' + p.id + '"></span>' +
-                '<span class="dgc-nm"><span>' + name(p) + '</span><small>' + (p.main ? (ru ? 'основа: оглавление, поиск · ' : 'core: contents, search · ') : '') +
-                texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
+                '<span class="dgc-nm"><span>' + (INFO[p.id] ? '<i class="dgc-tag">' + INFO[p.id].tag + '</i>' : '') + name(p) + '</span><small>' +
+                (INFO[p.id] ? INFO[p.id][ru ? 'capRu' : 'capEn'] + ' · ' : '') + texts(p.texts) + (p.main ? (ru ? ' · обязательно' : ' · required') : '') + '</small></span>' +
                 '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
         };
         // the base, then the three national canons, then the composite editions (owner 2026-11-01; offline-library-settings.js too)
         var ORDER = ['root-ms', 'ed-bjt', 'ed-my', 'ed-th', 'ed-mso', 'ed-pts'];
+        var INFO = {
+            // One look for the Pali texts in both lists (owner 2026-11-01): the plate the reader shows, the name, and under it the
+            // country for a national canon or what the composite editions are. No years, no "(VRI)" in the name.
+            'root-ms': { tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti', capRu: 'основа: оглавление и поиск', capEn: 'base: contents and search' },
+            'ed-bjt': { tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', capRu: 'Шри-Ланка', capEn: 'Sri Lanka' },
+            'ed-my': { tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', capRu: 'Мьянма', capEn: 'Myanmar' },
+            'ed-th': { tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', capRu: 'Таиланд', capEn: 'Thailand' },
+            'ed-mso': { tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', capRu: 'сводная редакция', capEn: 'composite edition' },
+            'ed-pts': { tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', capRu: 'сводная редакция, Великобритания', capEn: 'composite edition, UK' },
+        };
         var rank = function (p) { var i = ORDER.indexOf(p.id); return i === -1 ? 99 : i; };
         var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; }).sort(function (a, b) { return rank(a) - rank(b); });
         var trs = packs.filter(function (p) { return p.kind === 'translation'; });
@@ -708,7 +720,7 @@
                 q('.dgc-dev').innerHTML = MB(picked.reduce(function (a, p) { return a + (p.bytes || 0); }, 0)) + unit;
                 q('.dgc-cl').textContent = open ? (ru ? 'Выбрано' : 'Selected') : (ru ? 'По умолчанию' : 'By default');
                 q('.dgc-cd').textContent = picked.map(function (p) {
-                    return p.main ? 'Mahāsaṅgīti (' + (ru ? 'пали' : 'Pali') + ')' : p.kind === 'translation' && inLang[p.lang] ? inLang[p.lang] + (ru ? ' перевод' : ' translation') : name(p);
+                    return p.main ? name(p) + ' (' + (ru ? 'пали' : 'Pali') + ')' : p.kind === 'translation' && inLang[p.lang] ? inLang[p.lang] + (ru ? ' перевод' : ' translation') : name(p);
                 }).join(' · ');
                 q('.dgc-body').hidden = open;
                 overlay.querySelectorAll('[data-cb]').forEach(function (el) { el.classList.toggle('on', !!on[el.getAttribute('data-cb')]); });
