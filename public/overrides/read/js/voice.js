@@ -256,6 +256,26 @@ let silenceAudio = new Audio(SILENCE_URL);
 silenceAudio.loop = true; 
 silenceAudio.volume = 0.05;
 
+// Pauses (between phrases here, between loops in voice-mem.js) must run out with the screen off: the app's
+// WebView in the background (and a hidden browser tab) holds back timers, so a pause never ended until the
+// app was opened again (owner 2026-11-01, Motorola, A-B loop). The silence above keeps playing through a pause,
+// and its timeupdate (a few times a second) is a media event, not a timer: the pause also ends on that.
+const mediaWaits = new Map();
+function mediaTimeout(fn, ms) {
+  const due = Date.now() + ms;
+  const fire = () => { clearMediaTimeout(id); fn(); };
+  const check = () => { if (Date.now() >= due) fire(); };
+  const id = setTimeout(fire, ms);
+  mediaWaits.set(id, check);
+  silenceAudio.addEventListener('timeupdate', check);
+  return id;
+}
+function clearMediaTimeout(id) {
+  clearTimeout(id);
+  silenceAudio.removeEventListener('timeupdate', mediaWaits.get(id));
+  mediaWaits.delete(id);
+}
+
 // Глобальный плеер для Google TTS (для обхода блокировки iOS)
 window.sharedGoogleAudio = new Audio();
 
@@ -1828,7 +1848,7 @@ async function playCurrentSegment() {
  await dgVoicesReady();  // resolved after the first line: no delay then
  if (gen !== ttsState.gen) return;  // a newer line, sutta or a stop came in meanwhile
  
- if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout);
+ if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout);
  
   if (ttsState.googleAudio) {
       ttsState.googleAudio.pause();       
@@ -2016,7 +2036,7 @@ async function playCurrentSegment() {
                       };
 
                       if (delay > 0) {
-                          window.ttsDelayTimeout = setTimeout(finishOrNext, delay);
+                          window.ttsDelayTimeout = mediaTimeout(finishOrNext, delay);
                       } else {
                           finishOrNext();
                       }
@@ -2115,7 +2135,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
           };
 
           if (delay > 0) {
-              window.ttsDelayTimeout = setTimeout(finishOrNext, delay);
+              window.ttsDelayTimeout = mediaTimeout(finishOrNext, delay);
           } else {
               finishOrNext();
           }
@@ -2318,7 +2338,7 @@ async function handleSuttaClick(e) {
   if (navBtn) {
     e.preventDefault();
     if (!ttsState.speaking || ttsState.playlist.length === 0) return;
-    if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout);
+    if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout);
     if (ttsState.utterance) {
         ttsState.utterance.onend = null;
     }
@@ -2405,7 +2425,7 @@ async function handleSuttaClick(e) {
         } else {
           ttsState.paused = true;
           releaseWakeLock(); 
-          if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout); 
+          if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout); 
           if (ttsState.utterance) ttsState.utterance.onend = null; 
           synth.cancel();
           if (ttsState.googleAudio) {
@@ -2452,7 +2472,7 @@ window.addEventListener('suttaLoaded', e => {
 });
 
 function stopPlayback() {
-  if (window.ttsDelayTimeout) clearTimeout(window.ttsDelayTimeout); // УБИВАЕМ ПРИЗРАКА
+  if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout); // УБИВАЕМ ПРИЗРАКА
   if (ttsState.utterance) ttsState.utterance.onend = null;
   synth.cancel();
   
@@ -4084,6 +4104,7 @@ window.ttsAPI = {
     },
     stop: stopPlayback,
     keepSilenceAlive: toggleSilence,
+    silenceTick: (fn, on) => silenceAudio[on ? 'addEventListener' : 'removeEventListener']('timeupdate', fn),
     releaseWakeLock: releaseWakeLock,
     requestWakeLock: requestWakeLock
 };

@@ -684,7 +684,13 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
         if (memState.countdownId) clearInterval(memState.countdownId);
 
+        // Also on the player's silence (window.ttsAPI.silenceTick): a background WebView holds this interval back.
+        let id = null;
         const tick = () => {
+            if (memState.countdownId !== id) {  // cancelled or replaced elsewhere: they all null or reassign countdownId
+                if (window.ttsAPI.silenceTick) window.ttsAPI.silenceTick(tick, false);
+                return;
+            }
             if (!memState.isActive) {
                 clearInterval(memState.countdownId);
                 return;
@@ -711,8 +717,9 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             setPlayIcon(true);
         };
 
-        tick(); 
-        memState.countdownId = setInterval(tick, 1000);
+        id = memState.countdownId = setInterval(tick, 1000);
+        if (window.ttsAPI.silenceTick) window.ttsAPI.silenceTick(tick, true);
+        tick();
     }
 
     let _segmentTimerId = null;
