@@ -257,9 +257,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      override must still cascade AFTER Bootstrap's own definition to win, same order as before. -->
 <link rel="stylesheet" href="/assets/css/bootstrap.5.3.1.min.css">
 <style>
-    /* the text waits for the reader's render (dg-eds-loading, the early script in <body>); here, not in home.css: with
-       critical CSS inlined home.css loads late, and the server's text painted before the rule came */
-    html.dg-eds-loading #sutta { visibility: hidden; }
     .dg-hero-form {
         /* Was 600px (measured: rendered exactly at that cap on the results page — ".docked"
            below is dead CSS, nothing in this file or search-render.js ever adds that class, so
@@ -1223,6 +1220,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // so they read the server's text as before.
     if (/^\/[a-z-]{1,24}\d/i.test(path) && !hasQuery) {
       document.documentElement.classList.add('dg-eds-loading');
+      // the rule with the class: home.css's copy comes late once critical CSS is inlined, and this page's own <style>
+      // blocks go into dg-all.css (the CSS bundle), late as well - the server's text painted before either
+      var st = document.createElement('style');
+      st.textContent = 'html.dg-eds-loading #sutta{visibility:hidden}';
+      document.head.appendChild(st);
       setTimeout(function () { document.documentElement.classList.remove('dg-eds-loading'); }, 10000);
     }
 })();
