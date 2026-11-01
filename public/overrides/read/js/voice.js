@@ -138,6 +138,18 @@ function getContextInfo(langCode) {
       };
   }
 
+  // Any other translation language (de, fr, th, ...): Google's own default voice of that language (owner 2026-11-01:
+  // «кто установит токен, у них будет работать из коробки любые голоса гугловские»); there is no picker for it yet,
+  // so nothing is stored under this key and the default is always used.
+  if (langCode && langCode !== 'en' && langCode !== 'pi-dev') {
+      return {
+          type: langCode,
+          storageKey: 'tts_google_trn_' + langCode,
+          defaultConfig: { languageCode: langCode },
+          isIndianContext: false
+      };
+  }
+
   return {
       type: 'en',
       storageKey: GOOGLE_TRN_KEY_EN,
@@ -912,7 +924,7 @@ async function populateVoiceSelectors(apiKey, forceRefresh = false) {
         // Иначе -> Русский, Английский, Тайский
         trnVoices = voices.filter(v => {
             const code = v.languageCodes[0];
-            return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-');
+            return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-') || code.startsWith(context.type + '-');
         });
     }
 
@@ -3717,7 +3729,7 @@ async function fillVoiceDropdowns(forceRefresh = false) {
             } else {
                 trnVoices = googleVoices.filter(v => {
                     const code = v.languageCodes[0].replace('_', '-').toLowerCase();
-                    return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-');
+                    return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-') || code.startsWith(context.type + '-');
                 });
             }
 
