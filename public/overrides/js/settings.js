@@ -2756,6 +2756,9 @@ window.setupCloudListeners = function(uid) {
 
         if (doc.exists && doc.data().settings) {
             const cloudSettings = doc.data().settings;
+            // a TTS key uploaded before 77863f2 made it device-only: remove the cloud copy (a secret, owner 2026-10-31)
+            if ('tts_google_key' in cloudSettings) userRef.set({ settings: { tts_google_key: firebase.firestore.FieldValue.delete() } }, { merge: true })
+                .catch(e => console.error('Could not remove the cloud TTS key copy:', e));
             const cloudTime = doc.data().updatedAt ? doc.data().updatedAt.toMillis() : 0;
             const localTime = parseInt(localStorage.getItem('dg_localSettingsTimestamp') || '0', 10);
 

@@ -108,6 +108,13 @@ const app = Fastify({
     // A clean-path search is one path parameter (/:slug); the default 100 characters answered 414 to the longer key-term
     // regexes in the sitemap (kāmabhav|rūpabhav|… is ~240 encoded), and to people's long queries.
     maxParamLength: 2000,
+    // A repeated parameter (?scope=dn&scope=mn) keeps its first value: the default parser makes it an
+    // array, and every handler expects a string (.split on an array answered 500).
+    routerOptions: { querystringParser: str => {
+        const q = require('fast-querystring').parse(str);
+        for (const k in q) if (Array.isArray(q[k])) q[k] = q[k][0];
+        return q;
+    } },
     trustProxy: REGEX_LIMITS.rateLimit ? REGEX_LIMITS.rateLimit.trustProxy || false : false,
 });
 
@@ -4382,11 +4389,14 @@ function sendHeadHtml(req, res, h) {
         if (!entry) return res.code(404).send();
         versionedHtmlCache.set(searchIndexPath, entry);
     }
-    const etag = '"' + crypto.createHash('md5').update(entry.etag + h.canonical + h.title + (h.body ? h.body.length : '') + (h.ssr ? h.ssr.length : '') + (h.bot ? 'b' : '')).digest('hex') + '"';
+    // the ETag is the page itself: a hash of a few inputs missed the reader CSS versions and the critical
+    // CSS, so a CSS-only deploy answered 304 with stale ?v= links (md5 of the page is ~1 ms)
+    const html = withTextHead(entry.rewritten, h);
+    const etag = '"' + crypto.createHash('md5').update(html).digest('hex') + '"';
     res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
     if (h.vary) res.header('vary', h.vary); // the search page differs for browsers and other readers (sendSiteHtml)
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
-    return res.type('text/html; charset=utf-8').send(withTextHead(entry.rewritten, h));
+    return res.type('text/html; charset=utf-8').send(html);
 }
 
 app.get('/:slug', (req, res) => {
