@@ -471,6 +471,10 @@
   }
   #sutta.column-view.dg-grid span[id] > .pli-lang { width: auto; max-width: none; padding: 0; grid-column: var(--c, 1); }   /* --c: its place (megareader.js dgColOrder) */
   #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang { display: contents; }
+  /* ...and a box that is not drawn paints no background: the tapped line's highlight (.active-word on that .pli-lang) went
+     on the edition lines it holds (owner 2026-11-01: no highlight in the columns with editions, fine with one or two) */
+  #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang.active-word > .dg-ed-line { background-color: rgba(var(--bs-primary-rgb), 0.35); border-radius: 0.25rem; box-shadow: 0 0 0 1px rgba(var(--bs-secondary-rgb), 0.15); }
+  .dark #sutta.column-view.dg-grid.dg-eds span[id] > .pli-lang.active-word > .dg-ed-line { background-color: rgba(var(--bs-primary-rgb), 0.25); }
   #sutta.column-view.dg-grid .dg-ed-line { grid-column: var(--c); grid-row: 1; margin: 0; }
   /* a title row's speaker sits inside its first edition line (reader/common.js), on the title's line, lines and grid alike */
   /* the header names every column: no plates in the grid (editions' nor translators') */
