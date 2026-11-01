@@ -95,13 +95,13 @@
         // Settings opened as a page of its own runs the offline layer itself (settings/index.html): start it here.
         if (window.self === window.top && typeof window.dgStartOfflineDownload === 'function') {
             try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
-            window.dgStartOfflineDownload(key === WANT_UPDATE_KEY ? 'update' : 'open');
+            window.dgStartOfflineDownload(key === WANT_UPDATE_KEY ? 'update' : 'open', packsRow);
             return;
         }
         if (window.self !== window.top) {
             try {
                 window.parent.postMessage(
-                    { dgOfflineDownloadRequest: key === WANT_UPDATE_KEY ? 'update' : 'open' },
+                    { dgOfflineDownloadRequest: key === WANT_UPDATE_KEY ? 'update' : 'open', agreed: packsRow },
                     location.origin);
                 return;
             } catch (e) { /* cross-origin parent — fall back to navigating this frame */ }

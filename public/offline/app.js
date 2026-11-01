@@ -310,6 +310,7 @@
         }
         if (!data.dgOfflineDownloadRequest) return;
         var kind = data.dgOfflineDownloadRequest === 'update' ? 'update' : 'open';
+        if (data.agreed) agreedNow();
         if (probePending) { deferredRequest = kind; return; }
         requestDownload(kind);
     });
@@ -395,9 +396,14 @@
 
     // The same thing for code that would rather call it directly (the settings page cannot — it is a
     // separate realm — but anything on this page can).
-    window.dgStartOfflineDownload = function (kind) {
+    window.dgStartOfflineDownload = function (kind, agreed) {
+        if (agreed) agreedNow();
         requestDownload(kind === 'update' ? 'update' : 'open');
     };
+    // "Download" pressed in the packs picker, which shows what and how much: that is the consent, the sheet is not asked
+    // again (the app's first launch opens the picker itself and would only reopen it - owner 2026-11-01: choose at the
+    // first download).
+    function agreedNow() { try { localStorage.setItem(STARTED_KEY, '1'); } catch (e) { /* private mode */ } }
 
     // The card's ×. The worker drops the partial download with it (see the abort op), so a later
     // visit has nothing to resume — which is the point when the download was started by mistake or
