@@ -479,7 +479,10 @@
   #sutta.column-view.dg-grid span[id] > .right-column { display: contents; }
   #sutta.column-view.dg-grid span[id] > .right-column > [class*="-lang"] { grid-column: var(--c); grid-row: 1; width: auto; margin: 0; padding: 0; position: relative; }
   .dg-cols-head { display: none; }
-  body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { transform: translateY(calc(-1 * var(--dg-cols-top, var(--dg-stack-height, 65px)))); }
+  /* ...but not under the phone's status bar: in the apps the page runs edge to edge (html margin-top = the inset, dg-apps
+     build-assets.js dg-edge) and a pin at the viewport's top 0 sat behind the bar - the names "did not stick" (owner
+     2026-11-01, two phones; the browsers have no inset and the emulator draws below its bar) */
+  body.dg-header-hidden #sutta.column-view.dg-grid > .dg-cols-head { transform: translateY(calc(-1 * var(--dg-cols-top, var(--dg-stack-height, 65px)) + max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px)))); }
   /* the body's own clip (overflow-x: clip, home.css) cut that shadow at the body's side margins; html still clips at the screen */
   body:has(#sutta.column-view.dg-grid) { overflow-x: visible; }
   #sutta.column-view.dg-grid > .dg-cols-head {
