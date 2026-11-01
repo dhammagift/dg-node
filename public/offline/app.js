@@ -73,6 +73,7 @@
             var packs = packsChoice();
             if (packs) opts.packs = packs;
             if (PACKS_BASE) opts.packsBase = PACKS_BASE;
+            if (PACKS_FILE_BASE) opts.packsFileBase = PACKS_FILE_BASE;
         }
         return Object.assign(opts, extra || {});
     }
@@ -686,9 +687,23 @@
     // transfer — is what keeps the consent sheet, the progress card and the update path exactly as
     // they are: the platform only decides WHERE the bytes come from. Platforms that cannot do this
     // define nothing, so Android, the PWA and the site keep the path they have always had.
+    var PACKS_FILE_BASE = null;   // where a native downloader put the pack files (its file URL), for the worker to import
     function prepareArchive(kind) {
-        // Packs come one by one through the worker (packsBase); the platform's transfer is the whole single archive.
-        if (!platform.prepareArchive || PACKS_ON) return Promise.resolve(false);
+        // Packs: the worker names the files it lacks, the platform fetches them in its own background service (Android: a
+        // WebView's worker is frozen once the app is not on screen, so a pack download stopped there - owner 2026-11-01:
+        // packs must download as the whole library does), and the worker imports them from that directory.
+        PACKS_FILE_BASE = null;
+        if (PACKS_ON) {
+            if (!platform.preparePacks) return Promise.resolve(false);
+            return call('packs-plan', workerOpts({ kind: kind })).then(function (files) {
+                if (!files || !files.length) return false;
+                return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, files: files, update: kind === 'update' }));
+            }).then(function (fileBase) {
+                if (fileBase) PACKS_FILE_BASE = fileBase;
+                return !!fileBase;
+            }).catch(function (e) { log('native pack download unavailable, the page downloads:', (e && e.message) || e); return false; });
+        }
+        if (!platform.prepareArchive) return Promise.resolve(false);
         return Promise.resolve(platform.prepareArchive({ update: kind === 'update' })).then(function (ok) {
             // The platform may have moved its base (an archive already on disk is fetched through
             // the app's own file handler, not the network), and DIST_BASE was captured at load.

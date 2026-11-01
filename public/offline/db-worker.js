@@ -1021,8 +1021,9 @@ async function packsOnDisk(pool) {
 // Brings the stored packs to `want` (ids; the main and required packs always) at the manifest's builds: downloads what
 // is missing or out of date, one pack at a time, while the open library keeps answering; then swaps — closes, unlinks
 // what is no longer wanted (and a whole-db copy from before packs), reopens. A failure leaves the old library as it was.
-async function applyPacks(pool, packsBase, want) {
-    cancelRequested = false;
+// Which packs `want` needs fetched: the main and required ones always, the rest at the manifest's builds, minus what is on
+// disk and sound. applyPacks downloads them; the 'packs-plan' op hands the same list to a native downloader first.
+async function planPacks(pool, packsBase, want) {
     const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
     if (!manifest || !Array.isArray(manifest.packs)) throw new Error('the offline packs are not published here');
     if (manifest.db_schema_version && Number(manifest.db_schema_version) !== SCHEMA_VERSION) {
@@ -1044,6 +1045,14 @@ async function applyPacks(pool, packsBase, want) {
         const f = (stored[p.id] || []).find(x => x.build === p.build_id);
         if (!f || !(await sound(p, f))) missing.push(p);
     }
+    return { wanted, missing, stored };
+}
+
+// `fileBase`: where the pack files are fetched from when not from packsBase - the directory a native downloader (Android's
+// foreground service) has already put them in, through the app's file URL; the manifest still comes from packsBase.
+async function applyPacks(pool, packsBase, want, fileBase) {
+    cancelRequested = false;
+    const { wanted, missing, stored } = await planPacks(pool, packsBase, want);
     const scratchOf = p => scratchNameFor(packNameFor(p.id, p.build_id), true);
     await cleanScratchExcept(missing.map(scratchOf));
     await storagePlanFor(missing.reduce((a, p) => a + (p.bytes || 0), 0), Math.max(0, ...missing.map(p => p.bytes_gz || 0)));
@@ -1058,7 +1067,7 @@ async function applyPacks(pool, packsBase, want) {
         progressView = msg => Object.assign({}, msg, step, msg.total > 0 && total > 0
             ? { loaded: Math.round(done + share * Math.min(1, msg.loaded / msg.total)), total, done: false } : {});
         try {
-            await downloadInto(pool, new URL(p.url || p.file, new URL(`${packsBase}/`, self.location.href)).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
+            await downloadInto(pool, new URL(p.url || p.file, new URL(`${fileBase || packsBase}/`, self.location.href)).href, target, p.bytes_gz, p.bytes, true, scratchName, true);
         } catch (e) {
             if (e && e.cancelled) { try { pool.unlink(target); } catch (_) {} await dropScratchAfterCancel(scratchName); }
             throw e;
@@ -1214,7 +1223,7 @@ async function open(distBase, allowDownload, args) {
     // A whole database stored from before packs stays in use (above) until the reader applies a selection ('update').
     // Nothing stored and no selection yet: the published default packs, or the whole database where none are published.
     const packsBase = args.packsBase || distBase;
-    if (args.packs || (args.packsOn && await fetchManifest(packsBase, PACKS_MANIFEST))) return applyPacks(pool, packsBase, args.packs || null);
+    if (args.packs || (args.packsOn && await fetchManifest(packsBase, PACKS_MANIFEST))) return applyPacks(pool, packsBase, args.packs || null, args.packsFileBase);
     return fetchCurrent(pool, distBase, args);
 }
 
@@ -1550,6 +1559,18 @@ self.onmessage = async (event) => {
         return;
     }
 
+    // The pack files a download or an update would fetch, for a platform that transfers them itself (app.js prepareArchive):
+    // the same choice as 'open' (a selection, else the defaults) and 'update' (a selection, else the packs on disk).
+    if (op === 'packs-plan') {
+        try {
+            const pool = await getPool();
+            const want = args.packs || (args.kind === 'update' ? Object.keys(storedPacks(pool)) : null);
+            const { missing } = await planPacks(pool, args.packsBase || args.distBase, want);
+            post({ id, ok: true, result: missing.map(p => ({ id: p.id, path: p.url || p.file, bytes: p.bytes_gz || 0, sha256: p.sha256_gz || '' })) });
+        } catch (e) { post({ id, ok: false, error: e.message }); }
+        return;
+    }
+
     if (op === 'update') {
         try {
             if (args && args.nativeSql) {
@@ -1563,7 +1584,7 @@ self.onmessage = async (event) => {
             // saved (default packs, or a private window): the packs on disk are the selection — never the defaults,
             // which would add packs the reader did not pick (Cakkhu).
             post({ id, ok: true, result: await (await packsMode(args)
-                ? applyPacks(pool, args.packsBase || args.distBase, args.packs || Object.keys(storedPacks(pool)))
+                ? applyPacks(pool, args.packsBase || args.distBase, args.packs || Object.keys(storedPacks(pool)), args.packsFileBase)
                 : fetchCurrent(pool, args.distBase)) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
         return;
