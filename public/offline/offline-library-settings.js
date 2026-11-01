@@ -186,10 +186,12 @@
     });
 
     // Settings as a page of its own downloads here (goHomeWith): redraw the row once the library on disk changes.
-    var shownAs = function (st) { return st ? [!!st.present, st.build_id, (st.packs || []).join()].join('|') : 'none'; };
+    // Deleted here too (the row kept "Downloaded …" after Delete, 2026-11-01). No state and "not present" read the same, so
+    // the page's own first probe (present:false over nothing) does not reload it.
+    var shownAs = function (st) { return st && st.present ? ['1', st.build_id, (st.packs || []).join()].join('|') : 'none'; };
     var shown = shownAs(state);
     window.addEventListener('dg:offline-state', function (event) {
-        if (event.detail && event.detail.present && shownAs(event.detail) !== shown) location.reload();
+        if (shownAs(event.detail) !== shown) location.reload();
     });
 
     // Selectable packs (owner 2026-10-29, mockup /assets/offline-packs-mockup.html): where the server publishes
