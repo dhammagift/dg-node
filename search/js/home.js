@@ -2366,84 +2366,71 @@
         var next = d.keys.filter(function (k) { return stack.indexOf(k) !== -1; });
         if (next.length && next.join() !== stack.join()) tsApply(next);
     }
-    /* Column view: a tap on a column's name opens a short list of what else that column can show - the other editions
-       (that this text is in) for a Pali column, the text's other translators for a translation column - and the pick
-       takes the column's place (owner 2026-10-31: «переключить по заголовку… и переводчиков»). */
+    /* Column view: a tap on a column's name opens the list of everything that column can show, in two groups that fold -
+       the Pali editions this text is in, then its translations - and the pick takes the column's place, of either kind
+       (owner 2026-11-01: «в выпадающем списке… пали первыми, потом переводы, чтобы можно было выбирать сразу все»);
+       a text already on screen changes places with it. "+" offers the same two groups, minus what is on screen. */
     // the columns' places across kinds (megareader.js dgColOrder): the keys in the header's order, saved as the pattern
     function colShown() {
         return [].map.call(document.querySelectorAll('.dg-cols-head [data-col-cell]'), function (c) { return c.dataset.colCell; });
     }
-    function colOrderSet(keys) { try { localStorage.setItem('dgColOrder', JSON.stringify(keys)); } catch (x) { /* private mode */ } }
-    function colOrderRename(from, to) {
-        try { var o = JSON.parse(localStorage.getItem('dgColOrder') || 'null'); if (o) colOrderSet(o.map(function (k) { return k === from ? to : k; })); } catch (x) { /* private mode */ }
+    // Draws the columns `keys` ("ed:pts", "tr:ru_o") in that order. Only the places are saved (megareader.js
+    // dgColOrder); the editions' and translations' own lists just lose what left the screen and gain what came, at
+    // their end, so the main translation (the reading language) does not change with a column's place.
+    function colApply(keys) {
+        try { localStorage.setItem('dgColOrder', JSON.stringify(keys)); } catch (x) { /* private mode */ }
+        var ids = function (g) { return keys.filter(function (k) { return k.slice(0, 3) === g; }).map(function (k) { return k.slice(3); }); };
+        var gone = colShown().filter(function (k) { return keys.indexOf(k) === -1; }).map(function (k) { return k.slice(3); });
+        var merge = function (list, want) {
+            list = list.filter(function (x) { return gone.indexOf(x) === -1; });
+            return list.concat(want.filter(function (x) { return list.indexOf(x) === -1; }));
+        };
+        var trIds = ids('tr:'), paliOnly = tsPaliOnly();
+        var eds = merge(window.getEditions(), ids('ed:'));
+        window.setEditions(eds.length ? eds : ['ms']);   // no Pali column left: the Mahāsaṅgīti stays, at the end
+        if (!trIds.length) {   // no translation left: Pāḷi only, as "−" on the last one does
+            if (paliOnly) tsApplyEditions(window.getEditions()); else dgSetPaliToggle('pli');
+            return;
+        }
+        if (paliOnly) dgSetPaliToggle('pli-2nd');   // a translation picked in Pāḷi only: the translations back, just this one
+        tsApply(merge(paliOnly ? [] : tsStack(), trIds));
     }
     function colMenuClose() {
         var m = document.querySelector('.dg-colmenu');
         if (m) m.remove();
         document.querySelectorAll('.dg-col-cell [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
     }
+    function colFolds() { try { return JSON.parse(localStorage.getItem('dgColMenuFold') || '{}') || {}; } catch (x) { return {}; } }
     document.addEventListener('click', function (e) {
+        var fold = e.target.closest('.dg-colmenu [data-fold]');
+        if (fold) {   // a group's title folds or unfolds it, remembered
+            var g = fold.parentNode, folds = colFolds();
+            g.classList.toggle('is-folded');
+            fold.setAttribute('aria-expanded', String(!g.classList.contains('is-folded')));
+            folds[fold.dataset.fold] = g.classList.contains('is-folded') ? 1 : 0;
+            try { localStorage.setItem('dgColMenuFold', JSON.stringify(folds)); } catch (x) { /* private mode */ }
+            return;
+        }
         var pick = e.target.closest('.dg-colmenu [data-pick]');
         if (pick) {
-            var from = pick.parentNode.dataset.from, to = pick.dataset.pick, after = pick.parentNode.dataset.after;
+            var menu = pick.closest('.dg-colmenu'), from = menu.dataset.from, to = pick.dataset.pick, after = menu.dataset.after;
             colMenuClose();
-            if (after) {   // "+": the pick goes in right after that column
-                try {   // ...in the saved places too, else it stood at the end
-                    var o = JSON.parse(localStorage.getItem('dgColOrder') || 'null');
-                    if (o) { o.splice(o.indexOf(after) + 1, 0, to); colOrderSet(o); }
-                } catch (x) { /* private mode */ }
-                if (after.indexOf('ed:') === 0) {
-                    var e1 = window.getEditions(), at = e1.indexOf(after.slice(3)) + 1;
-                    e1.splice(at, 0, to.slice(3));
-                    tsApplyEditions(e1);
-                } else {
-                    var s1 = tsStack(), at2 = s1.indexOf(after.slice(3)) + 1;
-                    s1.splice(at2, 0, to.slice(3));
-                    tsApply(s1);
-                }
-                return;
-            }
-            if (from === to) return;
-            var shownNow = colShown(), fi = shownNow.indexOf(from), ti = shownNow.indexOf(to);
-            if (ti !== -1) {   // a text already on screen: the two columns change places (owner 2026-11-01: «в любую колонку… всё, что уже выбрано»)
-                if (from.slice(0, 3) !== to.slice(0, 3)) {
-                    shownNow[fi] = to; shownNow[ti] = from;
-                    colOrderSet(shownNow);
-                    tsApplyEditions(window.getEditions());   // a redraw where it is being read, the lists unchanged
-                } else if (from.indexOf('ed:') === 0) {
-                    tsApplyEditions(window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : 'ed:' + x === to ? from.slice(3) : x; }));
-                } else {
-                    tsApply(tsStack().map(function (k) { return 'tr:' + k === from ? to.slice(3) : 'tr:' + k === to ? from.slice(3) : k; }));
-                }
-                return;
-            }
-            colOrderRename(from, to);
-            if (from.indexOf('ed:') === 0) {
-                var eds = window.getEditions().map(function (x) { return 'ed:' + x === from ? to.slice(3) : x; });
-                tsApplyEditions(eds.filter(function (x, i) { return eds.indexOf(x) === i; }));
-            } else {
-                var st = tsStack().map(function (k) { return 'tr:' + k === from ? to.slice(3) : k; });
-                tsApply(st.filter(function (k, i) { return st.indexOf(k) === i; }));
-            }
+            var keys = colShown();
+            if (after) keys.splice(keys.indexOf(after) + 1, 0, to);   // "+": the pick goes in right after that column
+            else if (from === to) return;
+            else if (keys.indexOf(to) !== -1) { keys[keys.indexOf(to)] = from; keys[keys.indexOf(from)] = to; }   // on screen: the two change places
+            else keys[keys.indexOf(from)] = to;
+            colApply(keys);
             return;
         }
         if (colDragJustEnded) { colDragJustEnded = false; return; }   // the click that ends a drag opens no menu
         var add = e.target.closest('[data-col-add]');
         if (add) {
-            // "+" on a column: the texts of its kind not on screen yet, the pick lands to its right; none left - the window
-            var addKey = add.closest('[data-col-cell]').dataset.colCell, ruA = menuLang() === 'ru', addItems;
+            var addKey = add.closest('[data-col-cell]').dataset.colCell;
             colMenuClose();
-            if (addKey.indexOf('ed:') === 0) {
-                var availA = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'], shownA = window.getEditions();
-                addItems = (window.DG_EDITIONS || []).filter(function (x) { return (!availA || availA.indexOf(x.id) !== -1) && shownA.indexOf(x.id) === -1; })
-                    .map(function (x) { return ['ed:' + x.id, x[ruA ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
-            } else {
-                var stA = tsPaliOnly() ? [] : tsStack();
-                addItems = tsAvailable().filter(function (k) { return stA.indexOf(k) === -1; }).sort(tsByRank)
-                    .map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
-            }
-            if (!addItems.length) { tsOpen(); return; }
-            colMenuOpen(add, addKey, addItems, true);
+            var groups = colMenuGroups(colShown());
+            if (!groups.some(function (gr) { return gr[2].length; })) { tsOpen(); return; }   // nothing left to add: the window
+            colMenuOpen(add, addKey, groups, true);
             return;
         }
         var del = e.target.closest('[data-col-del]');
@@ -2465,30 +2452,29 @@
         var open = cell.getAttribute('aria-expanded') === 'true';
         colMenuClose();
         if (open) return;
-        var key = cell.dataset.col, ru = menuLang() === 'ru', items;
-        if (key.indexOf('ed:') === 0) {
-            var avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
-            items = (window.DG_EDITIONS || []).filter(function (x) { return !avail || avail.indexOf(x.id) !== -1; })
-                .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
-        } else {
-            items = tsAvailable().slice().sort(tsByRank).map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
-        }
-        // ...and the texts of the other kind already on screen: the pick swaps the two columns
-        colShown().forEach(function (k) {
-            if (k.slice(0, 3) === key.slice(0, 3)) return;
-            var b = document.querySelector('.dg-cols-head [data-col="' + k + '"]');
-            items.push([k, b ? b.textContent : k, ru ? '⇄ поменять местами' : '⇄ swap']);
-        });
-        colMenuOpen(cell, key, items, false);
+        colMenuOpen(cell, cell.dataset.col, colMenuGroups([]), false);
     });
+    // [group, title, [[key, name, small], ...]]: the editions this text is in, then its translations; `skip` left out
+    function colMenuGroups(skip) {
+        var ru = menuLang() === 'ru', avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
+        var eds = (window.DG_EDITIONS || []).filter(function (x) { return (!avail || avail.indexOf(x.id) !== -1) && skip.indexOf('ed:' + x.id) === -1; })
+            .map(function (x) { return ['ed:' + x.id, x[ru ? 'ru' : 'en'], x.tag + (window.dgEditionOnDevice && window.dgEditionOnDevice(x.id) === false ? ' · ' + tsStr('edOnlineTag') : '')]; });
+        var trs = tsAvailable().filter(function (k) { return skip.indexOf('tr:' + k) === -1; }).sort(tsByRank)
+            .map(function (k) { return ['tr:' + k, trnName(k), LANG_LABEL[tsLangOf(k)] || tsLangOf(k)]; });
+        return [['ed', 'Pāḷi', eds], ['tr', ru ? 'Переводы' : 'Translations', trs]];
+    }
     // the menu under a column's name (switch: which text this column shows) or under its "+" (add: which text goes right of it)
-    function colMenuOpen(anchor, key, items, adding) {
-        var m = document.createElement('div');
+    function colMenuOpen(anchor, key, groups, adding) {
+        var m = document.createElement('div'), folds = colFolds();
         m.className = 'dg-colmenu';
         m.dataset.from = key;
         if (adding) m.dataset.after = key;
-        m.innerHTML = items.map(function (it) {
-            return '<button type="button" data-pick="' + esc(it[0]) + '"' + (!adding && it[0] === key ? ' aria-current="true"' : '') + '><span>' + esc(it[1]) + '</span><small>' + esc(it[2]) + '</small></button>';
+        m.innerHTML = groups.filter(function (g) { return g[2].length; }).map(function (g) {
+            return '<div class="dg-colmenu-group' + (folds[g[0]] ? ' is-folded' : '') + '">' +
+                '<button type="button" class="dg-colmenu-gh" data-fold="' + g[0] + '" aria-expanded="' + !folds[g[0]] + '"><span>' + esc(g[1]) + '</span><i aria-hidden="true">▾</i></button>' +
+                '<div class="dg-colmenu-items">' + g[2].map(function (it) {
+                    return '<button type="button" data-pick="' + esc(it[0]) + '"' + (!adding && it[0] === key ? ' aria-current="true"' : '') + '><span>' + esc(it[1]) + '</span><small>' + esc(it[2]) + '</small></button>';
+                }).join('') + '</div></div>';
         }).join('');
         document.body.appendChild(m);
         var r = anchor.getBoundingClientRect();
@@ -2513,19 +2499,31 @@
             colDrag.on = true;
             colMenuClose();
             colDrag.cell.classList.add('is-drag');
+            // On a phone the column to pass is off the screen: held near an edge, the columns scroll under the finger
+            colDrag.auto = setInterval(function () {
+                var art = document.querySelector('#sutta.dg-grid > article'), d = colDrag;
+                if (!art || !d) return;
+                var step = d.lx > window.innerWidth - 48 ? 14 : d.lx < 48 ? -14 : 0;
+                if (step) { art.scrollLeft += step; colDropAt(d.lx); }
+            }, 30);
         }
+        colDrag.lx = e.clientX;
+        colDropAt(e.clientX);
+    });
+    function colDropAt(x) {   // the drop place under the finger, marked
         var mates = [].slice.call(colDrag.cell.parentNode.querySelectorAll('[data-col-cell]'));
         mates.forEach(function (c) { c.classList.remove('is-drop', 'is-drop-end'); });
         var at = mates.length;   // drop index among all the columns
         for (var i = 0; i < mates.length; i++) {
             var r = mates[i].getBoundingClientRect();
-            if (e.clientX < r.left + r.width / 2) { at = i; break; }
+            if (x < r.left + r.width / 2) { at = i; break; }
         }
         colDrag.target = at;
         if (at < mates.length) mates[at].classList.add('is-drop'); else mates[mates.length - 1].classList.add('is-drop-end');
-    });
+    }
     document.addEventListener('pointerup', function () {
         var d = colDrag; colDrag = null;
+        if (d) clearInterval(d.auto);
         if (!d || !d.on) return;
         colDragJustEnded = true;
         setTimeout(function () { colDragJustEnded = false; }, 400);
@@ -2536,17 +2534,13 @@
         if (to > from) to--;   // the index counted the column itself
         if (to === from) return;
         keys.splice(from, 1); keys.splice(to, 0, d.key);
-        colOrderSet(keys);   // which kind stands where; the lists below say which text of a kind comes first
-        var ids = function (g) { return keys.filter(function (k) { return k.slice(0, 3) === g; }).map(function (k) { return k.slice(3); }); };
-        // the grid shows the chosen editions this text has; the others keep their place after them
-        var edIds = ids('ed:'), eds = edIds.concat(window.getEditions().filter(function (x) { return edIds.indexOf(x) === -1; }));
-        var trIds = ids('tr:'), stack = tsStack(), trs = trIds.concat(stack.filter(function (k) { return trIds.indexOf(k) === -1; }));
-        if (trs.join() !== stack.join()) { window.setEditions(eds); tsApply(trs); } else tsApplyEditions(eds);
+        colApply(keys);
     });
     // a cancelled drag (the browser took the touch for a scroll) ends it too, else the next sideways touch reordered
     // the columns with the stale one (Ultra's review 2026-11-01)
     document.addEventListener('pointercancel', function () {
         var d = colDrag; colDrag = null;
+        if (d) clearInterval(d.auto);
         if (d) [].forEach.call(d.cell.parentNode.querySelectorAll('[data-col-cell]'), function (c) { c.classList.remove('is-drag', 'is-drop', 'is-drop-end'); });
     });
     document.addEventListener('pointerup', tsEndDrag);

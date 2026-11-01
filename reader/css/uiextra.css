@@ -492,8 +492,10 @@
     transition: transform .25s ease;
     /* ...and past both sides too, with its line: the text scrolled under it showed in the gaps at the screen's edges
        and above it (owner 2026-11-01: «с запасом… чтобы не показалось никаких дырок»). Spread S moved up by S: wider
-       and taller, never lower. A shadow is not clipped by the box's own overflow and adds no scroll width. */
-    box-shadow: 0 calc(-100vw - 1px) 0 100vw var(--dg-page, #fff), 0 -100vw 0 100vw var(--dg-border, rgba(127, 127, 127, .25));
+       and taller, never lower. A shadow is not clipped by the box's own overflow and adds no scroll width. 96px covers
+       the body's side margins and the header's travel; a screen-sized spread (100vw) on this pinned box made the page
+       scroll heavily under a finger (owner 2026-11-01: «еле-еле двигается… лагает»). */
+    box-shadow: 0 -97px 0 96px var(--dg-page, #fff), 0 -96px 0 96px var(--dg-border, rgba(127, 127, 127, .25));
     overflow: hidden;
     background: var(--dg-page, #fff);
     border-bottom: 1px solid var(--dg-border, rgba(127, 127, 127, .25));
@@ -509,7 +511,7 @@
     padding: .4rem 0;
   }
   .dg-col-cell { display: flex; align-items: center; gap: 6px; min-width: 0; touch-action: pan-y; }
-  .dg-col-cell > [data-col] { all: unset; flex: 0 1 auto; min-width: 0; cursor: grab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dg-col-cell > [data-col] { all: unset; touch-action: pan-y; /* all:unset dropped the cell's pan-y: a finger drag was a pan, cancelled */ flex: 0 1 auto; min-width: 0; cursor: grab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .dg-col-cell > [data-col]::after { content: " ▾"; opacity: .6; }
   .dg-col-cell > [data-col]:hover, .dg-col-cell > [data-col][aria-expanded="true"] { color: var(--dg-text, inherit); }
   .dg-col-cell.is-drag { opacity: .35; }
@@ -528,6 +530,14 @@
   .dg-colmenu button:hover { background: var(--dg-surface-hover, rgba(127,127,127,.12)); }
   .dg-colmenu button[aria-current="true"] { color: var(--dg-accent, #14967b); font-weight: 700; }
   .dg-colmenu button small { color: var(--dg-text-muted, #808086); font-size: 11px; }
+  /* the two groups (Pali, translations), each folds by its title (home.js colMenuOpen) */
+  .dg-colmenu .dg-colmenu-gh { position: sticky; top: -4px; z-index: 1; background: var(--dg-surface, #fff); color: var(--dg-text-muted, #808086);
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 8px 10px 4px; border-radius: 0; }
+  .dg-colmenu .dg-colmenu-gh:hover { background: var(--dg-surface, #fff); color: var(--dg-text, inherit); }
+  .dg-colmenu-gh > i { font-style: normal; transition: transform .15s ease; }
+  .dg-colmenu-group + .dg-colmenu-group { border-top: 1px solid var(--dg-border, rgba(127,127,127,.25)); margin-top: 4px; }
+  .dg-colmenu-group.is-folded .dg-colmenu-items { display: none; }
+  .dg-colmenu-group.is-folded .dg-colmenu-gh > i { transform: rotate(-90deg); }
 
   /* Ширина контейнера — #sutta.column-view (ID+класс, специфичность 110), НЕ .sutta.column-view
      (только классы, 20): index.css/rus-multi.css задают базовую ширину через #sutta{max-width:

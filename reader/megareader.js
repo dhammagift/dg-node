@@ -498,15 +498,14 @@ document.addEventListener('scroll', e => {
     if (head) head.style.transform = `translateX(${-a.scrollLeft}px)`;
 }, true);
 // The columns' order across kinds (owner 2026-11-01: «колонки-то не должно быть привязано»): a Pali text may stand after
-// a translation. Saved (home.js, the column menu and drag) is the pattern of the places, which kind stands where; which
-// edition or translation fills them is still the editions' and translations' own order, so adding, removing or
-// reordering one of them keeps the pattern. Nothing saved: the Pali first, as before.
+// a translation. Saved by the column menu and drag (home.js colApply) as the columns' keys in order; a key not in it
+// (added elsewhere) goes to the end. It is only the places: the first translation stays the main one, the first
+// edition the one read aloud, whatever column they stand in. Nothing saved: the Pali first, as before.
 window.dgColOrder = function (keys) {
     let saved = [];
     try { saved = JSON.parse(localStorage.getItem('dgColOrder') || '[]') || []; } catch (e) { /* private mode */ }
     const rank = k => { const i = saved.indexOf(k); return i === -1 ? 1000 + keys.indexOf(k) : i; };
-    const fill = { ed: keys.filter(k => k.startsWith('ed:')), tr: keys.filter(k => k.startsWith('tr:')) };
-    return keys.slice().sort((a, b) => rank(a) - rank(b)).map(k => fill[k.slice(0, 2)].shift());
+    return keys.slice().sort((a, b) => rank(a) - rank(b));
 };
 // The edition TTS reads (voice.js): the first chosen one; its missing lines fall back to MS there too.
 // Memorize and Devanagari show MS only, so they read MS (Ultra's review 2026-11-01), the same rule as edsAsked.
