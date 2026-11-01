@@ -559,7 +559,7 @@
             {
               "rows": [
                 {
-                  "label": "Memorizer",
+                  "label": "Memorize & Meditate",
                   "desc": "Tool for memorizing suttas line by line",
                   "href": "/memo/",
                   "star": true
@@ -1442,7 +1442,7 @@
             {
               "rows": [
                 {
-                  "label": "Мнемотехника",
+                  "label": "Памятование и Медитация",
                   "desc": "Инструмент для заучивания сутт строка за строкой",
                   "href": "/ru/memo/",
                   "star": true
