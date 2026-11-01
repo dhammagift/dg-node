@@ -1216,7 +1216,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // the copy links without the view - and the reader draws its own over it a moment later: the variants vanished, the
     // titles moved (owner 2026-11-01: «ничего не мигает… текст появляется сразу в том виде, в котором он стоит»). With
     // other editions it was even another text (2026-10-31: «то одно, то другое»). Until the reader's own render (it
-    // removes the class) the text waits hidden, a spinner only if that takes long; 10 s at most. Crawlers run no script,
+    // removes the class) the text waits hidden, a spinner only if that takes long; 20 s at most. Crawlers run no script,
     // so they read the server's text as before.
     if (/^\/[a-z-]{1,24}\d/i.test(path) && !hasQuery) {
       document.documentElement.classList.add('dg-eds-loading');
@@ -1225,7 +1225,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var st = document.createElement('style');
       st.textContent = 'html.dg-eds-loading #sutta{visibility:hidden}';
       document.head.appendChild(st);
-      setTimeout(function () { document.documentElement.classList.remove('dg-eds-loading'); }, 10000);
+      setTimeout(function () { document.documentElement.classList.remove('dg-eds-loading'); }, 20000);   // a slow phone draws mn1 in ~10 s (Lighthouse 4x CPU): an earlier reveal would bring the swap back
     }
 })();
 </script>
