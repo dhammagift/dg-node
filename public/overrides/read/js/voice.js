@@ -158,6 +158,28 @@ function getContextInfo(langCode) {
   };
 }
 
+// The translation language the voice settings stand for: the one being read now (a Thai column on a Russian page),
+// as the speed button does; idle, the page's translation language (owner 2026-11-01: a Thai voice played that the
+// settings did not show, so it could not be changed).
+function voiceTrnLang() {
+  const item = ttsState.playlist[ttsState.currentIndex];
+  if (ttsState.speaking && item && item.lang && item.lang !== 'pi-dev') return item.lang;
+  return detectTranslationLang();
+}
+
+// Google's default voice of a translation language (ru and en keep their named defaults): the cheapest tier first
+// (owner: premium voices are for Pali only), a male voice within it (owner 2026-11-01), the language's own region
+// first (fr-FR before fr-CA). Thai has no male Standard voice, so it gets th-TH-Standard-A.
+const GOOGLE_CHEAP_TIERS = ['Standard', 'Wavenet', 'Neural2'];
+function googleDefaultVoice(voices, lang) {
+  const rank = v => {
+    const tier = GOOGLE_CHEAP_TIERS.findIndex(t => v.name.includes('-' + t + '-'));
+    return (tier < 0 ? 9 : tier) * 4 + (v.ssmlGender === 'MALE' ? 0 : 2) + (v.languageCodes[0].toLowerCase() === lang + '-' + lang ? 0 : 1);
+  };
+  return voices.filter(v => v.languageCodes[0].toLowerCase().startsWith(lang + '-'))
+    .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))[0] || null;
+}
+
 const PALI_RATIO = 0.6; 
 
 // Speed sliders: one for Pali, one for translations; every engine (Google, the self-hosted Pali voice,
@@ -1358,6 +1380,11 @@ async function fetchGoogleAudio(text, lang, rate, apiKey) {
           try { targetConfig = JSON.parse(savedTrn); } catch (e) {}
       }
       if (!targetConfig) targetConfig = context.defaultConfig;
+      // a language with no voice chosen: languageCode alone let Google pick, often a female premium voice
+      if (!targetConfig.name) {
+          const v = googleDefaultVoice(await loadGoogleVoices(apiKey), lang);
+          if (v) targetConfig = { languageCode: v.languageCodes[0], name: v.name };
+      }
   }
 
   const url = `https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`;
@@ -1887,6 +1914,14 @@ async function playCurrentSegment() {
   }
 
   markActiveRate(isPali);
+  // The voice settings follow the language being read, as the speed does (owner 2026-11-01): refilled when it changes,
+  // unless the picker is open inside the translation row (that would pull the list from under the finger).
+  if (!isPali && ttsTrnFilledLang && item.lang && item.lang !== ttsTrnFilledLang && ttsVoiceWin.lang !== 'trn') {
+    refreshVoiceDropdowns().then(() => {
+      paintVoiceButtons();
+      if (document.getElementById('tts-voice-win')?.classList.contains('on') && !ttsVoiceWin.lang) renderVoiceWin();
+    });
+  }
 
   const googleKey = (localStorage.getItem(GOOGLE_KEY_STORAGE) || window.TRIAL_KEY); 
   const useNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true';
@@ -3247,6 +3282,7 @@ document.addEventListener('click', e => {
 // Browsing an engine or a language changes those selects; closing without picking a voice puts
 // them back.
 const ttsVoiceWin = { lang: null, depth: 0, saved: null, picked: false };
+let ttsTrnFilledLang = null;  // the translation language the voice lists were last filled for (fillVoiceDropdowns)
 const ttsVoiceSel = l => {
   const k = l === 'pi' ? 'pali' : 'trn';
   return { eng: document.getElementById('tts-engine-' + k), lists: ['google-lang-select-' + k, 'google-voice-select-' + k].map(id => document.getElementById(id)) };
@@ -3259,11 +3295,15 @@ function paintVoiceButtons() {
   document.querySelectorAll('#tts-advanced-settings .tts-vrow, #tts-voice-win .tts-vrow').forEach(row => {
     const l = row.dataset.l, { eng } = ttsVoiceSel(l), lists = ttsShownLists(l), last = lists[lists.length - 1];
     if (!eng) return;
-    const e = eng.value, name = last ? (last.options[last.selectedIndex]?.textContent || '') : '';
+    // under DG, a language DG has no voice of shows Google's language and voice lists: Google reads it
+    const e = eng.value === 'dg' && lists.length > 1 ? 'google' : eng.value, name = last ? (last.options[last.selectedIndex]?.textContent || '') : '';
     const tag = TTS_ENGINE_TAG[e] || (window.isRu ? 'ОС' : 'OS');
+    // the translation row names the language its voice is for: it follows the language being read
+    const vk = row.querySelector('.vk');
+    if (vk && l === 'trn' && ttsTrnFilledLang) vk.textContent = t.trn + ' · ' + ttsTrnFilledLang.toUpperCase();
     const btn = row.querySelector('.tts-vbtn');
     btn.innerHTML = `<span class="tts-vtag ${e}">${tag}</span><span class="tts-vnm">${name}</span><span class="tts-vch">›</span>`;
-    const engName = eng.options[eng.selectedIndex]?.textContent;
+    const engName = (ttsGoogleUnderDg(l) ? eng.querySelector('option[value=google]') : eng.options[eng.selectedIndex])?.textContent;
     btn.title = engName + ' · ' + name;
     // the window's root: its header is the path of the voice the player's mode starts with (owner 2026-10-11, mockup B),
     // e.g. Voice › Pali › Google Cloud › hi-IN; it changes with the mode, not line by line
@@ -3315,7 +3355,7 @@ function renderVoiceWin() {
       html = `<div class="tts-wh">${back}<span class="t">${step(t.voice, 'root')}${kind}</span>${x}</div>` +
         [...eng.options].map(o => `<button type="button" class="tts-mi" data-eng="${o.value}"><span class="ck">${o.value === eng.value ? '•' : ''}</span><span class="ml">${o.textContent}<span class="eg">${sub[o.value] || ''}</span></span><span class="ar">›</span></button>`).join('');
     } else {
-      const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1], engName = eng.options[eng.selectedIndex]?.textContent;
+      const lists = ttsShownLists(l), list = lists[ttsVoiceWin.depth - 1], engName = (ttsGoogleUnderDg(l) ? eng.querySelector('option[value=google]') : eng.options[eng.selectedIndex])?.textContent;
       const crumb = step(t.voice, 'root') + step(kind, 0) + (ttsVoiceWin.depth > 1 ? step(engName, 1) + lists[0].value : engName);
       const leaf = ttsVoiceWin.depth === lists.length;
       html = `<div class="tts-wh">${back}<span class="t">${crumb}</span>${x}</div>` +
@@ -3349,7 +3389,11 @@ function openVoiceWin(l) {
 function voiceWinLang(l) {
   const { eng, lists } = ttsVoiceSel(l);
   Object.assign(ttsVoiceWin, { lang: l, depth: 0, picked: false, saved: { eng: eng.value, lists: lists.map(s => s?.value) } });
+  // DG with no voice of the language being read: Google reads it, so the picker opens at Google's voices of that
+  // language - choosing Google as the engine there would switch every translation language to Google
+  if (ttsGoogleUnderDg(l)) ttsVoiceWin.depth = 1;
 }
+const ttsGoogleUnderDg = l => l === 'trn' && ttsVoiceSel(l).eng?.value === 'dg' && ttsShownLists(l).length > 1;
 // Up to the root: what was browsed without choosing goes back
 async function voiceWinRoot() {
   await restoreVoiceWin();
@@ -3396,7 +3440,7 @@ document.addEventListener('click', async e => {
     if (!confirm(ttsUiText().resetVoices + '?')) return;
     [PALI_VOICE_KEY, NATIVE_PALI_KEY, NATIVE_TRN_KEY, TRN_ENGINE_KEY, GOOGLE_PALI_SETTINGS_KEY, 'tts_google_trn_custom_voice',
      GOOGLE_TRN_KEY_RU, GOOGLE_TRN_KEY_EN, GOOGLE_TRN_KEY_STUDY, 'tts_native_pali_custom_voice', 'tts_native_trn_custom_voice',
-     ...Object.keys(localStorage).filter(k => k.startsWith('tts_dg_voice_'))].forEach(k => localStorage.removeItem(k));
+     ...Object.keys(localStorage).filter(k => k.startsWith('tts_dg_voice_') || k.startsWith('tts_google_trn_'))].forEach(k => localStorage.removeItem(k));
     // in place, no reload: the engines' change handler refills the lists (and restarts a playing line)
     for (const k of ['pi', 'trn']) {
       const { eng } = ttsVoiceSel(k);
@@ -3681,21 +3725,25 @@ async function fillVoiceDropdowns(forceRefresh = false) {
     const trnLangSelect = document.getElementById('google-lang-select-trn');
     const trnVoiceSelect = document.getElementById('google-voice-select-trn');
     
-    if (trnLangSelect && trnVoiceSelect && getTrnEngine() === 'dg') {
-        // DG voice for the page's translation language; none -> Google reads it (see playCurrentSegment)
-        const lang = detectTranslationLang();
+    // The language being read now, not only the page's: a Thai column gets the Thai voices (voiceTrnLang)
+    const trnLang = ttsTrnFilledLang = voiceTrnLang();
+    const dgTrnList = getTrnEngine() === 'dg' ? DG_TRN_VOICES[trnLang] : null;
+    if (trnLangSelect && trnVoiceSelect && getTrnEngine() === 'dg' && (dgTrnList || !hasGoogleKey)) {
+        // DG voice of that language; none and no Google key -> the browser voice reads it (see playCurrentSegment)
+        const lang = trnLang;
         trnLangSelect.style.display = 'none';
         const sel = freshSelect('google-voice-select-trn');
         sel.style.display = '';
-        const list = DG_TRN_VOICES[lang];
+        const list = dgTrnList;
         sel.innerHTML = list
           ? list.map(v => `<option value="${v.id}" ${v.id === dgTrnVoice(lang) ? 'selected' : ''}>${v.label}</option>`).join('')
-          : `<option>${window.isRu ? 'нет голоса DG, читает Google' : 'no DG voice, Google reads it'}</option>`;
+          : `<option>${window.isRu ? 'нет голоса DG, читает голос системы' : 'no DG voice, the system voice reads it'}</option>`;
         sel.disabled = !list;
         if (list) sel.addEventListener('change', () => localStorage.setItem('tts_dg_voice_' + lang, sel.value));
     } else if (trnLangSelect && trnVoiceSelect) {
+        // Google's voices also under DG for a language DG has no voice of: Google reads it, so its voice is chosen here
         trnVoiceSelect.disabled = false;
-        const context = getContextInfo(detectTranslationLang());
+        const context = getContextInfo(trnLang);
         if (isNativeTrn) {
             let trnNativeVoices = [];
             let defTrnNativeLang = 'en-US';
@@ -3705,7 +3753,7 @@ async function fillVoiceDropdowns(forceRefresh = false) {
                 if (trnNativeVoices.length === 0) trnNativeVoices = nativeVoices.filter(v => isEnglishLang(v.languageCodes[0]));
                 defTrnNativeLang = 'hi-IN'; 
             } else {
-                const pageLang = detectTranslationLang(); 
+                const pageLang = trnLang;
                 trnNativeVoices = nativeVoices.filter(v => v.languageCodes[0].replace('_', '-').toLowerCase().startsWith(pageLang));
                 
                 if (trnNativeVoices.length === 0) {
@@ -3726,25 +3774,25 @@ async function fillVoiceDropdowns(forceRefresh = false) {
             let trnVoices = [];
             if (context.isIndianContext) {
                 trnVoices = googleVoices.filter(v => isIndianLang(v.languageCodes[0]));
-            } else {
+            } else if (trnLang === 'ru' || trnLang === 'en') {
                 trnVoices = googleVoices.filter(v => {
                     const code = v.languageCodes[0].replace('_', '-').toLowerCase();
-                    return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-') || code.startsWith(context.type + '-');
+                    return code.startsWith('ru-') || code.startsWith('en-') || code.startsWith('th-');
                 });
+            } else {
+                // another language is stored under its own key (tts_google_trn_<lang>), so only its own voices
+                trnVoices = googleVoices.filter(v => v.languageCodes[0].replace('_', '-').toLowerCase().startsWith(trnLang + '-'));
             }
 
             let bestDefaultVoice = null;
             if (context.isIndianContext) {
-                 bestDefaultVoice = trnVoices.find(v => v.name.includes('pa-IN-Standard-D')) || 
+                 bestDefaultVoice = trnVoices.find(v => v.name.includes('pa-IN-Standard-D')) ||
                                     trnVoices.find(v => (v.languageCodes || [''])[0].replace('_', '-').toLowerCase() === 'pa-in') ||
                                     trnVoices[0];
             } else {
-                const pageLang = detectTranslationLang(); 
-                const preferredName = (pageLang === 'ru') ? 'ru-RU-Standard-D' : 
-                                      (pageLang === 'th') ? 'th-TH-Standard-A' : 'en-US-Standard-D';
-                
-                bestDefaultVoice = trnVoices.find(v => v.name === preferredName) || 
-                                   trnVoices.find(v => v.name.includes('Standard') && (v.languageCodes || [''])[0].replace('_', '-').toLowerCase().startsWith(pageLang)) ||
+                const preferredName = trnLang === 'ru' ? 'ru-RU-Standard-D' : trnLang === 'en' ? 'en-US-Standard-D' : '';
+                bestDefaultVoice = trnVoices.find(v => v.name === preferredName) ||
+                                   googleDefaultVoice(trnVoices, trnLang) ||
                                    context.defaultConfig;
             }
             const finalDefaultConfig = (bestDefaultVoice && bestDefaultVoice.languageCodes) ? { languageCode: bestDefaultVoice.languageCodes[0], name: bestDefaultVoice.name } : context.defaultConfig;
