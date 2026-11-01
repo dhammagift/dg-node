@@ -2379,6 +2379,9 @@
     // their end, so the main translation (the reading language) does not change with a column's place.
     function colApply(keys) {
         try { localStorage.setItem('dgColOrder', JSON.stringify(keys)); } catch (x) { /* private mode */ }
+        // a link's cols= must not bring its order back on the next load (Ultra's review), as setEditions drops editions=
+        var u = new URL(location.href);
+        if (u.searchParams.has('cols')) { u.searchParams.delete('cols'); history.replaceState(history.state, '', u); }
         var ids = function (g) { return keys.filter(function (k) { return k.slice(0, 3) === g; }).map(function (k) { return k.slice(3); }); };
         var gone = colShown().filter(function (k) { return keys.indexOf(k) === -1; }).map(function (k) { return k.slice(3); });
         var merge = function (list, want) {
@@ -2423,7 +2426,10 @@
             var keys = colShown();
             if (after) keys.splice(keys.indexOf(after) + 1, 0, to);   // "+": the pick goes in right after that column
             else if (from === to) return;
-            else if (keys.indexOf(to) !== -1) { keys[keys.indexOf(to)] = from; keys[keys.indexOf(from)] = to; }   // on screen: the two change places
+            else if (keys.indexOf(to) !== -1) {   // on screen: the two change places (both places taken first: Ultra's review)
+                var ti = keys.indexOf(to), fi = keys.indexOf(from);
+                keys[ti] = from; keys[fi] = to;
+            }
             else keys[keys.indexOf(from)] = to;
             colApply(keys);
             return;

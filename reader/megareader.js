@@ -413,6 +413,11 @@ function markEditionDiffs(texts) {
             const mine = []; for (let x = s; x <= e; x++) foldChars(toks[i][x]).forEach(([k, c]) => mine.push([x, k, c]));
             let best = null;
             for (const [j, m] of matches) {
+                // only a text without these words: another edition sharing the minority reading matched it letter for
+                // letter and left nothing marked (Ultra's review, dn22 kammāsadammaṃ in BJT and SR)
+                let shares = false;
+                for (let x = s; x <= e; x++) if (m[x] >= 0) shares = true;
+                if (shares) continue;
                 let lo = 0, hi = keys[j].length;
                 for (let x = s - 1; x >= 0; x--) if (m[x] >= 0) { lo = m[x] + 1; break; }
                 for (let x = e + 1; x < m.length; x++) if (m[x] >= 0) { hi = m[x]; break; }
@@ -420,9 +425,10 @@ function markEditionDiffs(texts) {
                 const theirs = toks[j].slice(lo, hi).flatMap(w => foldChars(w).map(([, c]) => c));
                 const cm = lcsMatch(mine.map(c => c[2]), theirs), same = cm.filter(k => k >= 0).length;
                 const score = same / Math.max(mine.length, theirs.length);
-                if (score > .5 && (!best || score > best.score)) best = { score, cm };
+                if (score > .5 && (!best || score > best.score)) best = { score, cm, theirs: theirs.length };
             }
-            if (best) {
+            // a letter only the other text has leaves nothing here to mark: the words stay marked whole
+            if (best && (best.cm.some(k => k < 0) || best.theirs === mine.length)) {
                 for (let x = s; x <= e; x++) chars[x] = new Set();
                 best.cm.forEach((k, q) => { if (k < 0) chars[mine[q][0]].add(mine[q][1]); });
             }
