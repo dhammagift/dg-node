@@ -359,6 +359,8 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
     st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;transition:background-color .45s ease}' +
         // the first look, the owner's pick after trying the blue (2026-10-31: «какая она была… желтая или коричневая», no underline)
         '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,#e3a008 30%,transparent)}' +
+        // single letters inside a word: no padding, the word keeps its shape
+        'mark.dg-ed-diff.dg-ed-ch{padding:0;border-radius:2px}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
@@ -370,15 +372,17 @@ window.dgSetEditionsDiff = function (on) {
     if (b) b.setAttribute('aria-pressed', String(!!on));
 };
 const foldWord = w => w.normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[^\p{L}]+/gu, '');
-function lcsKept(a, b) {   // which words of a are in a longest common subsequence with b
+function lcsMatch(a, b) {   // for each item of a, the index of its partner in a longest common subsequence with b, or -1
     const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
     for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-    const keep = new Array(n).fill(false);
+    const match = new Array(n).fill(-1);
     for (let i = 0, j = 0; i < n && j < m;) {
-        if (a[i] === b[j]) { keep[i] = true; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+        if (a[i] === b[j]) { match[i] = j; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
     }
-    return keep;
+    return match;
 }
+// A word's letters as [index in the word, folded letter]: punctuation and quotes are never a difference
+const foldChars = w => Array.from(w.normalize('NFC')).map((c, k) => [k, c.toLowerCase().replace(/[ṃŋ]/, 'ṁ')]).filter(([, c]) => /\p{L}/u.test(c));
 // texts: one line per text (undefined = no line). Returns the texts with the minority words in <mark>; a line with
 // markup of its own (a search hit's <b>) is left as it is.
 function markEditionDiffs(texts) {
@@ -388,12 +392,52 @@ function markEditionDiffs(texts) {
     if (n < 2) return texts;
     return texts.map((t, i) => {
         if (!toks[i]) return t;
-        const support = keys[i].map(() => 1);
+        const support = keys[i].map(() => 1), matches = [];
         keys.forEach((other, j) => {
             if (j === i || !other) return;
-            lcsKept(keys[i], other).forEach((k, w) => { if (k) support[w]++; });
+            const m = lcsMatch(keys[i], other);
+            matches.push([j, m]);
+            m.forEach((k, w) => { if (k >= 0) support[w]++; });
         });
-        return toks[i].map((w, x) => keys[i][x] && support[x] <= n / 2 ? `<mark class="dg-ed-diff">${w}</mark>` : w).join(' ');
+        const minor = keys[i].map((k, x) => !!k && support[x] <= n / 2);
+        // Only the letters that differ (owner 2026-11-01: «разница только в некоторых буквах… сразу подчеркивать разницу»):
+        // a run of minority words is set against the words between the same agreeing neighbours in the text closest
+        // to it, letter by letter. A word with no differing letter (a join or a split: "ten' upasaṅkami", "sakkāyo'ti") is
+        // not marked; a word with nothing set against it (one the others do not have) is marked whole.
+        const chars = new Array(toks[i].length).fill(null);
+        for (let s = 0; s < minor.length; s++) {
+            if (!minor[s]) continue;
+            let e = s; while (e + 1 < minor.length && minor[e + 1]) e++;
+            const mine = []; for (let x = s; x <= e; x++) foldChars(toks[i][x]).forEach(([k, c]) => mine.push([x, k, c]));
+            let best = null;
+            for (const [j, m] of matches) {
+                let lo = 0, hi = keys[j].length;
+                for (let x = s - 1; x >= 0; x--) if (m[x] >= 0) { lo = m[x] + 1; break; }
+                for (let x = e + 1; x < m.length; x++) if (m[x] >= 0) { hi = m[x]; break; }
+                if (hi <= lo) continue;
+                const theirs = toks[j].slice(lo, hi).flatMap(w => foldChars(w).map(([, c]) => c));
+                const cm = lcsMatch(mine.map(c => c[2]), theirs), same = cm.filter(k => k >= 0).length;
+                const score = same / Math.max(mine.length, theirs.length);
+                if (score > .5 && (!best || score > best.score)) best = { score, cm };
+            }
+            if (best) {
+                for (let x = s; x <= e; x++) chars[x] = new Set();
+                best.cm.forEach((k, q) => { if (k < 0) chars[mine[q][0]].add(mine[q][1]); });
+            }
+            s = e;
+        }
+        return toks[i].map((w, x) => {
+            if (!minor[x]) return w;
+            if (!chars[x]) return `<mark class="dg-ed-diff">${w}</mark>`;
+            if (!chars[x].size) return w;
+            let out = '', open = false;
+            Array.from(w.normalize('NFC')).forEach((c, k) => {
+                const on = chars[x].has(k);
+                if (on !== open) { out += on ? '<mark class="dg-ed-diff dg-ed-ch">' : '</mark>'; open = on; }
+                out += c;
+            });
+            return out + (open ? '</mark>' : '');
+        }).join(' ');
     });
 }
 // The column names are glued to the site header as one block (owner 2026-10-31: «монолит… как только хедер уходит, она
