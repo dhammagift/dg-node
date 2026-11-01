@@ -374,7 +374,8 @@
             })
             .catch(function () { return false; });
     }
-    if (PACKS_ON) packsPublished();
+    // Only where a library exists: a plain visit to the site makes no offline request (ultra's review).
+    try { if (PACKS_ON && localStorage.getItem(LIBRARY_KEY) === '1') packsPublished(); } catch (e) { /* private mode */ }
 
     // The translation languages on this device. The single library is the ru+en slice; with packs, the languages of the
     // translation packs held - only the Mahāsaṅgīti downloaded, a ru text came from the device without its Russian, online
@@ -707,7 +708,9 @@
             var first = firstPacks(kind);
             return call('packs-plan', workerOpts(first ? { kind: kind, packs: first } : { kind: kind })).then(function (files) {
                 if (!files || !files.length) return false;
-                return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, files: files, update: kind === 'update' }));
+                // the manifest too, so the worker installs from that directory without the network
+                return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, update: kind === 'update',
+                    files: files.concat([{ path: 'packs-manifest.json', bytes: 0, sha256: '' }]) }));
             }).then(function (fileBase) {
                 if (fileBase) PACKS_FILE_BASE = fileBase;
                 return !!fileBase;
@@ -1040,19 +1043,26 @@
         // slice's English fallback in the app.
         // The reader sends every saved pick in ?translators= whatever the language asked, so a pick counts only for
         // a language the request shows: a saved th_siamrath must not send every ?lang=en text online.
-        function langNeedsOnline(qs) {
+        function langNeedsOnline(qs, search) {
             var split = function (v) { return String(v || '').split(',').map(function (s) { return s.trim().split('_')[0]; }).filter(Boolean); };
             var langs = split([qs.get('langs'), qs.get('lang')].join(','));
             if (!langs.length) langs = split(qs.get('translators'));
             var held = offlineLangs();
-            return langs.some(function (l) { return held.indexOf(l) === -1; });
+            if (!langs.some(function (l) { return held.indexOf(l) === -1; })) return false;
+            // Offline the server cannot answer: the device does with what it holds (ultra's review 2026-11-01: the search
+            // always asks ru,en and failed outright with only one of them, or none, downloaded). A text in none of the asked
+            // languages still says it needs the internet - a silent substitute was what the owner did not want.
+            if (navigator.onLine === false) return !(search || langs.some(function (l) { return held.indexOf(l) !== -1; }));
+            return true;
         }
 
         // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS): offline only those whose pack
         // (ed-bjt, …) is on this device; any other asked edition sends the request to the server.
         function editionNeedsOnline(qs) {
-            var held = [];
-            try { held = (JSON.parse(localStorage.getItem(STATE_KEY) || '{}').packs || []); } catch (e) { /* none */ }
+            var held = [], st = null;
+            try { st = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); held = st.packs || []; } catch (e) { /* none */ }
+            // The single library has no other edition (writeOfflineDb copies none): asked editions are the server's.
+            if (!st || !Array.isArray(st.packs)) return !!String(qs.get('editions') || '').split(',').some(function (e) { e = e.trim(); return e && e !== 'ms'; });
             return String(qs.get('editions') || '').split(',').some(function (e) {
                 e = e.trim();
                 return e && e !== 'ms' && held.indexOf('ed-' + e) === -1;
@@ -1317,7 +1327,15 @@
                         lang: qs.get('lang'),
                         translators: qs.get('translators'),
                         editions: qs.get('editions'),
-                    }).then(function (r) { return withOnlineParts(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
+                    }).then(function (r) {
+                        // The server falls back to English where the asked language has no translation (most of the Vinaya in
+                        // ru); a device without the English pack cannot, so online that answer is the server's.
+                        if (r && !r.__needsServer && !r.__status && navigator.onLine !== false && offlineLangs().indexOf('en') === -1 &&
+                            Array.isArray(r.segments) && !r.segments.some(function (s) { return s.translations && Object.keys(s.translations).length; })) {
+                            return { __needsServer: 'lang' };
+                        }
+                        return r;
+                    }).then(function (r) { return r && r.__needsServer ? r : withOnlineParts(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
                 });
             }
 
@@ -1329,7 +1347,7 @@
             }
 
             if (p === '/search/enrich') {
-                if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (langNeedsOnline(qs, true)) return toServer(input, init, 'lang');
                 return withLoadingEvent(function () {
                     return call('enrich', {
                         script: scriptRequested(qs),
@@ -1345,7 +1363,7 @@
             }
 
             if (p === '/search' || (p.indexOf('/search/') === 0 && p !== '/search/enrich')) {
-                if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
+                if (langNeedsOnline(qs, true)) return toServer(input, init, 'lang');
                 return withLoadingEvent(function () {
                     return call('search', {
                         script: scriptRequested(qs),

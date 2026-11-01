@@ -1052,7 +1052,9 @@ async function planPacks(pool, packsBase, want) {
 // foreground service) has already put them in, through the app's file URL; the manifest still comes from packsBase.
 async function applyPacks(pool, packsBase, want, fileBase) {
     cancelRequested = false;
-    const { wanted, missing, stored } = await planPacks(pool, packsBase, want);
+    // The manifest the native downloader saved beside the files, when there is one: installing must not need the network
+    // once the files are on the phone (ultra's review).
+    const { wanted, missing, stored } = await planPacks(pool, fileBase || packsBase, want);
     const scratchOf = p => scratchNameFor(packNameFor(p.id, p.build_id), true);
     await cleanScratchExcept(missing.map(scratchOf));
     await storagePlanFor(missing.reduce((a, p) => a + (p.bytes || 0), 0), Math.max(0, ...missing.map(p => p.bytes_gz || 0)));
