@@ -706,7 +706,7 @@
         if (PACKS_ON) {
             if (!platform.preparePacks) return Promise.resolve(false);
             var first = firstPacks(kind);
-            return call('packs-plan', workerOpts(first ? { kind: kind, packs: first } : { kind: kind })).then(function (files) {
+            return call('packs-plan', workerOpts(first ? { kind: kind, firstPacks: first } : { kind: kind })).then(function (files) {
                 if (!files || !files.length) return false;
                 // the manifest too, so the worker installs from that directory without the network
                 return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, update: kind === 'update',
@@ -752,8 +752,9 @@
             // downloads when there is none. Both leave a working copy in place until the new file
             // is proven (db-worker.js's fetchCurrent).
             var opts = workerOpts();
+            // only a hint: where no packs are published the worker downloads the single library as before
             var first = PACKS_ON && firstPacks(kind);
-            if (first) opts.packs = first;
+            if (first) opts.firstPacks = first;
             return kind === 'update'
                 ? call('update', opts)
                 : call('open', Object.assign({ download: true }, opts));

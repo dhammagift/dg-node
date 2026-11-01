@@ -1225,7 +1225,7 @@ async function open(distBase, allowDownload, args) {
     // A whole database stored from before packs stays in use (above) until the reader applies a selection ('update').
     // Nothing stored and no selection yet: the published default packs, or the whole database where none are published.
     const packsBase = args.packsBase || distBase;
-    if (args.packs || (args.packsOn && await fetchManifest(packsBase, PACKS_MANIFEST))) return applyPacks(pool, packsBase, args.packs || null, args.packsFileBase);
+    if (args.packs || (args.packsOn && await fetchManifest(packsBase, PACKS_MANIFEST))) return applyPacks(pool, packsBase, args.packs || args.firstPacks || null, args.packsFileBase);
     return fetchCurrent(pool, distBase, args);
 }
 
@@ -1566,7 +1566,7 @@ self.onmessage = async (event) => {
     if (op === 'packs-plan') {
         try {
             const pool = await getPool();
-            const want = args.packs || (args.kind === 'update' ? Object.keys(storedPacks(pool)) : null);
+            const want = args.packs || (args.kind === 'update' ? Object.keys(storedPacks(pool)) : args.firstPacks || null);
             const { missing } = await planPacks(pool, args.packsBase || args.distBase, want);
             post({ id, ok: true, result: missing.map(p => ({ id: p.id, path: p.url || p.file, bytes: p.bytes_gz || 0, sha256: p.sha256_gz || '' })) });
         } catch (e) { post({ id, ok: false, error: e.message }); }
