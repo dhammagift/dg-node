@@ -86,7 +86,8 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
    .play/.pan would collide with Bootstrap and page styles.
    ========================================================================================= */
 #voice-player-container,
-.tts-win {
+.tts-win,
+.tts-card {   /* the offline-voice card lives on <body> too: on the memo page (no home.css) it had no colours at all (owner 2026-11-01) */
   --dg-surface: #ffffff;
   --dg-surface-hover: #f5f4f1;
   --dg-surface-active: #eae8e2;
@@ -104,8 +105,10 @@ body[data-theme="dark"] #sutta span[id]:has(.tts-active) {
 }
 .dark #voice-player-container,
 .dark .tts-win,
+.dark .tts-card,
 [data-theme="dark"] #voice-player-container,
-[data-theme="dark"] .tts-win {
+[data-theme="dark"] .tts-win,
+[data-theme="dark"] .tts-card {
   --dg-surface: #191919;
   --dg-surface-hover: #202020;
   --dg-surface-active: #2a2a2a;

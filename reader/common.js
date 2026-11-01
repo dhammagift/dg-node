@@ -232,7 +232,9 @@ onReady(() => {
 
             const memoBtn = document.getElementById('sm-memo');
             if (memoBtn) {
-                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${freshLabels.memo}`;
+                // Memorize or Meditate at random - the service is "Memorize & Meditate", and the owner's small surprise
+                // (back 2026-11-01; be06bb7 had made it always Memorize)
+                memoBtn.innerHTML = `<img src="/assets/svg/memo-black.svg" class="menu-icon" alt=""> ${Math.random() < 0.5 ? freshLabels.meditate : freshLabels.memo}`;
             }
 
             const parentSpan = copyBtn.closest('span[id]');
