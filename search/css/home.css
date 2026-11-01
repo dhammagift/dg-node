@@ -4252,7 +4252,10 @@ body.dg-state-reader #sutta.column-view { max-width: 105rem; }
 body.dg-state-reader #sutta header { margin: 22px auto 0; text-align: center; }
 body.dg-state-reader #sutta header ul { list-style: none; padding: 0; margin: 0; }
 body.dg-state-reader #sutta header li.division .pli-lang { font-size: 15px; color: var(--dg-text); }
-body.dg-state-reader #sutta header li.division .right-column .quote { font-size: 13.5px; color: var(--dg-text-muted); }
+/* a translation is one shade throughout, its title lines too (owner 2026-11-01: «внутри перевода зачем два разных
+   оттенка»): the text's --dg-text-2, not muted here and the header list's grey on the next line */
+body.dg-state-reader #sutta header .right-column .quote { color: var(--dg-text-2); }
+body.dg-state-reader #sutta header li.division .right-column .quote { font-size: 13.5px; color: var(--dg-text-2); }
 body.dg-state-reader #sutta h1 .pli-lang { font-size: 28px; font-weight: 700; letter-spacing: -0.015em; color: var(--dg-text); }
 body.dg-state-reader #sutta h1 .right-column .quote { font-size: 21px; font-weight: 600; color: var(--dg-text-2); letter-spacing: -0.01em; }
 body.dg-state-reader #sutta h2 { margin: 26px 0 14px; }
