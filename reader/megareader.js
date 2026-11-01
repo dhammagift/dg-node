@@ -1791,6 +1791,7 @@ window.buildSutta = async function(rawSlug, opts) {
                     return false;
                 }
                 if (typeof window.executeGlobalSearch === 'function') {
+                    document.documentElement.classList.remove('dg-eds-loading');   // no text to wait for: a search
                     dgReaderReveal(false);
                     window.executeGlobalSearch(rawSlug);
                     return false;

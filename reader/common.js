@@ -739,6 +739,14 @@ onReady(() => {
 
         var langClass = window.isRuPath ? '.rus-lang' : '.eng-lang';
         var labelText = headings[activeIndex].innerText;
+        // without the variant readings: on the first render the label is read before setupVariantVisibility hides
+        // them, and the pill read "Dhammacakkappavattanasutta Dhammacakkappavattanasutta → tathāgatena vutta…" (sn56.11)
+        var vars = headings[activeIndex].querySelectorAll('.variant');
+        if (vars.length) {   // hidden for the read only (innerText keeps the spaces between the lines, textContent does not)
+            Array.prototype.forEach.call(vars, function (v) { v.dataset.dgDisp = v.style.display; v.style.display = 'none'; });
+            labelText = headings[activeIndex].innerText;
+            Array.prototype.forEach.call(vars, function (v) { v.style.display = v.dataset.dgDisp; delete v.dataset.dgDisp; });
+        }
 
         if (headings[activeIndex].tagName.startsWith('H')) {
             labelText = labelText.replace(/\s+/g, ' ').trim();
