@@ -3083,7 +3083,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
              #form-div реального прода — в чистом flex-ряду они просто криво съезжали. -->
         <!-- the external-links label and status in the page's language from the first paint: these rules live in
              reader/css/index.css, which loads later, and the closed menu's status is not in the critical CSS -->
-        <style>.dg-external-links-ru{display:none}html[lang="ru"] .dg-external-links-en{display:none}html[lang="ru"] .dg-external-links-ru{display:inline}</style>
+        <style>.dg-external-links-ru{display:none}html[lang="ru"] .dg-external-links-en{display:none}html[lang="ru"] .dg-external-links-ru{display:inline}
+        /* The toolbar whole or not at all: the page paints while it is still being parsed, and the half-read toolbar showed
+           "External links" alone in the middle of the row for a moment on every reader load (owner 2026-11-01: «мигает
+           голый стиль»). #smart-toc-btn is its last child. */
+        #reader-toolbar:not(:has(#smart-toc-btn)){visibility:hidden}</style>
         <div id="reader-toolbar" class="dg-reader-toolbar">
             <span class="dg-external-links dg-header-link">
                 <button type="button" class="dg-external-links-toggle" aria-expanded="false">
