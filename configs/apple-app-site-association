@@ -7,6 +7,11 @@
         ],
         "components": [
           {
+            "/": "/__/*",
+            "exclude": true,
+            "comment": "Firebase sign-in handler: the redirect must finish in the tab that started it"
+          },
+          {
             "/": "/*"
           }
         ]

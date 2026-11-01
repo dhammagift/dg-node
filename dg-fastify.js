@@ -1140,6 +1140,9 @@ app.get('/.well-known/assetlinks.json', (req, res) => {
 // which it hands to the browser (dg-app-full/src/native-bridge.js, NOT_BUNDLED_RE plus the site-only
 // list). Excluding the site-only paths here as well would be the same rule written twice, in two
 // languages, on two schedules — the drift this repository has already paid for once.
+// One exception, /__/* (Firebase's sign-in handler, Safari's authDomain is dhamma.gift - settings.js): Google redirects
+// back to it mid-sign-in, and handing it to the app or a new browser tab loses the tab's pending sign-in. Android hit
+// exactly this (owner 2026-10-30); there the site switches to the firebaseapp.com handler instead.
 for (const route of ['/.well-known/apple-app-site-association', '/apple-app-site-association']) {
     app.get(route, (req, res) => {
         res.header('content-type', 'application/json; charset=utf-8');
