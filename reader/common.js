@@ -619,6 +619,24 @@ onReady(() => {
         };
     }
 
+    // With several Pali editions on screen the contents follow one of them: the Mahāsaṅgīti, or the first edition shown
+    // without it - every heading carried each edition's line and the list read "Indriyabhāvanāsutta3. 5. 10. indriyabhāvanā
+    // suttaṃ10. ...", the summaries twice (owner 2026-11-01: «оглавление строить от канона по умолчанию»).
+    function tocEdition() {
+        var first = document.querySelector('#sutta .dg-ed-line[data-ed]');
+        if (!first) return null;
+        return document.querySelector('#sutta .dg-ed-line[data-ed="ms"]') ? 'ms' : first.dataset.ed;
+    }
+    function otherEditions(root) {
+        var ed = tocEdition();
+        return ed ? Array.from(root.querySelectorAll('.dg-ed-line[data-ed]:not([data-ed="' + ed + '"])')) : [];
+    }
+    function tocText(el) {
+        var c = el.cloneNode(true);
+        otherEditions(c).forEach(function (x) { x.remove(); });
+        return c.textContent;
+    }
+
     function getTOCNodes() {
         if (cachedTOCNodes) return { nodes: cachedTOCNodes };
 
@@ -644,6 +662,8 @@ onReady(() => {
             }
             // textContent too: the paragraphs off the screen are not rendered (content-visibility: auto, the speed work of
             // 2026-11-01), their innerText is "" - every point below the first screen fell out, the contents showed the title only
+            var ed = tocEdition(), inLine = ed && el.closest('.dg-ed-line[data-ed]');
+            if (inLine && inLine.dataset.ed !== ed) return false;
             return (el.innerText || el.textContent).trim().length > 0;
         });
 
@@ -778,7 +798,7 @@ onReady(() => {
         var firstContentBlock = suttaContainer.querySelector('p, blockquote, .rule');
 
         headings.forEach(function (el) {
-            var text = (el.innerText || el.textContent).replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();   // off-screen: see getTOCNodes
+            var text = (otherEditions(el).length ? tocText(el) : (el.innerText || el.textContent)).replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();   // off-screen: see getTOCNodes
             if (!text) return;
 
             if (el.tagName.startsWith('H')) currentLevel = parseInt(el.tagName.substring(1), 10);
@@ -883,6 +903,7 @@ onReady(() => {
                     langSpans.forEach(function (originalSpan) {
                         var clone = originalSpan.cloneNode(true);
                         clone.querySelectorAll('.copyLink, .copyLink-start, .variant').forEach(function (child) { child.remove(); });
+                        otherEditions(clone).forEach(function (child) { child.remove(); });
                         var cleanText = clone.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();
                         if (cleanText) {
                             if (el.dataset.fallback === 'true') {
