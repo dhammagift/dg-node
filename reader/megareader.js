@@ -361,14 +361,13 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
 (function () {
     const st = document.createElement('style');
     st.id = 'dg-ed-diff-style';
-    st.textContent = 'mark.dg-ed-diff{background:transparent;color:inherit;border-radius:3px;padding:0 1px;transition:background-color .45s ease}' +
+    // no padding or width of their own: the marks come after the text (runEditionDiffs) and must not move it - a
+    // rewrapped line shifted the place a search hit was being scrolled to (owner 2026-11-01); the shadow is the margin
+    st.textContent = 'mark.dg-ed-diff{--dg-mk:color-mix(in srgb,#e3a008 30%,transparent);background:transparent;color:inherit;border-radius:3px;padding:0;transition:background-color .45s ease,box-shadow .45s ease}' +
         // the first look, the owner's pick after trying the blue (2026-10-31: «какая она была… желтая или коричневая», no underline)
-        '#sutta.dg-diff-on mark.dg-ed-diff{background:color-mix(in srgb,#e3a008 30%,transparent)}' +
+        '#sutta.dg-diff-on mark.dg-ed-diff{background:var(--dg-mk);box-shadow:0 0 0 1px var(--dg-mk)}' +
         // single letters inside a word: no padding, the word keeps its shape
-        'mark.dg-ed-diff.dg-ed-ch{padding:0;border-radius:2px}' +
-        // where letters are missing: a thin bar, no width while Differences is off (the text does not move)
-        'mark.dg-ed-gap{display:inline-block;width:0;height:1.05em;vertical-align:-.18em;transition:width .45s ease,background-color .45s ease}' +
-        '#sutta.dg-diff-on mark.dg-ed-gap{width:.3em;margin:0 .03em}' +
+        '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-ch{border-radius:2px;box-shadow:none}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
@@ -407,31 +406,54 @@ function runEditionDiffs() {
     const slice = deadline => {
         if (job !== edDiffJob) return;   // a new render, or the comparison started again
         do {
-            const texts = sets[i], marked = markEditionDiffs(texts);
-            (lines[i] || []).forEach((el, k) => {
-                const t = texts[k];
-                if (typeof t !== 'string' || marked[k] === t) return;
-                const node = [...el.childNodes].find(n => n.nodeType === 3 && n.nodeValue.trim() === t.trim());
-                if (!node) return;
-                const tpl = document.createElement('template');
-                tpl.innerHTML = marked[k];
-                node.replaceWith(tpl.content);
-            });
+            const els = lines[i] || [];
+            // the lines' text as drawn: a search hit's own marks (<b>) inside it are kept, the comparison reads past them
+            const nodes = els.map(el => el.classList.contains('is-gap') ? null : textNodesOf(el));
+            const marks = diffMarks(nodes.map(ns => ns && ns.map(n => n.nodeValue).join('')));
+            els.forEach((el, k) => { if (nodes[k] && marks[k]) paintMarks(el, marks[k]); });
             i++;
         } while (i < sets.length && deadline.timeRemaining() > 2);
         if (i < sets.length) idle(slice); else if (edDiffSets === sets) edDiffSets = [];   // all drawn: nothing left to do
     };
     idle(slice);
 }
-// texts: one line per text (undefined = no line). Returns the texts with the minority words in <mark>; a line with
-// markup of its own (a search hit's <b>) is left as it is.
-function markEditionDiffs(texts) {
-    const toks = texts.map(t => (typeof t === 'string' && !t.includes('<')) ? t.trim().split(/\s+/) : null);
+// a line's text nodes, its copy markers left out
+function textNodesOf(el) {
+    const out = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, { acceptNode: n => n.parentNode.closest('.copyLink') ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+    for (let n; (n = w.nextNode());) out.push(n);
+    return out;
+}
+// ranges [start, end] in the line's joined text wrapped in marks, across the text nodes they
+// cross; the nodes read again for each range, as the splits change them (the joined text stays the same)
+function paintMarks(el, ranges) {
+    const mark = cls => { const m = document.createElement('mark'); m.className = cls; return m; };
+    ranges.slice().sort((x, y) => y[0] - x[0] || y[1] - x[1]).forEach(([a, b, cls]) => {   // from the end
+        let off = 0;
+        for (const n of textNodesOf(el)) {
+            const len = n.nodeValue.length, s0 = Math.max(a - off, 0), e0 = Math.min(b - off, len);
+            off += len;
+            if (e0 <= s0) continue;
+            let t = n;
+            if (s0 > 0) t = t.splitText(s0);
+            if (e0 - s0 < t.nodeValue.length) t.splitText(e0 - s0);
+            const m = mark(cls);
+            t.parentNode.insertBefore(m, t);
+            m.appendChild(t);
+        }
+    });
+}
+// texts: one line per text (undefined = no line). diffMarks: per text, the marks as [start, end, class] in it (the
+// reader paints them over the drawn lines, a search hit's <b> included); markEditionDiffs: the texts with the marks
+// in (a line with markup of its own left as it is).
+function diffMarks(texts) { return diffWords(texts, true); }
+function markEditionDiffs(texts) { return diffWords(texts, false); }
+function diffWords(texts, asRanges) {
+    const toks = texts.map(t => (typeof t === 'string' && (asRanges || !t.includes('<'))) ? t.trim().split(/\s+/) : null);
     const keys = toks.map(ws => ws && ws.map(foldWord));
     const n = texts.filter(t => typeof t === 'string' && t.trim()).length;
-    if (n < 2) return texts;
+    if (n < 2) return asRanges ? texts.map(() => null) : texts;
     return texts.map((t, i) => {
-        if (!toks[i]) return t;
+        if (!toks[i]) return asRanges ? null : t;
         const support = keys[i].map(() => 1), matches = [];
         keys.forEach((other, j) => {
             if (j === i || !other) return;
@@ -443,10 +465,11 @@ function markEditionDiffs(texts) {
         // Only the letters that differ (owner 2026-11-01: «разница только в некоторых буквах… сразу подчеркивать разницу»):
         // a run of minority words is set against the words between the same agreeing neighbours in the text closest
         // to it, letter by letter. A word with no differing letter (a join or a split: "ten' upasaṅkami", "sakkāyo'ti") is
-        // not marked; a word with nothing set against it (one the others do not have) is marked whole. Letters only the
-        // other text has leave a thin mark where they are missing (owner 2026-11-01: sāvatthiṃ / sāvatthiyaṃ was marked
-        // whole in one edition and not at all in another).
-        const chars = new Array(toks[i].length).fill(null), gaps = toks[i].map(() => new Set());
+        // not marked; a word with nothing set against it (one the others do not have) is marked whole. Where the other
+        // text has letters this one lacks, the letter of ours standing in their place is marked: sāvatthi[ṃ] against
+        // sāvatthiyaṃ (owner 2026-11-01: marked whole in one edition and not at all in another; then «как понять, что
+        // недостающая буква… подсвечивай» - a thin bar for the missing letters said nothing).
+        const chars = new Array(toks[i].length).fill(null);
         for (let s = 0; s < minor.length; s++) {
             if (!minor[s]) continue;
             let e = s; while (e + 1 < minor.length && minor[e + 1]) e++;
@@ -471,30 +494,42 @@ function markEditionDiffs(texts) {
                 for (let x = s; x <= e; x++) chars[x] = new Set();
                 best.cm.forEach((k, q) => { if (k < 0) chars[mine[q][0]].add(mine[q][1]); });
                 const taken = new Set(best.cm.filter(k => k >= 0));
-                for (let t = 0; t < best.theirs; t++) {   // a letter of theirs not here: a gap before the next letter of ours
+                for (let t = 0; t < best.theirs; t++) {   // a letter of theirs not here: the next letter of ours (the last one at the end)
                     if (taken.has(t)) continue;
                     let q = best.cm.findIndex(k => k > t);
                     if (q < 0) q = mine.length;
                     if (q > 0 && best.cm[q - 1] < 0) continue;   // right after a letter of ours marked: a changed letter, marked already
-                    if (q < mine.length) gaps[mine[q][0]].add(mine[q][1]);
-                    else if (mine.length) gaps[mine[q - 1][0]].add(mine[q - 1][1] + 1);
+                    const at = mine[Math.min(q, mine.length - 1)];
+                    if (at) chars[at[0]].add(at[1]);
                 }
             }
             s = e;
         }
+        if (asRanges) {   // [start, end, class] in t; positions in code points mapped to the string's own
+            const out = [], re = /\S+/g;
+            let x = 0;
+            for (let mt; (mt = re.exec(t)); x++) {
+                if (!minor[x]) continue;
+                const w = mt[0], base = mt.index;
+                if (!chars[x]) { out.push([base, base + w.length, 'dg-ed-diff']); continue; }
+                const cs = Array.from(w), offs = [0];
+                cs.forEach(c => offs.push(offs[offs.length - 1] + c.length));
+                cs.forEach((c, k) => {
+                    if (chars[x].has(k)) out.push([base + offs[k], base + offs[k + 1], 'dg-ed-diff dg-ed-ch']);
+                });
+            }
+            return out.length ? out : null;
+        }
         return toks[i].map((w, x) => {
             if (!minor[x]) return w;
             if (!chars[x]) return `<mark class="dg-ed-diff">${w}</mark>`;
-            if (!chars[x].size && !gaps[x].size) return w;
-            const gap = '<mark class="dg-ed-diff dg-ed-ch dg-ed-gap"></mark>', cs = Array.from(w.normalize('NFC'));
+            if (!chars[x].size) return w;
             let out = '', open = false;
-            cs.forEach((c, k) => {
+            Array.from(w.normalize('NFC')).forEach((c, k) => {
                 const on = chars[x].has(k);
-                if (!on && !open && gaps[x].has(k)) out += gap;   // beside a marked letter it says nothing more
                 if (on !== open) { out += on ? '<mark class="dg-ed-diff dg-ed-ch">' : '</mark>'; open = on; }
                 out += c;
             });
-            if (!open && gaps[x].has(cs.length)) out += gap;
             return out + (open ? '</mark>' : '');
         }).join(' ');
     });
