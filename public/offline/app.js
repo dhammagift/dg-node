@@ -205,9 +205,13 @@
             // Serve another tab's data request from THIS tab's open database. Nothing is written and
             // nothing is locked, so this works no matter which window the reader is looking at.
             if (msg.type === 'data-request') {
-                if (!local || !isDataRoute(String(msg.path || ''))) return;
+                // the route without its query: "/search?q=…" is the search route (it was ignored, so no search ever relayed)
+                if (!local || !isDataRoute(String(msg.path || '').split('?')[0])) return;
                 log('answering another tab:', msg.path);
-                shimFetch(msg.path, { method: msg.method || 'GET' }).then(function (res) {
+                // window.fetch, not shimFetch: that one lives inside installFetchShim() and is out of scope here - the
+                // ReferenceError left every relayed request unanswered (the second tab got nothing offline, 2026-11-01).
+                // In this tab it goes straight to the library (gate() -> shimFetch while local).
+                Promise.resolve().then(function () { return window.fetch(msg.path, { method: msg.method || 'GET' }); }).then(function (res) {
                     return res.text().then(function (body) { return { status: res.status, body: body }; });
                 }).then(function (out) {
                     channel.postMessage({ type: 'data-response', id: msg.id, status: out.status, body: out.body });
@@ -1151,7 +1155,7 @@
                 var timer = setTimeout(function () {
                     relayRequests.delete(id);
                     reject(new Error('no answer from the tab holding the library'));
-                }, 3500);
+                }, path.indexOf('/search') === 0 ? 20000 : 3500);   // a search over the whole library takes seconds, a text milliseconds
                 relayRequests.set(id, function (msg) {
                     clearTimeout(timer);
                     if (msg.error) { reject(new Error(msg.error)); return; }
