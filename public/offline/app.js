@@ -1080,7 +1080,21 @@
 
         // The other Pali editions (?editions=bjt,th, reader/megareader.js READER_EDITIONS): offline only those whose pack
         // (ed-bjt, …) is on this device; any other asked edition sends the request to the server.
+        // Offline the device answers with the editions it holds (the Mahāsaṅgīti always) and says the rest are online only:
+        // sent to the server the whole text failed (Cakkhu, 2026-11-01, as 3b52f61 for translations).
+        var toldEditions = false;
         function editionNeedsOnline(qs) {
+            var need = editionMissing(qs);
+            if (!need || navigator.onLine !== false) return need;
+            if (!toldEditions && typeof window.showBubbleNotification === 'function') {
+                toldEditions = true;
+                var ru = false;
+                try { ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru'; } catch (e) { /* none */ }
+                window.showBubbleNotification(ru ? 'Без интернета: показаны только скачанные издания пали' : 'Offline: only the downloaded Pali editions are shown', 5000);
+            }
+            return false;
+        }
+        function editionMissing(qs) {
             var held = [], st = null;
             try { st = JSON.parse(localStorage.getItem(STATE_KEY) || '{}'); held = st.packs || []; } catch (e) { /* none */ }
             // The single library has no other edition (writeOfflineDb copies none): asked editions are the server's.
