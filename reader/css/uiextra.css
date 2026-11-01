@@ -425,6 +425,12 @@
      line's height, a registered length so 1lh is the title's, not the small plate's). */
   #sutta:not(.column-view) :is(header, h1) .dg-tag { position: relative; padding-inline: 2.6rem; --dg-line: 1lh; }
   #sutta:not(.column-view) :is(header, h1) .dg-tag::before { position: absolute; left: 0; top: calc(var(--dg-line) / 2 - .8em); margin: 0; }
+  /* ...and the speakers in a column right after the plates, all the size of the Pali's (owner 2026-11-01: «плашки идут,
+     потом динамики… все одинаково, как самый первый»): a translation's smaller title made its speaker smaller */
+  #sutta:not(.column-view) :is(header, h1) .dg-tag:has(> .title-play-btn) { padding-inline: 4.6rem; }
+  #sutta:not(.column-view) :is(header, h1) .dg-tag > .title-play-btn { position: absolute; left: 2.7rem; bottom: auto; margin: 0;
+    font-size: 1.05rem; top: calc(var(--dg-line) / 2 - .5em); }
+  #sutta:not(.column-view) :is(header, h1) .dg-tag > .title-play-btn > .title-svg-icon { vertical-align: top; }
   .dg-ed-note { font-size: .85em; color: var(--dg-text-muted, #8a8a8f); margin: 0 0 1em; }
   /* "Differences" between prev and next (megareader.js) */
   #dg-diff-btn { all: unset; flex: none; margin: 0 auto; align-self: center; display: inline-flex; align-items: center; gap: 7px; cursor: pointer;

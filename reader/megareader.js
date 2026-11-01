@@ -2093,6 +2093,9 @@ window.buildSutta = async function(rawSlug, opts) {
         suttaArea.dataset.gridPaliOnly = trnCols.length || !edMulti ? '0' : '1';
         suttaArea.classList.toggle('dg-grid', useGrid);
         suttaArea.classList.toggle('dg-eds', edMulti);
+        // Pāḷi only with several editions keeps its columns (showPali), but showPali ran before this render had marked
+        // the editions (dg-eds), so a link with pali=pli&view=columns opened as lines (owner 2026-11-01, sn19.1)
+        if (edMulti && localStorage.getItem('paliToggle') === 'pli' && (localStorage.getItem('viewMode') || 'alternate') === 'columns') suttaArea.classList.add('column-view');
         suttaArea.style.setProperty('--dg-ncols', gridCols);
     }
 
