@@ -712,9 +712,13 @@
                 return Promise.resolve(platform.preparePacks({ base: PACKS_BASE || DIST_BASE, update: kind === 'update',
                     files: files.concat([{ path: 'packs-manifest.json', bytes: 0, sha256: '' }]) }));
             }).then(function (fileBase) {
-                if (fileBase) PACKS_FILE_BASE = fileBase;
-                return !!fileBase;
-            }).catch(function (e) { log('native pack download unavailable, the page downloads:', (e && e.message) || e); return false; });
+                if (fileBase === false) return false;   // nothing to fetch
+                // A platform that can transfer packs never leaves them to the page: there the transfer stops whenever the app
+                // is not on screen (issue #62), and with no manifest the worker would fall back to the whole 250 MB database.
+                if (!fileBase) throw new Error('the offline library could not be downloaded in the background — try again');
+                PACKS_FILE_BASE = fileBase;
+                return true;
+            });
         }
         if (!platform.prepareArchive) return Promise.resolve(false);
         return Promise.resolve(platform.prepareArchive({ update: kind === 'update' })).then(function (ok) {
