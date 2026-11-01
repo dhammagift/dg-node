@@ -952,6 +952,10 @@ function inspectPack(pool, name, build, expectedBytes) {
 
 // Main, then every other pack ATTACHed under its id, and the TEMP VIEW `texts` over all of them (see packedQuery).
 // temp_store=memory: the view's temp schema must not take a pool slot.
+// A pack (packs-manifest.json) carries its id in meta; the single dg.db has none.
+function isPackDb() {
+    try { return !!db.selectObject("SELECT value FROM main.meta WHERE key = 'pack_id'"); } catch (e) { return false; }
+}
 function openPacks(pool, packs) {
     const handle = new pool.OpfsSAHPoolDb(packs[0].name);
     try {
@@ -1428,6 +1432,9 @@ const OPS = {
         );
         data.availableLangs = [...new Set(roster.map(r => r.lang))];
         data.availableTranslators = roster.map(r => `${r.lang}_${r.translator}`);
+        // The single published database holds every edition, so the corpus list is the site's (dg-fastify.js textRoster); with
+        // packs only the downloaded ones are here, and the list stays unknown (the reader then asks /api/text-online).
+        if (!isPackDb()) data.availableEditions = core.textEditions(suttaId);
         // dg-fastify.js's audioLineHtml without the audio (no index here): app.js swaps in the site's line when online.
         data.audioHtml = core.principlesLineHtml(data.lang === 'ru', '2em');
         // The other Pali editions from the ed-* packs on this device (the same core code as the server's ?editions=), and which
