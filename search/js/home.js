@@ -2227,12 +2227,15 @@
         // reloaded without the reading parameters, so the server's defaults draw it.
         if (e.target.closest('[data-ts-reset]')) {
             try {
-                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions']
+                // paliToggle too: "−" on the last translation leaves Pāḷi only, and Default did not bring the
+                // translations back (Ultra's review 2026-11-01); a shared link's view goes with it (dgShareView)
+                ['dgReadingLangOrder', 'dgReadingStack', 'dgReadingTranslators', 'dgReaderMode', 'dgEditions', 'paliToggle']
                     .forEach(function (k) { localStorage.removeItem(k); });
                 sessionStorage.removeItem('dgReadingStackLocal');
+                sessionStorage.removeItem('dgShareView');
             } catch (x) { /* private mode */ }
             var u = new URL(location.href);
-            ['mode', 'langs', 'translators', 'editions'].forEach(function (k) { u.searchParams.delete(k); });
+            ['mode', 'langs', 'translators', 'editions', 'view', 'variants', 'pali', 'diff'].forEach(function (k) { u.searchParams.delete(k); });
             // In the apps /sn56.11 is no file (the dot reads as an extension, the WebView fails it), so "Default" did
             // nothing there (owner, iPhone 2026-10-31): the root with the _nativeRoute handoff opens the same place,
             // as public/offline/app.js reloadHere() does.
@@ -2513,6 +2516,12 @@
             var restT = tsStack().filter(function (k) { return ids.indexOf(k) === -1; });
             tsApply(ids.concat(restT));
         }
+    });
+    // a cancelled drag (the browser took the touch for a scroll) ends it too, else the next sideways touch reordered
+    // the columns with the stale one (Ultra's review 2026-11-01)
+    document.addEventListener('pointercancel', function () {
+        var d = colDrag; colDrag = null;
+        if (d) [].forEach.call(d.cell.parentNode.querySelectorAll('[data-col-cell]'), function (c) { c.classList.remove('is-drag', 'is-drop', 'is-drop-end'); });
     });
     document.addEventListener('pointerup', tsEndDrag);
     document.addEventListener('pointercancel', tsEndDrag);

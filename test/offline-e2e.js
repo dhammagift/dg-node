@@ -156,7 +156,7 @@ async function referenceAnswer(core, url) {
         const sortedData = core.sortSuttaResults(searchResults);
         let totalMatches = 0;
         for (const id of suttaIds) totalMatches += sortedData[id].count;
-        const variantSegments = await core.findVariantSegments(keyword, exact);
+        const variantSegments = [];   // as core/search-core.js enrichResponse
         return wrap({
             data: sortedData,
             wordReport: core.buildWordReport(searchResults),

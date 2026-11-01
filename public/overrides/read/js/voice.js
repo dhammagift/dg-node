@@ -1557,7 +1557,7 @@ async function prepareTextData(slug) {
   const startsOnPali = !!startEl && startEl.matches('.pli-lang, [lang="pi"]');
   // which edition line of the Pali was tapped (megareader.js remembers it: the tap marks the whole Pali span active)
   const tappedEd = startsOnPali && window.dgLastEdLine && startEl.contains(window.dgLastEdLine) ? window.dgLastEdLine.dataset.ed : null;
-  const paliEd = tappedEd || (window.getEditions ? window.getEditions()[0] : 'ms');
+  const paliEd = tappedEd || (window.dgReadEdition ? window.dgReadEdition() : 'ms');
   const trnCol = startsOnPali ? 0 : columnOf(translationElements);
   const paliCol = startsOnPali ? columnOf(paliElements) : 0;
 

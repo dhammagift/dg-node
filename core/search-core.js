@@ -1062,9 +1062,11 @@ function buildWordReportFast(searchResults, keyword) {
 // The widened pass is now the same indexed query filtered to variant rows, so the whole
 // caching apparatus this function used to need (a second grep of the variant tree, plus a TTL
 // cache to stop the phased client from repeating it) is gone.
-async function findVariantSegments(keyword, exactMatch) {
+// Only the suttas of the search's scope (Ultra's review 2026-11-01: scope=dn gave 8721 variant lines from sn, mn, an...).
+async function findVariantSegments(keyword, exactMatch, searchScope) {
+    const allowedPrefixes = resolveAllowedPrefixes(searchScope);
     const segments = sqlMatchRows(keyword, exactMatch)
-        .filter(row => row.kind === 'variant')
+        .filter(row => row.kind === 'variant' && skeletonDB[row.sutta_id] && matchesScope(skeletonDB[row.sutta_id], row.sutta_id, allowedPrefixes))
         .map(row => ({ sutta_id: row.sutta_id, segment: row.segment_id, text: row.txt }));
     segments.sort((a, b) => a.sutta_id.localeCompare(b.sutta_id, undefined, { numeric: true })
         || a.segment.localeCompare(b.segment, undefined, { numeric: true }));
@@ -1144,7 +1146,7 @@ async function buildFastResponse(keyword, searchScope, exactMatch, targetLangs, 
         searchResults[id].count = searchResults[id].segments.length; // approximate — exact count arrives with enrichment
         totalMatches += searchResults[id].count;
     }
-    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
+    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch, searchScope);
     addTranslatedTitles(searchResults, targetLangs.includes('all') ? null : new Set(targetLangs.map(l => l.split('_')[0])));
 
     const wordReport = buildWordReportFast(searchResults, keyword);
@@ -1361,7 +1363,7 @@ async function buildSearchResponse(keyword, searchScope, exactMatch, targetLangs
     const { globalTotalMatches } = await enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, searchScope, lb, la);
     const wordReport = buildWordReport(searchResults);
     const sortedData = sortSuttaResults(searchResults);
-    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
+    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch, searchScope);
 
     return {
         metadata: {
@@ -1580,7 +1582,9 @@ async function enrichResponse(keyword, searchScope, exactMatch, targetLangs, lb,
     const sortedData = sortSuttaResults(searchResults);
     let totalMatches = 0;
     for (const id of suttaIds) totalMatches += sortedData[id].count;
-    const variantSegments = wantsNoVariants(searchScope) ? [] : await findVariantSegments(keyword, exactMatch);
+    // The variant lines come once, with ?fast=1, for the whole result; every enrich chunk resent the full list
+    // (2.5 MB a chunk for "evam") and the page drops them anyway (search/index.html) - Ultra's review 2026-11-01.
+    const variantSegments = [];
 
     return {
         data: sortedData,

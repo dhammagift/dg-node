@@ -1394,7 +1394,7 @@ const OPS = {
         const sortedData = core.sortSuttaResults(searchResults);
         let totalMatches = 0;
         for (const id of suttaIds) totalMatches += sortedData[id].count;
-        const variantSegments = await core.findVariantSegments(keyword, exact);
+        const variantSegments = [];   // they come with fast=1 (core/search-core.js enrichResponse)
         return {
             data: sortedData,
             wordReport: core.buildWordReport(searchResults),

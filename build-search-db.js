@@ -179,7 +179,8 @@ function editionReadings(rel, msSegs, variants) {
                 if (!msw.length && !edw.length) continue;                      // only the abbreviation mark
                 if (!edw.length) continue;   // an omission adds no word to find, only the Mahāsaṅgīti's own again
                 if (edw.some(w => EDITORS_NOTE.has(w))) continue;              // an editor's English note in the file (PTS)
-                edw = edw.filter(w => !/^[ivxlc]+$/.test(w));                 // PTS section numbers (xiii)
+                // PTS section numbers (xiii) - in PTS only: "vi", "ci" are words of the other editions (Ultra's review 2026-11-01)
+                if (ed === 'pts') edw = edw.filter(w => !/^[ivxlc]+$/.test(w));
                 if (!edw.length) continue;
                 if (!msw.length) {   // an insertion: trim a spill from the next segment's start or the previous one's end
                     for (let k = Math.min(edw.length, next.length); k > 0; k--) if (edw.slice(-k).join(' ') === next.slice(0, k).join(' ')) { edw = edw.slice(0, -k); break; }
@@ -187,9 +188,10 @@ function editionReadings(rel, msSegs, variants) {
                     if (!edw.length) continue;
                 }
                 const edWords = edw.join(' ');
-                if (!edWords && !d.ms) continue;
+                const msWords = msw.join(' ');   // without "pe": "pe → <the spelled-out passage>" is an insertion
+                if (!edWords && !msWords) continue;
                 if (edWords && have.includes(' ' + edWords + ' ')) continue;   // the collated line has it already
-                const key = `${d.ms || '+'} → ${edWords || '—'}`;
+                const key = `${msWords || '+'} → ${edWords || '—'}`;
                 (byReading.get(key) || byReading.set(key, []).get(key)).push(EDITION_LABEL[ed]);
             }
         }
@@ -755,13 +757,26 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const packDir = path.join(outDir, 'packs');
     fs.mkdirSync(packDir, { recursive: true });
     const packs = [];
+    // build_id hashes the rows only; built_at and parent_build_id in meta change on every build. Rewriting a published
+    // name gave the same URL new bytes and a new sha256_gz (cached an hour, a resumed Range mixes them) - Ultra's review
+    // 2026-11-01. An unchanged pack keeps its published file and the numbers the last manifest gave for it.
+    const manifestFile = path.join(outDir, 'packs-manifest.json');
+    let prevPacks = [];
+    try { prevPacks = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).packs; } catch { /* first publish */ }
+    const gzipOrKeep = (file, name) => {
+        const prev = prevPacks.find(p => p.url === `packs/${name}`);
+        if (prev && fs.existsSync(path.join(packDir, name))) { fs.rmSync(file, { force: true }); return { bytes: prev.bytes, sha256: prev.sha256, gz: { bytes: prev.bytes_gz, sha256: prev.sha256_gz } }; }
+        const gz = gzipAtomic(file, path.join(packDir, name));
+        fs.rmSync(file, { force: true });
+        return { gz };
+    };
     for (const d of defs) {
         const r = writeOfflineDb(path.join(tmpDir, `${d.id}.db`), d.id, d.where, d.params, !!d.base);
         // Named by build: one URL never serves two contents, so a cached old file (mobile-data is
         // cached for hours) or a Range resume cannot mix builds.
         const name = `${d.id}.${r.buildId}.db.gz`;
-        const gz = gzipAtomic(r.file, path.join(packDir, name));
-        fs.rmSync(r.file, { force: true });
+        const kept = gzipOrKeep(r.file, name), gz = kept.gz;
+        if (kept.sha256) { r.bytes = kept.bytes; r.sha256 = kept.sha256; }
         const { where, params, base, ...pub } = d;
         packs.push({ ...pub, texts: r.texts, segments: r.segments, fts: 'trigram', bytes: r.bytes,
             bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256, url: `packs/${name}`, build_id: r.buildId });
@@ -783,8 +798,8 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
         const id = `ed-${edition}`;
         const r = writeEditionDb(path.join(tmpDir, `${id}.db`), id, edition);
         const name = `${id}.${r.buildId}.db.gz`;
-        const gz = gzipAtomic(r.file, path.join(packDir, name));
-        fs.rmSync(r.file, { force: true });
+        const kept = gzipOrKeep(r.file, name), gz = kept.gz;
+        if (kept.sha256) { r.bytes = kept.bytes; r.sha256 = kept.sha256; }
         packs.push({ id, kind: 'edition', lang: 'pli', edition, title: EDITION_TITLES[edition] || { ru: edition, en: edition },
             texts: r.texts, segments: r.segments, bytes: r.bytes, bytes_gz: gz.bytes, sha256: r.sha256, sha256_gz: gz.sha256,
             url: `packs/${name}`, build_id: r.buildId });
@@ -792,9 +807,7 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
         console.log(`pack ${id}: ${r.segments} lines, ${(r.bytes / 1048576).toFixed(0)} MB, gz ${(gz.bytes / 1048576).toFixed(0)} MB`);
     }
     if (edSum !== edTotal) throw new Error(`edition packs hold ${edSum} lines, the editions table ${edTotal}`);
-    const manifestFile = path.join(outDir, 'packs-manifest.json');
-    let before = [];
-    try { before = JSON.parse(fs.readFileSync(manifestFile, 'utf8')).packs.map(p => path.basename(p.url)); } catch { /* first publish */ }
+    const before = prevPacks.map(p => path.basename(p.url));
     writeAtomic(manifestFile, {
         schema: 1, db_schema_version: 1, build_id: buildId, built_at: new Date().toISOString(), packs,
     });

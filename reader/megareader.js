@@ -397,6 +397,7 @@ function markEditionDiffs(texts) {
 // the page's colour above them covering the header's extra travel. Following the header frame by frame lagged it.
 function placeColsHead() {
     const s = document.querySelector('#sutta.dg-grid.column-view');
+    if (s) watchHeader();
     if (!s || document.body.classList.contains('dg-header-hidden')) return;   // measured with the header in place only
     const band = document.getElementById('dg-hero-band');
     if (band && band.getBoundingClientRect().top < -1) return;               // ...not while it slides
@@ -411,13 +412,32 @@ function placeColsHead() {
     s.style.setProperty('--dg-cols-top', (bottom / (zoom || 1)).toFixed(1) + 'px');
     // glued from the start: the page's own top padding left a strip between the site header and the names that
     // closed on the first scroll (owner 2026-10-31); pull the names up by it, once, while the page is at its top
-    if (head && !head.dataset.glued && window.scrollY < 2 && bottom > 0) {
+    // Measured again whenever the page is at its top: once, it was taken before the header had its final height and
+    // pulled the names too far, so the text after them (the reading warning, the first lines) slid under them
+    // (Ultra's review 2026-11-01). The names' own place is measured unpinned and unpulled (a pinned rect is the pin's).
+    if (head && window.scrollY < 2 && bottom > 0) {
+        head.style.marginTop = ''; head.style.position = 'static';
         const gap = head.getBoundingClientRect().top - bottom;
+        head.style.position = '';
         if (gap > 0) head.style.marginTop = (-gap / (zoom || 1)).toFixed(1) + 'px';
-        head.dataset.glued = '1';
     }
 }
 const followHeader = () => requestAnimationFrame(placeColsHead);
+// the header changes height on its own as its parts arrive (the toolbar, the navigation row): the names were measured
+// against the first, shorter one and stayed there (Ultra's review 2026-11-01)
+let headerWatch = null;
+function watchHeader() {
+    if (!window.ResizeObserver) return;
+    headerWatch = headerWatch || new ResizeObserver(followHeader);
+    for (const id of ['dg-hero-band', 'reader-toolbar', 'navigation', 'top-links-container']) {
+        const el = document.getElementById(id);
+        if (el && !el.dataset.dgWatched) { el.dataset.dgWatched = '1'; headerWatch.observe(el); }
+    }
+    // ...and it also moves down without resizing (the band's top settles after the first paint), which no observer
+    // reports. ponytail: three late re-measures per render cover what was seen; an observer on the band's cause if not.
+    const s = document.querySelector('#sutta.dg-grid.column-view');
+    if (s && !s.dataset.dgLate) { s.dataset.dgLate = '1'; [400, 1200, 3000].forEach(t => setTimeout(followHeader, t)); }
+}
 window.addEventListener('resize', followHeader);
 window.addEventListener('scroll', followHeader, { passive: true });   // placeColsHead measures only with the header in place
 // The pinned column header (.dg-cols-head, column view with 3+ texts) sits outside the article, which scrolls sideways
@@ -429,7 +449,8 @@ document.addEventListener('scroll', e => {
     if (head) head.style.transform = `translateX(${-a.scrollLeft}px)`;
 }, true);
 // The edition TTS reads (voice.js): the first chosen one; its missing lines fall back to MS there too.
-window.dgReadEdition = () => getEditions()[0];
+// Memorize and Devanagari show MS only, so they read MS (Ultra's review 2026-11-01), the same rule as edsAsked.
+window.dgReadEdition = () => (isMnemonicMode(READER_MODE.modeKey) || isDualScriptMode(READER_MODE.modeKey)) ? 'ms' : getEditions()[0];
 
 const TRANSLATORS_KEY = 'dgReadingTranslators';
 function getTranslatorChoice() {
@@ -474,6 +495,8 @@ function readerShareUrl(href) {
         u.searchParams.set('translators', stack.join(','));
         if (stack.length > 1) { u.searchParams.set('mode', 'multi'); u.searchParams.set('langs', langs.join(',')); }
     } else if (READER_MODE.lang) u.searchParams.set('lang', READER_MODE.lang);
+    // a single view says so: without it the recipient's own saved mode (Memorize...) opened (Ultra's review 2026-11-01)
+    if (!special && stack.length <= 1) u.searchParams.set('mode', 'single');
     const eds = getEditions();
     if (!special && !(eds.length === 1 && eds[0] === 'ms')) u.searchParams.set('editions', eds.join(','));
     let script = '';
@@ -484,9 +507,9 @@ function readerShareUrl(href) {
     if (!special) {
         u.searchParams.set('view', (localStorage.getItem('viewMode') || 'alternate') === 'columns' ? 'columns' : 'lines');
         u.searchParams.set('variants', localStorage.getItem('variantVisibility') === 'visible' ? '1' : '0');
-        const pali = localStorage.getItem('paliToggle') || 'pli-2nd';
-        if (pali !== 'pli-2nd') u.searchParams.set('pali', pali);
-        if (!(eds.length === 1) && window.dgEditionsDiff()) u.searchParams.set('diff', '1');
+        // always, the defaults too: a recipient on "Pāḷi only" got no translation from a link that left pali= out
+        u.searchParams.set('pali', localStorage.getItem('paliToggle') || 'pli-2nd');
+        if (eds.length > 1) u.searchParams.set('diff', window.dgEditionsDiff() ? '1' : '0');
     }
     return u.href.replace(/%2C/gi, ',');   // a comma is legal in a query and reads better
 }
