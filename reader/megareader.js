@@ -2388,7 +2388,9 @@ async function initReader() {
     const explicitLangsParam = new URLSearchParams(window.location.search).get('langs');
     if (!READER_MODE_EXPLICIT && !explicitLangsParam && window.DHAMMA_I18N_READY) {
         try { await window.DHAMMA_I18N_READY; } catch (error) {}
-        const resolvedLang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
+        // ?lang= first: the interface stays ru/en (dhamma-i18n.js uiLanguage), so DHAMMA_I18N.language is 'en' for
+        // ?lang=th and the Thai text was asked as English (Sippa 2026-11-01)
+        const resolvedLang = langFromUrl || (window.DHAMMA_I18N && window.DHAMMA_I18N.language)
             || localStorage.getItem('dhammaLanguage') || 'en';
         // The mode the user last picked (drawer / Alt+1..4) — not always 'single'.
         READER_MODE.modeKey = getSavedMode() || 'single';

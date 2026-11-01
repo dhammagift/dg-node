@@ -1651,6 +1651,14 @@ function detectDynamicLang(text, fallbackLang, isRoot) {
     return fallbackLang;
 }
 
+// The language a translation column declares (megareader puts lang="de" etc. on every translation span). Without it
+// every Latin-script text was guessed as 'en', so an English voice read the de and fr columns (Sippa 2026-11-01).
+function elementLang(el) {
+  const l = el && el.closest && el.closest('[lang]');
+  const v = l ? l.getAttribute('lang').toLowerCase().split('-')[0] : '';
+  return v && v !== 'pi' ? v : '';
+}
+
 function createPlaylistFromData(textData, mode) {
   const playlist = [];
   const translationLang = detectTranslationLang();
@@ -1666,7 +1674,7 @@ function createPlaylistFromData(textData, mode) {
     };
     const addTrn = () => {
         if (item.translation) {
-            let lang = detectDynamicLang(item.translation, translationLang, false);
+            let lang = elementLang(item.translationElement) || detectDynamicLang(item.translation, translationLang, false);
             playlist.push({
               text: item.translation, lang: lang, element: item.translationElement, id: item.id
             });
@@ -1674,7 +1682,7 @@ function createPlaylistFromData(textData, mode) {
     };
     const addTrn2 = () => {
         if (item.translation2) {
-            let lang = detectDynamicLang(item.translation2, translationLang, false);
+            let lang = elementLang(item.translationElement2) || detectDynamicLang(item.translation2, translationLang, false);
             playlist.push({
               text: item.translation2, lang: lang, element: item.translationElement2, id: item.id
             });
@@ -1858,6 +1866,12 @@ async function playCurrentSegment() {
     
     audioRateBrowser = uiRate * PALI_RATIO; 
     audioRateGoogle  = uiRate;              
+  } else if (item.lang) {
+    // any other translation language (de, fr, ...): the translation speed, and the browser voice of that language
+    uiRate = getRateForLang(item.lang);
+    audioRateBrowser = uiRate;
+    audioRateGoogle = uiRate;
+    targetLang = item.lang;
   }
 
   markActiveRate(isPali);
@@ -2022,6 +2036,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
          utterance.lang = 'sa-IN'; 
          utterance._fallbackAttempt = 0; 
       }
+      else if (langKey) utterance.lang = langKey;
   }
 
   utterance.rate = rate;
