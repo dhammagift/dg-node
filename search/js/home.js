@@ -2400,14 +2400,19 @@
         if (m) m.remove();
         document.querySelectorAll('.dg-col-cell [aria-expanded="true"]').forEach(function (b) { b.removeAttribute('aria-expanded'); });
     }
-    function colFolds() { try { return JSON.parse(localStorage.getItem('dgColMenuFold') || '{}') || {}; } catch (x) { return {}; } }
+    // Which groups are folded: once the reader has folded or unfolded one, as they left them; before that the other
+    // kind's group is folded - a Pali column opens on the editions, a translation's on the translations (owner 2026-11-01)
+    function colFolds(key) {
+        try { var f = JSON.parse(localStorage.getItem('dgColMenuFold') || 'null'); if (f) return f; } catch (x) { /* private mode */ }
+        return key.indexOf('ed:') === 0 ? { tr: 1 } : { ed: 1 };
+    }
     document.addEventListener('click', function (e) {
         var fold = e.target.closest('.dg-colmenu [data-fold]');
         if (fold) {   // a group's title folds or unfolds it, remembered
-            var g = fold.parentNode, folds = colFolds();
+            var g = fold.parentNode, folds = {};
             g.classList.toggle('is-folded');
             fold.setAttribute('aria-expanded', String(!g.classList.contains('is-folded')));
-            folds[fold.dataset.fold] = g.classList.contains('is-folded') ? 1 : 0;
+            [].forEach.call(g.parentNode.querySelectorAll('[data-fold]'), function (b) { folds[b.dataset.fold] = b.parentNode.classList.contains('is-folded') ? 1 : 0; });
             try { localStorage.setItem('dgColMenuFold', JSON.stringify(folds)); } catch (x) { /* private mode */ }
             return;
         }
@@ -2465,7 +2470,7 @@
     }
     // the menu under a column's name (switch: which text this column shows) or under its "+" (add: which text goes right of it)
     function colMenuOpen(anchor, key, groups, adding) {
-        var m = document.createElement('div'), folds = colFolds();
+        var m = document.createElement('div'), folds = colFolds(key);
         m.className = 'dg-colmenu';
         m.dataset.from = key;
         if (adding) m.dataset.after = key;
