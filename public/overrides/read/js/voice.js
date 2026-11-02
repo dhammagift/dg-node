@@ -1923,8 +1923,8 @@ function dgPositionState(audio) {
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
 const VOICE_BUILD = '2026-11-02d · time left in the system player';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
-// ponytail: on for everyone while the pause is being checked on phones; set to false before the release.
-const VOICE_PAUSE_TOASTS = true;
+// Off since 2026-11-02 (owner): the system player shows each line's length; true brings the toasts back for a check.
+const VOICE_PAUSE_TOASTS = false;
 function pauseAfterLine() {
   const cur = ttsState.playlist[ttsState.currentIndex], next = ttsState.playlist[ttsState.currentIndex + 1];
   const rangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
