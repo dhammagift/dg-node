@@ -42,6 +42,10 @@
 <link rel="stylesheet" href="/assets/css/quick-modal.css">
 </head>
 <body class="dg-state-toc" data-screen="list" data-mode="detailed" data-remind="off">
+<!-- Uposatha app builds before the MN 53 meal sound (store 572 and older) take no update from this page: their bundled page has no
+     element with this id, and the app's gate (uposatha-bridge.js) then answers "Up to date" (owner 2026-11-03). Builds made from this
+     page carry it and update as usual. Raise the suffix to stop older builds again. -->
+<i id="up-gen-ahara" hidden></i>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
   <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"/></symbol>
   <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6L6 18"/></symbol>
