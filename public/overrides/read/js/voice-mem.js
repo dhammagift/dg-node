@@ -101,7 +101,7 @@ if (typeof window.isRu === 'undefined') {
                 abBtn.className = `tts-chip ab-loop-toggle-btn ${memState.lineA ? 'loop-active' : ''}`;
                 abBtn.title = window.isRu ? 'Повтор отрывка A-B' : 'A-B loop';
                 abBtn.setAttribute('aria-expanded', String(memState.isPanelOpen));
-                abBtn.innerHTML = `${L.abLoopTitle}<span id="ab-btn-timer" class="ab-btn-timer-text"></span>`;
+                abBtn.innerHTML = `<span class="ab-lb">${L.abLoopTitle}</span><span id="ab-btn-timer" class="ab-btn-timer-text"></span>`;
                 chips.appendChild(abBtn);
 
                 const panel = document.createElement('div');
@@ -652,6 +652,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         
         setPlayIcon(true);
             
+        console.log('[dg-voice] loop', memState.repsPlayed + 1, Date.now());  // progress in logcat with the screen off (Test Lab)
         window.ttsAPI.playRange(memState.lineA, targetB);
     }
 
@@ -684,11 +685,12 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
         if (memState.countdownId) clearInterval(memState.countdownId);
 
-        // Also on the player's silence (window.ttsAPI.silenceTick): a background WebView holds this interval back.
-        let id = null;
+        // The pause is also played as silence on the voice's own element (window.ttsAPI.mediaWaitUntil): a background
+        // WebView holds this interval back, and the loop never came round with the screen off (owner 2026-11-02).
+        let id = null, wait = null;
         const tick = () => {
             if (memState.countdownId !== id) {  // cancelled or replaced elsewhere: they all null or reassign countdownId
-                if (window.ttsAPI.silenceTick) window.ttsAPI.silenceTick(tick, false);
+                if (window.ttsAPI.cancelMediaWait) window.ttsAPI.cancelMediaWait(wait);
                 return;
             }
             if (!memState.isActive) {
@@ -701,6 +703,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             if (timeLeft <= 0) {
                 clearInterval(memState.countdownId);
                 memState.countdownId = null;
+                if (window.ttsAPI.cancelMediaWait) window.ttsAPI.cancelMediaWait(wait);
                 playCurrentRange();
                 return;
             }
@@ -718,7 +721,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         };
 
         id = memState.countdownId = setInterval(tick, 1000);
-        if (window.ttsAPI.silenceTick) window.ttsAPI.silenceTick(tick, true);
+        if (window.ttsAPI.mediaWaitUntil) wait = window.ttsAPI.mediaWaitUntil(() => memState.countdownId === id ? memState.targetTimestamp : 0, tick);
         tick();
     }
 

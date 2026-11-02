@@ -256,25 +256,51 @@ let silenceAudio = new Audio(SILENCE_URL);
 silenceAudio.loop = true; 
 silenceAudio.volume = 0.05;
 
-// Pauses (between phrases here, between loops in voice-mem.js) must run out with the screen off: the app's
-// WebView in the background (and a hidden browser tab) holds back timers, so a pause never ended until the
-// app was opened again (owner 2026-11-01, Motorola, A-B loop). The silence above keeps playing through a pause,
-// and its timeupdate (a few times a second) is a media event, not a timer: the pause also ends on that.
-const mediaWaits = new Map();
+// Pauses (between phrases here, between loops in voice-mem.js) are played, not timed: the app's WebView in the
+// background holds timers back, and a pause never ended until the app was opened again (owner 2026-11-01/02,
+// Motorola, A-B loop; the silent loop's timeupdate did not help either). A pause is silence on the player's own
+// element, the one the voice plays on, so it ends on 'ended' like a phrase does, offline and with any engine.
+// Pieces of up to 30 s (8 kHz WAV, ~16 KB a second); the timer stays for the foreground and a refused play().
+function silentWav(ms) {
+  const n = Math.max(1, Math.round(ms * 8)), dv = new DataView(new ArrayBuffer(44 + n * 2));
+  [[0, 'RIFF'], [8, 'WAVEfmt '], [36, 'data']].forEach(([o, t]) => [...t].forEach((c, k) => dv.setUint8(o + k, c.charCodeAt(0))));
+  [[4, 36 + n * 2, 4], [16, 16, 4], [20, 1, 2], [22, 1, 2], [24, 8000, 4], [28, 16000, 4], [32, 2, 2], [34, 16, 2], [40, n * 2, 4]]
+    .forEach(([o, v, size]) => size === 4 ? dv.setUint32(o, v, true) : dv.setUint16(o, v, true));
+  return URL.createObjectURL(new Blob([dv], { type: 'audio/wav' }));
+}
+// Runs fn once due() has passed; due is read again after every piece, so a pause changed meanwhile is followed.
+function mediaWaitUntil(due, fn) {
+  const w = { url: null, timer: null, done: false };
+  const step = () => {
+    if (w.done) return;
+    const left = due() - Date.now();
+    if (left <= 0) { cancelMediaWait(w); fn(); return; }
+    const a = window.sharedGoogleAudio || (window.sharedGoogleAudio = new Audio());
+    if (w.url) URL.revokeObjectURL(w.url);
+    a.src = w.url = silentWav(Math.min(left, 30000));
+    a.onended = () => { if (a.src === w.url) step(); };  // not on a clip someone else put there
+    a.onerror = null;  // the phrase's handler would read the last phrase again with the OS voice
+    a.play().catch(() => {});
+    clearTimeout(w.timer);
+    w.timer = setTimeout(step, left);
+  };
+  step();
+  return w;
+}
+function cancelMediaWait(w) {
+  if (!w || w.done) return;
+  w.done = true;
+  clearTimeout(w.timer);
+  const a = window.sharedGoogleAudio;
+  // only while the pause still owns the element: the next phrase may already be on it
+  if (a && w.url && a.src === w.url) { a.onended = null; a.pause(); }
+  if (w.url) URL.revokeObjectURL(w.url);
+}
 function mediaTimeout(fn, ms) {
   const due = Date.now() + ms;
-  const fire = () => { clearMediaTimeout(id); fn(); };
-  const check = () => { if (Date.now() >= due) fire(); };
-  const id = setTimeout(fire, ms);
-  mediaWaits.set(id, check);
-  silenceAudio.addEventListener('timeupdate', check);
-  return id;
+  return mediaWaitUntil(() => due, fn);
 }
-function clearMediaTimeout(id) {
-  clearTimeout(id);
-  silenceAudio.removeEventListener('timeupdate', mediaWaits.get(id));
-  mediaWaits.delete(id);
-}
+const clearMediaTimeout = cancelMediaWait;
 
 // Глобальный плеер для Google TTS (для обхода блокировки iOS)
 window.sharedGoogleAudio = new Audio();
@@ -1849,6 +1875,7 @@ async function playCurrentSegment() {
  if (gen !== ttsState.gen) return;  // a newer line, sutta or a stop came in meanwhile
  
  if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout);
+ console.log('[dg-voice] phrase', ttsState.currentIndex, Date.now());  // progress in logcat with the screen off (Test Lab)
  
   if (ttsState.googleAudio) {
       ttsState.googleAudio.pause();       
@@ -2379,7 +2406,10 @@ async function handleSuttaClick(e) {
     const activeId = activeWordElement ? getElementId(activeWordElement) : null;
     const currentItem = ttsState.playlist[ttsState.currentIndex];
     const currentId = currentItem ? currentItem.id : null;
-    const shouldJump = activeId && (!ttsState.speaking || activeId !== currentId);
+    // in a pause the index has already moved on while the highlight is still on the line just read: Pause there
+    // restarted that line instead of pausing
+    const inPauseAfter = window.ttsDelayTimeout && !window.ttsDelayTimeout.done && activeId === ttsState.playlist[ttsState.currentIndex - 1]?.id;
+    const shouldJump = activeId && (!ttsState.speaking || (activeId !== currentId && !inPauseAfter));
 
     if (shouldJump) {
       let globalMode = localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
@@ -2674,6 +2704,7 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
       ttsState.googleAudio = null;
   }
 
+  if (window.ttsDelayTimeout) clearMediaTimeout(window.ttsDelayTimeout);  // a pause still running on that element
   // === UNLOCK GLOBAL AUDIO FOR IOS ===
   if (!window.sharedGoogleAudio) {
       window.sharedGoogleAudio = new Audio();
@@ -4109,7 +4140,8 @@ window.ttsAPI = {
     },
     stop: stopPlayback,
     keepSilenceAlive: toggleSilence,
-    silenceTick: (fn, on) => silenceAudio[on ? 'addEventListener' : 'removeEventListener']('timeupdate', fn),
+    mediaWaitUntil: mediaWaitUntil,
+    cancelMediaWait: cancelMediaWait,
     releaseWakeLock: releaseWakeLock,
     requestWakeLock: requestWakeLock
 };

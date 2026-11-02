@@ -226,13 +226,17 @@ body:has(#dgDlCard.show) .voice-player{bottom:calc(24px + var(--dg-dl-card-h, 12
 .tts-chip.loop-active{border-color:var(--dg-tblue);color:var(--dg-tblue)}
 /* Owner: the player and its buttons are one size, whatever they say or the language; text that does
    not fit is cut, the buttons never stretch or shrink */
-#tts-mode-chip{justify-content:center;width:90px}
+#tts-mode-chip{justify-content:center;width:76px}  /* 90 before AB took its 14 px (owner 2026-11-02: the player stays as it was) */
 #tts-mode-label{overflow:hidden;text-overflow:ellipsis;text-align:left}
 #tts-rate-btn{width:42px;overflow:hidden}
 .tts-chip .dd{font-size:9px;color:var(--dg-text-muted)}
 .tts-chip:focus{outline:none}
 .tts-chip:focus-visible,.tts-ib:focus-visible,.tts-vbtn:focus-visible{outline:2px solid var(--dg-accent-ink);outline-offset:2px}
 .ab-btn-timer-text{display:none;font-variant-numeric:tabular-nums}
+/* AB is one size too (owner 2026-11-02: «AB 2:59» grew the chip and pushed the row past the player's edge): a
+   running pause shows its time in place of "AB", up to 59:59 */
+#ab-loop-toggle-btn{width:46px;padding:0;overflow:hidden}
+#ab-loop-toggle-btn:has(#ab-btn-timer[style*="inline-block"]) .ab-lb{display:none}
 
 /* Panels: one open at a time */
 .tts-pan{display:none;border-top:1px solid var(--dg-border);padding:6px 0 10px}
