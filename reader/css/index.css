@@ -459,6 +459,7 @@ a:hover {
    text 2em to the right in translation-only mode. */
 #sutta.hide-pali article p { margin-left: -2em; }
 
+:root { --dg-reader-css: visible; }   /* home.css keeps the External links button hidden until this file applies */
 .dg-external-links {
   position: relative;
   display: inline-flex;
