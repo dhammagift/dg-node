@@ -580,6 +580,60 @@
         e.detail.resolve(askConsent(isRuLang(), e.detail));
     });
 
+    // One window for "this is not on the device and there is no connection", wherever it happens: the reader, the search,
+    // the contents (owner 2026-11-02: two error layers for one cause - the reader's own line and the apps' dialog - was too
+    // much; «в виде окошка универсально… Скачайте и ссылку на окошко выбора»). Try again is worth having (the connection
+    // comes back); it also retries by itself on 'online'. Download opens the picker of what to keep offline. One at a time:
+    // a second call while it is up only takes the newer retry.
+    var missing = null;
+    window.dgOfflineMissing = function (opts) {
+        opts = opts || {};
+        if (missing) { missing.retry = opts.retry || missing.retry; return; }
+        if (document.querySelector('#dgConsent:not([data-dg-missing])')) return;   // the download sheet itself is up
+        var leaving = document.querySelector('#dgConsent[data-dg-missing]');   // a closed one still fading out
+        if (leaving) leaving.remove();
+        var ru = isRuLang();
+        var what = opts.what || 'text';
+        var body = {
+            text: ru ? 'Этот текст не скачан для чтения без сети.' : 'This text is not downloaded for offline reading.',
+            search: ru ? 'Без сети поиск идёт только по скачанной библиотеке, а она не скачана.' : 'Offline, search runs on the downloaded library only, and it is not downloaded.',
+            contents: ru ? 'Содержание не скачано для чтения без сети.' : 'The contents are not downloaded for offline reading.'
+        }[what] || '';
+        missing = { retry: opts.retry };
+        var overlay = document.createElement('div');
+        overlay.id = 'dgConsent';
+        overlay.setAttribute('data-dg-missing', what);
+        overlay.innerHTML =
+            '<div id="dgConsentSheet" role="alertdialog" aria-modal="true" aria-labelledby="dgConsentTitle" aria-describedby="dgConsentBody">' +
+              '<div class="dgc-eyebrow">' + (ru ? 'Нет соединения' : 'No connection') + '</div>' +
+              '<p class="dgc-title" id="dgConsentTitle">' + body + '</p>' +
+              '<p class="dgc-body" id="dgConsentBody">' + (ru ? 'Скачайте его, чтобы читать без сети, или повторите, когда сеть появится — мы повторим и сами.'
+                                                              : 'Download it to read offline, or try again once you are online - we will retry by ourselves too.') + '</p>' +
+              '<div class="dgc-actions">' +
+                '<button type="button" class="dgc-ghost" data-dg-offline-download>' + (ru ? 'Скачать…' : 'Download…') + '</button>' +
+                '<button type="button" class="dgc-primary">' + (ru ? 'Повторить' : 'Try again') + '</button>' +
+              '</div>' +
+            '</div>';
+        document.body.appendChild(overlay);
+        requestAnimationFrame(function () { overlay.classList.add('show'); });
+        function close() {
+            if (!missing) return;
+            missing = null;
+            window.removeEventListener('online', onOnline);
+            overlay.classList.remove('show');
+            setTimeout(function () { overlay.remove(); }, 200);
+        }
+        function again() { var r = missing && missing.retry; close(); if (typeof r === 'function') r(); }
+        function onOnline() { again(); }
+        window.addEventListener('online', onOnline);
+        var btns = overlay.querySelectorAll('button');
+        // Download: closes this and lets app.js's delegated [data-dg-offline-download] handler open the picker
+        btns[0].addEventListener('click', function () { setTimeout(close, 0); });
+        btns[1].addEventListener('click', again);
+        overlay.addEventListener('click', function (ev) { if (ev.target === overlay) close(); });
+        btns[1].focus();
+    };
+
     // Returns a Promise<boolean>, which is what app.js's hasNetworkConsent() awaits — the same
     // contract window.confirm() had, minus the blocking. Anything that dismisses without
     // choosing (Esc, tapping outside) counts as "not now": declining is recoverable from

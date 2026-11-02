@@ -1371,7 +1371,16 @@
                     // not "no connection": covering a working page with it, and then reloading a
                     // reader URL the app cannot serve, is what the owner got back to (2026-10-04).
                     var hidden = document.visibilityState === 'hidden';
-                    if (window.dgLaunch && !(st && st.present) && !networkAnswered && !hidden) {
+                    // Not on the device and no connection: the one window for it, in the apps and on the site alike
+                    // (offline-status.js dgOfflineMissing; owner 2026-11-02 - no second dialog over the page's own line)
+                    if (!(st && st.present) && !hidden && typeof window.dgOfflineMissing === 'function') {
+                        if (window.dgReport) window.dgReport('[dg-offline] request failed: ' + where.pathname + ' — ' + ((e && e.message) || e));
+                        // what the person is looking at, not which request failed first (a text's neighbours come from /api/nav)
+                        var cls = document.body.classList;
+                        window.dgOfflineMissing({ what: cls.contains('dg-state-reader') ? 'text' : cls.contains('dg-state-toc') ? 'contents'
+                                                        : cls.contains('dg-state-results') || /^\/search/.test(where.pathname) ? 'search' : 'text',
+                                                  retry: function () { reloadHere(); } });
+                    } else if (window.dgLaunch && !(st && st.present) && !networkAnswered && !hidden) {
                         // What failed and what the request answered: the screen states facts, the
                         // report (error-report.js) gets the same line for the log.
                         var what = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
