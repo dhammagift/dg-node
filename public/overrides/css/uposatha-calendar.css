@@ -700,6 +700,11 @@ body.app:has(#up-splash)::after { display: none; }
 
 /* Settings: room between the groups (owner 2026-11-02: «слеплены в бесконечные колбасы… отступ между блоками, чтобы
    выдохнуть»; tried on Uposatha first, then the other apps) - a gap and a hairline above each group after the first */
+/* Folded, the list stays a list (a little air and a hairline between the titles, owner: "something between"); an open group
+   gets the full room before and after it, where its settings meet the next title. */
 #dg-drawer .dg-drawer-group + .dg-drawer-group,
-#dg-drawer .dg-drawer-body > .dg-drawer-group ~ .dg-group-title { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--dg-border); }
+#dg-drawer .dg-drawer-body > .dg-drawer-group ~ .dg-group-title { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--dg-border); }
+#dg-drawer .dg-drawer-group[open] + .dg-drawer-group,
+#dg-drawer .dg-drawer-group + .dg-drawer-group[open] { margin-top: 22px; padding-top: 18px; }
 #dg-drawer .dg-drawer-group + .dg-drawer-group > summary.dg-group-title { margin-top: 0; }
+#dg-drawer #g-gen { margin-top: 0; padding-top: 0; border-top: 0; }   /* the first group shown (the DG groups above it are empty here) */
