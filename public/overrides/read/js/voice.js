@@ -1861,6 +1861,71 @@ function dgLineAudio(req) {
   rest.forEach(p => p.catch(() => {}));
   return [first, ...rest];
 }
+// A pause written into the phrase's own audio (owner 2026-11-02): base64 mp3 (the service, Google) or WAV (the
+// voice on the device) in, the same with ms of silence at its end out. MP3: silent frames of the stream's own
+// version, rate and mode (header + zero side info = no sound). Anything it can't read comes back as it was.
+function withPause(b64, ms) {
+  const bin = atob(b64), src = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) src[i] = bin.charCodeAt(i);
+  let out = null;
+  if (bin.startsWith('RIFF')) {
+    const dv = new DataView(src.buffer);
+    let at = 12;
+    while (at + 8 <= src.length && bin.slice(at, at + 4) !== 'data') at += 8 + dv.getUint32(at + 4, true);
+    if (at + 8 > src.length) return b64;
+    const rate = dv.getUint32(24, true), align = dv.getUint16(32, true), end = at + 8 + dv.getUint32(at + 4, true);
+    const add = Math.round(ms * rate / 1000) * align;
+    out = new Uint8Array(end + add);
+    out.set(src.subarray(0, end));
+    const ov = new DataView(out.buffer);
+    ov.setUint32(4, out.length - 8, true);
+    ov.setUint32(at + 4, end - at - 8 + add, true);
+  } else {
+    let at = 0;
+    if (bin.startsWith('ID3')) at = 10 + ((src[6] & 127) << 21 | (src[7] & 127) << 14 | (src[8] & 127) << 7 | (src[9] & 127));
+    while (at + 4 < src.length && !(src[at] === 255 && (src[at + 1] & 0xE0) === 0xE0)) at++;
+    if (at + 4 >= src.length || ((src[at + 1] >> 1) & 3) !== 1) return b64;  // not Layer III
+    const ver = (src[at + 1] >> 3) & 3, v1 = ver === 3, mono = (src[at + 3] >> 6) === 3;
+    const rates = { 3: [44100, 48000, 32000], 2: [22050, 24000, 16000], 0: [11025, 12000, 8000] }[ver];
+    const rate = rates && rates[(src[at + 2] >> 2) & 3];
+    if (!rate) return b64;
+    const kbps = v1 ? [0, 32, 40, 48, 56, 64, 80, 96, 112, 128, 160, 192, 224, 256, 320] : [0, 8, 16, 24, 32, 40, 48, 56, 64, 80, 96, 112, 128, 144, 160];
+    const lenOf = (h0, h1, h2) => Math.floor((v1 ? 144000 : 72000) * kbps[h2 >> 4] / rate) + ((h2 >> 1) & 1);
+    const side = v1 ? (mono ? 17 : 32) : (mono ? 9 : 17);
+    // the first frame may be a Xing/Info header (LAME) with the frame and byte counts players take the duration
+    // from: they are raised below by what is added (Chrome otherwise guesses the length from the first bitrate);
+    // a VBRI one is dropped
+    const xing = at + 4 + side, hasXing = /^(Xing|Info)$/.test(bin.slice(xing, xing + 4));
+    if (bin.slice(at + 36, at + 40) === 'VBRI') at += lenOf(0, 0, src[at + 2]);
+    let bi = 1;
+    while (bi < 15 && Math.floor((v1 ? 144000 : 72000) * kbps[bi] / rate) < 4 + side) bi++;
+    const flen = Math.floor((v1 ? 144000 : 72000) * kbps[bi] / rate), n = Math.ceil(ms * rate / 1000 / (v1 ? 1152 : 576));
+    const head = [255, (src[at + 1] & 0xFE) | 1, (bi << 4) | (src[at + 2] & 0x0C), src[at + 3] & 0xF0];
+    out = new Uint8Array(src.length - at + n * flen);
+    out.set(src.subarray(at));
+    for (let k = 0, o = src.length - at; k < n; k++, o += flen) out.set(head, o);
+    if (hasXing) {
+      const ov = new DataView(out.buffer), flags = ov.getUint32(xing - at + 4);
+      let f = xing - at + 8;
+      if (flags & 1) { ov.setUint32(f, ov.getUint32(f) + n); f += 4; }
+      if (flags & 2) ov.setUint32(f, ov.getUint32(f) + n * flen);
+    }
+  }
+  let s = '';
+  for (let i = 0; i < out.length; i += 0x8000) s += String.fromCharCode.apply(null, out.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+// The pause after the line being read, written into its last piece instead of waited out (owner 2026-11-02: with the
+// screen off on his phone a pause played separately never ended): the pause between phrases, plus at the end of an
+// A-B pass the pause between loops (voice-mem.js dgLoopPauseMs). Up to 10 minutes; a longer one is waited out as before.
+const PAUSE_IN_AUDIO_MAX = 600000;
+function pauseAfterLine() {
+  const cur = ttsState.playlist[ttsState.currentIndex], next = ttsState.playlist[ttsState.currentIndex + 1];
+  const rangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
+  const loop = rangeEnd && window.dgLoopPauseMs ? window.dgLoopPauseMs() : 0;
+  const ms = (cur && next && cur.id === next.id && !rangeEnd ? 0 : (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000) + loop;
+  return ms > 0 && ms <= PAUSE_IN_AUDIO_MAX ? { ms, loop } : null;
+}
 const dgAudioSrc = c => (c.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + c;  // WAV: the voice on the device
 function dgPrefetchAhead(index) {
   for (let k = 1; k <= 2; k++) {
@@ -2021,7 +2086,18 @@ async function playCurrentSegment() {
           if (audioContent) {
               const audio = window.sharedGoogleAudio || new Audio();
               window.sharedGoogleAudio = audio;
-              audio.src = dgAudioSrc(audioContent);  // Google's mp3 too
+              const pause = pauseAfterLine();
+              // the last piece carries the pause; the page is told when its silence starts (the AB chip's countdown)
+              const setSrc = (content, last) => {
+                  audio.src = dgAudioSrc(last && pause ? withPause(content, pause.ms) : content);  // Google's mp3 too
+                  let told = false;
+                  audio.ontimeupdate = !(last && pause) ? null : () => {
+                      if (told || !audio.duration || audio.currentTime < audio.duration - pause.ms / 1000) return;
+                      told = true;
+                      document.dispatchEvent(new CustomEvent('tts-pause-started', { detail: { ms: (audio.duration - audio.currentTime) * 1000, loop: pause.loop } }));
+                  };
+              };
+              setSrc(audioContent, !dgRest.length);
               
               ttsState.googleAudio = audio;
               
@@ -2031,14 +2107,15 @@ async function playCurrentSegment() {
                       const next = await dgRest.shift().catch(() => (dgRest = [], null));
                       if (gen !== ttsState.gen || targetIndex !== ttsState.currentIndex || !ttsState.speaking) return;
                       if (next) {
-                          audio.src = dgAudioSrc(next);
+                          setSrc(next, !dgRest.length);
                           if (!ttsState.paused) audio.play().catch(() => {});
                           return;
                       }
                   }
                   ttsState.googleAudio = null;
+                  audio.ontimeupdate = null;
                   if (ttsState.speaking && !ttsState.paused) {
-                      let delay = window.TTS_SEGMENT_DELAY || 0;
+                      let delay = pause ? 0 : window.TTS_SEGMENT_DELAY || 0;  // the pause has just been played
                       const isRangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
 
                       const currentItem = ttsState.playlist[ttsState.currentIndex];
@@ -2056,7 +2133,7 @@ async function playCurrentSegment() {
                               ttsState.speaking = false;
                               setButtonIcon('play');
                               releaseWakeLock();
-                              document.dispatchEvent(new CustomEvent('tts-range-finished'));
+                              document.dispatchEvent(new CustomEvent('tts-range-finished', { detail: { pausePlayed: !!(pause && pause.loop) } }));
                           } else {
                               playCurrentSegment();
                           }

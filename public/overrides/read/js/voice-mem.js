@@ -613,6 +613,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
     function stopCycle() {
         memState.isActive = false;
+        clearInterval(_loopShowId);
         clearInterval(memState.countdownId);
         memState.countdownId = null;
         memState.pauseStartedAt = null;
@@ -642,6 +643,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
 
     function playCurrentRange() {
         if (!memState.lineA || !window.ttsAPI) return; 
+        clearInterval(_loopShowId);
         
         memState.currentCountdownTime = null; 
         updateABTimerDisplay();
@@ -656,7 +658,34 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         window.ttsAPI.playRange(memState.lineA, targetB);
     }
 
-    function handleRangeFinished() {
+    // The pause between loops for voice.js to write into the pass's last line (pauseAfterLine): none after the last pass.
+    window.dgLoopPauseMs = () => {
+        if (!memState.isActive) return 0;
+        return memState.repsLeft === Infinity || memState.repsLeft - 1 > 0 ? memState.intervalSeconds * 1000 : 0;
+    };
+
+    // While that pause plays, the AB chip and the status count it down (display only: the audio ends it).
+    var _loopShowId = null;  // var: stopCycle and playCurrentRange above may run first
+    function showLoopCountdown(ms) {
+        clearInterval(_loopShowId);
+        const end = Date.now() + ms;
+        const tick = () => {
+            const left = end - Date.now();
+            if (left <= 0 || !memState.isActive) { clearInterval(_loopShowId); _loopShowId = null; return; }
+            memState.currentCountdownTime = `${Math.floor(left / 60000)}:${String(Math.floor(left % 60000 / 1000)).padStart(2, '0')}`;
+            const statusEl = document.getElementById('mem-status');
+            if (statusEl) statusEl.innerText = `${L.paused}${memState.currentCountdownTime}`;
+            updateABTimerDisplay();
+        };
+        tick();
+        _loopShowId = setInterval(tick, 1000);
+    }
+    document.addEventListener('tts-pause-started', e => {
+        if (e.detail.loop && memState.isActive) showLoopCountdown(e.detail.loop);
+        else if (!e.detail.loop) startSegmentVisualTimer(e.detail.ms);
+    });
+
+    function handleRangeFinished(e) {
         if (!memState.isActive) return;
 
         memState.repsPlayed++;
@@ -666,6 +695,11 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             const statusEl = document.getElementById('mem-status');
             if (statusEl) statusEl.innerText = '✅';
             stopCycle();
+            return;
+        }
+
+        if (e && e.detail && e.detail.pausePlayed) {  // the pause was in the audio: the next pass now
+            playCurrentRange();
             return;
         }
 
