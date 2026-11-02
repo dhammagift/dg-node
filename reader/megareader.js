@@ -795,9 +795,19 @@ window.setLanguage = function(lang) {
     // an editions grid drawn with (or without) the translations' columns: only a real change draws it again
     const gridStale = suttaArea && suttaArea.classList.contains('dg-eds') && suttaArea.dataset.gridPaliOnly !== undefined
         && (suttaArea.dataset.gridPaliOnly === '1') !== (lang === 'pli');
+    // The line being read stays where it is on the screen while the other language appears or goes (the PHP reader did
+    // this; without it the text jumped by a screen and the place was lost - owner 2026-11-02)
+    const keep = !gridStale && window.captureReadingAnchor ? window.captureReadingAnchor() : null;
     if (lang === "pli-2nd") window.showPaliAndTranslation();
     else if (lang === "pli") window.showPali();
     else if (lang === "2nd") window.showEnglish();
+    if (keep && window.restoreReadingAnchor) {
+        // our own scroll, not the reader's: the auto-hiding header stays as it was (owner: it must not come out on a switch)
+        window.dgScrollingTo = -1;
+        window.restoreReadingAnchor(keep);
+        window.dgKeepHeader(null);
+        setTimeout(() => { if (window.dgScrollingTo === -1) window.dgScrollingTo = 0; }, 400);
+    }
     // an editions grid counts the translations' columns: Pāḷi only and back draw it again, in place
     if (gridStale && window._currentSlug && typeof window.buildSutta === 'function') {
         const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
@@ -1487,7 +1497,9 @@ document.addEventListener('keydown', (event) => {
 // getElementById() once the fresh DOM is in place.
 function captureReadingAnchor() {
     const activeWord = document.querySelector('.active-word');
-    if (activeWord) {
+    const onScreen = (e) => { const r = e.getBoundingClientRect(); return r.bottom > 0 && r.top < window.innerHeight; };
+    // the highlighted line only while it is on screen: a line tapped pages ago is not where the reader is
+    if (activeWord && onScreen(activeWord)) {
         const row = activeWord.closest('[id]') || activeWord;
         if (!row.id) return null;
         return { id: row.id, topOffset: row.getBoundingClientRect().top, hadActiveWord: true };
