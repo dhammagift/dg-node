@@ -4105,7 +4105,8 @@ window.ttsAPI = {
     getState: () => ttsState,
     playRange: async function(startId, endId) {
         const mode = document.getElementById('tts-mode-select')?.value || localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
-        let slug = ttsState.currentSlug || window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
+        // the page's own slug: the path mangled to '_sn56_11' was a 404 on every A-B pass (prepareTextData then read the DOM)
+        let slug = ttsState.currentSlug || pageVoiceSlug(document.querySelector('.active-word')) || window.location.pathname.replace(/[^a-zA-Z0-9]/g, '_');
         
         const textData = await prepareTextData(slug);
         const playlist = createPlaylistFromData(textData, mode);
