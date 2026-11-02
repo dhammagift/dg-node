@@ -875,7 +875,14 @@ onReady(() => {
                 tocClassType = 'h1';
                 extraClass = ' toc-uddana';
                 isCustomMultiLang = true;
-                customLangData = { pli: 'Tassuddānaṁ', rus: 'Содержание', eng: 'Summary' };
+                // Its own words: a closing sutta has two summaries - the chapter's "Tassuddānaṁ" and the collection's
+                // "Idaṁ vaggānamuddānaṁ" - and one fixed label made them two identical points (owner 2026-11-02, MN 152)
+                var ownWords = function (sel) { var x = el.querySelector(sel); if (!x) return ''; var c = x.cloneNode(true);
+                    otherEditions(c).forEach(function (o) { o.remove(); }); c.querySelectorAll('.copyLink, .copyLink-start, .variant').forEach(function (o) { o.remove(); });
+                    return c.textContent.replace(/[—–:;,.]+$/, '').replace(/\s+/g, ' ').trim(); };
+                var ownPli = ownWords('.pli-lang');
+                var tass = !ownPli || /^tassudd/i.test(ownPli);
+                customLangData = { pli: ownPli || 'Tassuddānaṁ', rus: ownWords('.rus-lang, .ru-lang') || (tass ? 'Содержание' : ''), eng: ownWords('.eng-lang, .en-lang') || (tass ? 'Summary' : '') };
             } else if (el.classList.contains('endsutta')) {
                 tocClassType = 'h1';
                 extraClass = ' toc-endsutta';
