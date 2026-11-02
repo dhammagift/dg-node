@@ -378,6 +378,15 @@ function toggleSilence(enable) {
                     navigator.mediaSession.setActionHandler('nexttrack', () => {
                         document.querySelector('.next-main-button')?.click();
                     });
+                    // a tap on the system player's bar moves within the line being played (owner 2026-11-02: like MX Player)
+                    try {
+                        navigator.mediaSession.setActionHandler('seekto', d => {
+                            const a = ttsState.googleAudio;
+                            if (!a || !isFinite(d.seekTime) || !isFinite(a.duration)) return;
+                            a.currentTime = Math.max(0, Math.min(d.seekTime, a.duration - 0.05));
+                            dgPositionState(a);
+                        });
+                    } catch (e) { /* a browser without seekto: the bar only shows the time */ }
                 }
             }).catch(e => {
                console.warn("Silence file playback failed:", e);
@@ -1921,7 +1930,7 @@ function dgPositionState(audio) {
 }
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02d · time left in the system player';
+const VOICE_BUILD = '2026-11-02e';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // Off since 2026-11-02 (owner): the system player shows each line's length; true brings the toasts back for a check.
 const VOICE_PAUSE_TOASTS = false;
@@ -2102,8 +2111,8 @@ async function playCurrentSegment() {
                   audio.onloadedmetadata = audio.onplaying = () => dgPositionState(audio);
                   if (last && pause && VOICE_PAUSE_TOASTS && typeof showBubbleNotification === 'function') {
                       audio.addEventListener('loadedmetadata', () => showBubbleNotification((window.isRu
-                          ? `♪ аудио ${audio.duration.toFixed(1)} с, в нём пауза ${(pause.ms / 1000).toFixed(1)} с`
-                          : `♪ audio ${audio.duration.toFixed(1)} s, with a ${(pause.ms / 1000).toFixed(1)} s pause in it`)), { once: true });
+                          ? `Аудио ${audio.duration.toFixed(1)} с, в нём пауза ${(pause.ms / 1000).toFixed(1)} с`
+                          : `Audio ${audio.duration.toFixed(1)} s, with a ${(pause.ms / 1000).toFixed(1)} s pause in it`)), { once: true });
                   }
                   let told = false;
                   audio.ontimeupdate = !(last && pause) ? null : () => {
@@ -2618,6 +2627,7 @@ function stopPlayback() {
       navigator.mediaSession.setActionHandler('pause', null);
       navigator.mediaSession.setActionHandler('previoustrack', null);
       navigator.mediaSession.setActionHandler('nexttrack', null);
+      try { navigator.mediaSession.setActionHandler('seekto', null); } catch (e) { /* none set */ }
   }
   // -----------------------------------------------
 
