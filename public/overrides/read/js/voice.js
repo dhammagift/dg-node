@@ -1921,7 +1921,10 @@ function withPause(b64, ms) {
 const PAUSE_IN_AUDIO_MAX = 600000;
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02 · pause in audio';
+const VOICE_BUILD = '2026-11-02b · pause in audio';
+// The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
+// ponytail: on for everyone while the pause is being checked on phones; set to false before the release.
+const VOICE_PAUSE_TOASTS = true;
 function pauseAfterLine() {
   const cur = ttsState.playlist[ttsState.currentIndex], next = ttsState.playlist[ttsState.currentIndex + 1];
   const rangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
@@ -2096,6 +2099,11 @@ async function playCurrentSegment() {
               // the last piece carries the pause; the page is told when its silence starts (the AB chip's countdown)
               const setSrc = (content, last) => {
                   audio.src = dgAudioSrc(last && pause ? withPause(content, pause.ms) : content);  // Google's mp3 too
+                  if (last && pause && VOICE_PAUSE_TOASTS && typeof showBubbleNotification === 'function') {
+                      audio.addEventListener('loadedmetadata', () => showBubbleNotification((window.isRu
+                          ? `♪ аудио ${audio.duration.toFixed(1)} с, в нём пауза ${(pause.ms / 1000).toFixed(1)} с`
+                          : `♪ audio ${audio.duration.toFixed(1)} s, with a ${(pause.ms / 1000).toFixed(1)} s pause in it`)), { once: true });
+                  }
                   let told = false;
                   audio.ontimeupdate = !(last && pause) ? null : () => {
                       if (told || !audio.duration || audio.currentTime < audio.duration - pause.ms / 1000) return;
