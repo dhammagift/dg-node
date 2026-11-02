@@ -1932,13 +1932,7 @@ window.buildSutta = async function(rawSlug, opts) {
         console.error('Text load failed:', error);
         // A 5xx or no network is not "no such text": keep the address (segment, ?s=) and offer a
         // retry. Only a 404 above turns into a search; this used to run a search for "dn22" too.
-        // No connection (not a server error): the one window for it (offline-status.js dgOfflineMissing), not a line here
-        // and a dialog over it (owner 2026-11-02)
-        const offline = navigator.onLine === false || (error && error.name === 'TypeError');
-        if (offline && typeof window.dgOfflineMissing === 'function') {
-            if (suttaArea) suttaArea.innerHTML = '';
-            window.dgOfflineMissing({ what: 'text', retry: () => window.initReader() });
-        } else if (suttaArea) {
+        if (suttaArea) {
             suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'
                 + '<p>' + (window.isRu ? 'Не удалось загрузить текст. Проверьте связь.' : "Couldn't load the text. Check the connection.") + '</p>'
                 + '<button type="button" class="btn btn-outline-secondary">' + (window.isRu ? 'Повторить' : 'Try again') + '</button></div>';
