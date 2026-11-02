@@ -708,3 +708,12 @@ body.app:has(#up-splash)::after { display: none; }
 #dg-drawer .dg-drawer-group[open] { padding-bottom: 20px; }
 #dg-drawer .dg-drawer-group + .dg-drawer-group > summary.dg-group-title { margin-top: 0; }
 #dg-drawer #g-gen { margin-top: 0; padding-top: 0; border-top: 0; }   /* the first group shown (the DG groups above it are empty here) */
+
+/* The version row in the apps (owner 2026-11-02: «не размазывалось»): the label with the "check" button on its line, the
+   version under the label, the check's answer right under it - one block, no line between them */
+#dg-drawer .up-ver { display: grid; grid-template-columns: 1fr auto; column-gap: 12px; row-gap: 2px; align-items: center; }
+#dg-drawer .up-ver [data-t="appVer"] { grid-row: 1; grid-column: 1; }
+#dg-drawer .up-ver #up-ver { grid-row: 2; grid-column: 1; font-size: .85rem; color: var(--dg-text-muted); margin: 0; }
+#dg-drawer .up-ver .up-check { grid-row: 1 / span 2; grid-column: 2; margin-left: 0 !important; }
+#dg-drawer .up-ver:has(+ .up-check-note:not(:empty)) { border-bottom: 0; padding-bottom: 2px; }
+#dg-drawer .up-ver + .up-check-note { padding: 0 0 10px !important; margin: 0; font-size: .8rem !important; min-height: 0 !important; }
