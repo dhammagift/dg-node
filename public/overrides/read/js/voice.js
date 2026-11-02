@@ -251,7 +251,18 @@ function ensureVoicesReady() {
 // --- Утилиты ---
 
 // --- "Вечная Тишина" (Heartbeat Audio) ---
-const SILENCE_URL = '/assets/sounds/silence.mp3';
+// Not true silence: a 25 Hz hum at -60 dB (below hearing, and no phone speaker plays it). Chromium hands an output that
+// renders exact zeros for a while over to a fake clock, which the app's WebView in the background barely runs: on the
+// owner's Motorola (battery saver on) the audio stream stopped ~90 s into a pause and the loop never came round
+// (bug report 2026-11-02 19:34:45). One second of 8 kHz WAV, looped; built here, so it works offline too.
+const SILENCE_URL = (() => {
+  const n = 8000, dv = new DataView(new ArrayBuffer(44 + n * 2));
+  [[0, 'RIFF'], [8, 'WAVEfmt '], [36, 'data']].forEach(([o, t]) => [...t].forEach((c, k) => dv.setUint8(o + k, c.charCodeAt(0))));
+  [[4, 36 + n * 2, 4], [16, 16, 4], [20, 1, 2], [22, 1, 2], [24, n, 4], [28, n * 2, 4], [32, 2, 2], [34, 16, 2], [40, n * 2, 4]]
+    .forEach(([o, v, size]) => size === 4 ? dv.setUint32(o, v, true) : dv.setUint16(o, v, true));
+  for (let i = 0; i < n; i++) dv.setInt16(44 + i * 2, Math.round(33 * Math.sin(2 * Math.PI * 25 * i / n)), true);
+  return URL.createObjectURL(new Blob([dv], { type: 'audio/wav' }));
+})();
 let silenceAudio = new Audio(SILENCE_URL);
 silenceAudio.loop = true; 
 silenceAudio.volume = 0.05;
@@ -334,7 +345,7 @@ function toggleSilence(enable) {
     if (enable) {
         // --- ИСПРАВЛЕНИЕ ---
         // Проверяем, что загружен именно наш mp3, иначе перезаряжаем его
-        if (!silenceAudio.src || !silenceAudio.src.includes('silence.mp3')) {
+        if (silenceAudio.src !== SILENCE_URL) {
              silenceAudio.src = SILENCE_URL;
         }
         
@@ -1930,7 +1941,7 @@ function dgPositionState(audio) {
 }
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02e';
+const VOICE_BUILD = '2026-11-02f · no true silence';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // Off since 2026-11-02 (owner): the system player shows each line's length; true brings the toasts back for a check.
 const VOICE_PAUSE_TOASTS = false;
