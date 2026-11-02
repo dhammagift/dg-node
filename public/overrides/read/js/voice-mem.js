@@ -672,7 +672,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         const tick = () => {
             const left = end - Date.now();
             if (left <= 0 || !memState.isActive) { clearInterval(_loopShowId); _loopShowId = null; return; }
-            memState.currentCountdownTime = `${Math.floor(left / 60000)}:${String(Math.floor(left % 60000 / 1000)).padStart(2, '0')}`;
+            memState.currentCountdownTime = `♪${Math.floor(left / 60000)}:${String(Math.floor(left % 60000 / 1000)).padStart(2, '0')}`;  // ♪: the pause is in the audio
             const statusEl = document.getElementById('mem-status');
             if (statusEl) statusEl.innerText = `${L.paused}${memState.currentCountdownTime}`;
             updateABTimerDisplay();
@@ -682,7 +682,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
     }
     document.addEventListener('tts-pause-started', e => {
         if (e.detail.loop && memState.isActive) showLoopCountdown(e.detail.loop);
-        else if (!e.detail.loop) startSegmentVisualTimer(e.detail.ms);
+        else if (!e.detail.loop) startSegmentVisualTimer(e.detail.ms, '♪');
     });
 
     function handleRangeFinished(e) {
@@ -780,7 +780,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
         configurable: true
     });
 
-    function startSegmentVisualTimer(delayMs) {
+    function startSegmentVisualTimer(delayMs, mark = '') {
         if (_segmentTimerId) clearInterval(_segmentTimerId);
         
         const timerSpan = document.getElementById('ab-btn-timer');
@@ -800,7 +800,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             const secs = Math.floor((timeLeft % 60000) / 1000);
             
             timerSpan.style.setProperty('display', 'inline-block', 'important');
-            timerSpan.innerText = `${mins}:${secs.toString().padStart(2, '0')}`;
+            timerSpan.innerText = `${mark}${mins}:${secs.toString().padStart(2, '0')}`;
         };
 
         tick();

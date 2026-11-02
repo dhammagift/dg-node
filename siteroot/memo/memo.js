@@ -741,7 +741,7 @@ window.addEventListener('DOMContentLoaded', () => {
         // the pause written into the audio is counted down as it plays
         document.addEventListener('tts-pause-started', e => {
             if (window.isLoopingPause) return;
-            window.startMemoVisualTimer(e.detail.ms, '');
+            window.startMemoVisualTimer(e.detail.ms, '♪');  // ♪: the pause is in the audio
             window.memoNextAllowedTime = 0;  // display only: the audio itself holds the pause, a timer gate would stall it in the background
         });
 

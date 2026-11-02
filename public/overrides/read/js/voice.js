@@ -1919,6 +1919,9 @@ function withPause(b64, ms) {
 // screen off on his phone a pause played separately never ended): the pause between phrases, plus at the end of an
 // A-B pass the pause between loops (voice-mem.js dgLoopPauseMs). Up to 10 minutes; a longer one is waited out as before.
 const PAUSE_IN_AUDIO_MAX = 600000;
+// Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
+// owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
+const VOICE_BUILD = '2026-11-02 · pause in audio';
 function pauseAfterLine() {
   const cur = ttsState.playlist[ttsState.currentIndex], next = ttsState.playlist[ttsState.currentIndex + 1];
   const rangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
@@ -2965,6 +2968,7 @@ function getPlayerHtml() {
             <span id="audio-file-link-placeholder"></span>
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" data-t="help">${t.help}</a>
           </div>
+          <div class="tts-build" style="font-size:10px;color:var(--dg-text-muted);text-align:right;padding:0 12px 4px">voice ${VOICE_BUILD}</div>
       </div>
 
       <div id="tts-advanced-settings" class="tts-pan" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
