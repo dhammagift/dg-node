@@ -1935,11 +1935,18 @@ window.buildSutta = async function(rawSlug, opts) {
         // No connection (not a server error): the page says what is missing and offers the picker of what to keep offline
         // (app.js's delegated [data-dg-offline-download]); "no connection" itself and its Try again are the apps' own
         // dialog, which comes up by itself - not a second Try again here that opened it (owner 2026-11-02)
-        const offline = navigator.onLine === false || (error && error.name === 'TypeError');
-        if (suttaArea && offline) {
+        // "Not downloaded" only when it is so: the device says it is offline and holds no library (a refused request online,
+        // Wi-Fi without internet or a library held by another tab is the old "couldn't load" - f3-ultra's review). Try again
+        // stays either way: the connection comes back; it also reloads by itself on 'online'.
+        let held = false;
+        try { held = !!(JSON.parse(localStorage.getItem('dg.offline.state') || 'null') || {}).present; } catch (e) { /* unreadable: none */ }
+        const notDownloaded = navigator.onLine === false && !held;
+        if (suttaArea && notDownloaded) {
             suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'
                 + '<p>' + (window.isRu ? 'Этот текст не скачан для чтения без сети.' : 'This text is not downloaded for offline reading.') + '</p>'
-                + '<button type="button" class="btn btn-outline-secondary" data-dg-offline-download>' + (window.isRu ? 'Скачать…' : 'Download…') + '</button></div>';
+                + '<button type="button" class="btn btn-outline-secondary" data-dg-offline-download>' + (window.isRu ? 'Скачать…' : 'Download…') + '</button> '
+                + '<button type="button" class="btn btn-outline-secondary dg-load-retry">' + (window.isRu ? 'Повторить' : 'Try again') + '</button></div>';
+            suttaArea.querySelector('.dg-load-retry').addEventListener('click', () => window.initReader());
             window.addEventListener('online', () => { if (suttaArea.querySelector('.dg-load-error')) window.initReader(); }, { once: true });
         } else if (suttaArea) {
             suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'

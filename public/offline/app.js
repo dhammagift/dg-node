@@ -647,8 +647,21 @@
             try { agreed = localStorage.getItem(STARTED_KEY) === '1'; } catch (e) { /* private mode */ }
             if (agreed) {
                 resumedMissing = true;
-                log('the chosen packs are not all here yet (' + missing.join(', ') + ') - continuing the download');
-                setTimeout(function () { requestDownload('update'); }, 0);
+                // only packs the server still publishes: an id gone or renamed in the manifest is never "held", and kept
+                // the transfer going on every page load (f3-ultra's review 2026-11-02) - it leaves the choice instead
+                fetch((PACKS_BASE || DIST_BASE) + '/packs-manifest.json', { cache: 'no-store' }).then(function (r) { return r.ok ? r.json() : null; }).then(function (m) {
+                    if (!(m && Array.isArray(m.packs))) return;
+                    var known = m.packs.map(function (p) { return p.id; });
+                    var gone = chosen.filter(function (id) { return known.indexOf(id) === -1; });
+                    if (gone.length) {
+                        try { localStorage.setItem(PACKS_KEY, JSON.stringify(chosen.filter(function (id) { return known.indexOf(id) !== -1; }))); } catch (e) { /* private mode */ }
+                        log('chosen packs no longer published, dropped: ' + gone.join(', '));
+                    }
+                    var still = missing.filter(function (id) { return known.indexOf(id) !== -1; });
+                    if (!still.length) { try { localStorage.removeItem(STARTED_KEY); } catch (e) { /* private mode */ } return; }
+                    log('the chosen packs are not all here yet (' + still.join(', ') + ') - continuing the download');
+                    requestDownload('update');
+                }).catch(function () { /* no answer: next page */ });
             }
         }
         // Always: a reader who installed the library before the dictionary existed must still get it.
@@ -1378,7 +1391,11 @@
                     // Everywhere else (search, contents, ...) the apps' own "no connection" window with Try again, not a
                     // passing line at the bottom - also after the network had answered once (owner 2026-11-02: the window
                     // fits every place that has no message of its own)
-                    if (window.dgLaunch && !(st && st.present) && !hidden) {
+                    // ...but only for what the person is waiting for (a load under way: dg-busy, a text pending): background
+                    // fetches with their own catch (the daily subscription notice /search, the reminders' /api/text on a
+                    // return to the app) must not cover a working page (f3-ultra's review 2026-11-02)
+                    var waiting = document.body.classList.contains('dg-busy') || !!document.querySelector('#reader-pane.reader-pending');
+                    if (window.dgLaunch && !(st && st.present) && !hidden && waiting) {
                         // What failed and what the request answered: the screen states facts, the
                         // report (error-report.js) gets the same line for the log.
                         var what = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
