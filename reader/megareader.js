@@ -1932,7 +1932,16 @@ window.buildSutta = async function(rawSlug, opts) {
         console.error('Text load failed:', error);
         // A 5xx or no network is not "no such text": keep the address (segment, ?s=) and offer a
         // retry. Only a 404 above turns into a search; this used to run a search for "dn22" too.
-        if (suttaArea) {
+        // No connection (not a server error): the page says what is missing and offers the picker of what to keep offline
+        // (app.js's delegated [data-dg-offline-download]); "no connection" itself and its Try again are the apps' own
+        // dialog, which comes up by itself - not a second Try again here that opened it (owner 2026-11-02)
+        const offline = navigator.onLine === false || (error && error.name === 'TypeError');
+        if (suttaArea && offline) {
+            suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'
+                + '<p>' + (window.isRu ? 'Этот текст не скачан для чтения без сети.' : 'This text is not downloaded for offline reading.') + '</p>'
+                + '<button type="button" class="btn btn-outline-secondary" data-dg-offline-download>' + (window.isRu ? 'Скачать…' : 'Download…') + '</button></div>';
+            window.addEventListener('online', () => { if (suttaArea.querySelector('.dg-load-error')) window.initReader(); }, { once: true });
+        } else if (suttaArea) {
             suttaArea.innerHTML = '<div class="dg-load-error" style="text-align:center;padding:3em 1em">'
                 + '<p>' + (window.isRu ? 'Не удалось загрузить текст. Проверьте связь.' : "Couldn't load the text. Check the connection.") + '</p>'
                 + '<button type="button" class="btn btn-outline-secondary">' + (window.isRu ? 'Повторить' : 'Try again') + '</button></div>';
