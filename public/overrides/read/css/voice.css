@@ -383,3 +383,6 @@ body:has(.voice-player.active){padding-bottom:200px}
 
 /* Autoplay never works (browsers and iOS block sound without a tap), so its row is hidden; the stored setting is left alone */
 .tts-row:has(#tts-autoplay-toggle){display:none}
+
+/* the mode chip says its mode ("Pāḷi", "Trn") without the tiny ▾ - it read as a dot (owner 2026-11-02); the chip still opens its list */
+#tts-mode-chip .dd{display:none}

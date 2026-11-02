@@ -921,8 +921,12 @@ onReady(() => {
                         var cleanText = clone.textContent.replace(/[()\[\]"“”«»'‘’]/g, '').replace(/\s+/g, ' ').trim();
                         if (cleanText) {
                             if (el.dataset.fallback === 'true') {
-                                var words2 = cleanText.split(/\s+/);
-                                if (words2.length > 8) cleanText = words2.slice(0, 8).join(' ') + '...';
+                                // as many words as it takes to differ from the points before it: repetitive suttas start
+                                // several passages alike ("Puna caparaṁ, ānanda, bhikkhuno sotena saddaṁ…" twice, MN 152)
+                                var words2 = cleanText.split(/\s+/), n = 8;
+                                var taken = Array.from(tocPanel.querySelectorAll('.toc-item')).map(function (i) { return i.textContent.trim(); });
+                                while (n < words2.length && taken.some(function (t) { return t.indexOf(words2.slice(0, n).join(' ')) === 0; })) n += 4;
+                                if (words2.length > n) cleanText = words2.slice(0, n).join(' ') + '...';
                             }
                             clone.textContent = capitalize(cleanText) + ' ';
                             clone.onclick = function (e) { e.stopPropagation(); scrollAndHighlight(originalSpan); };
