@@ -2996,6 +2996,16 @@ body.dg-drawer-open {
 .dg-drawer-group:not([open]) summary.dg-group-title::after { transform: rotate(-45deg); }
 /* Folded: keep the same breathing room under the title as the section body would leave. */
 .dg-drawer-group:not([open]) summary.dg-group-title { margin-bottom: 8px; }
+/* Room between the menu's sections (owner 2026-11-02, tried on Uposatha first: «колбасы… отступ, чтобы выдохнуть»): folded,
+   a little air and a hairline between the titles (a row above already draws its own line); an open group keeps the room
+   after its items itself, so folding it takes all of it away at once and never shifts a neighbour. */
+#dg-drawer .dg-drawer-body > .dg-drawer-group:not([hidden]) + .dg-drawer-group,
+#dg-drawer .dg-drawer-body > .dg-drawer-group ~ p.dg-group-title { margin-top: 4px; padding-top: 10px; border-top: 1px solid var(--dg-border); }   /* ~: an empty, hidden group (the reader's modes) may stand between */
+#dg-drawer .dg-drawer-body > .dg-drawer-row + .dg-drawer-group,
+#dg-drawer .dg-drawer-body > .dg-drawer-row + .dg-group-title { padding-top: 10px; }
+#dg-drawer .dg-drawer-body > .dg-drawer-group + .dg-drawer-group > summary.dg-group-title,
+#dg-drawer .dg-drawer-body > .dg-drawer-row + .dg-drawer-group > summary.dg-group-title { margin-top: 0; }
+#dg-drawer .dg-drawer-group[open] { padding-bottom: 20px; }
 
 /* Список режимов чтения в бургере — тот же паттерн, что у .dg-drawer-row, плюс вторая строка
    описания под подписью. Owner: "не нужны радио кнопки" — was a radio-style filled/empty
