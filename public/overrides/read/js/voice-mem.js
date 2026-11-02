@@ -19,7 +19,7 @@ if (typeof window.isRu === 'undefined') {
         titlePick: window.isRu ? 'Нажмите для выбора. ПКМ или долгое нажатие для сброса.' : 'Click to select. Right-Click / Long-Press to clear.',
         interval: window.isRu ? 'сек' : 'sec', 
         playing: window.isRu ? 'Проигрывание... (осталось: ' : 'Playing... (left: ',
-        paused: window.isRu ? 'Пауза... Старт через ' : 'Paused... Next in ',
+        paused: window.isRu ? 'Пауза' : 'Pause',  // the time itself is on the AB chip only (owner 2026-11-02: one place)
         abLoopTitle: 'AB',
         startA: window.isRu ? 'Начало A' : 'Start A',
         endB: window.isRu ? 'Конец B' : 'End B',
@@ -140,10 +140,10 @@ if (typeof window.isRu === 'undefined') {
 
     function updateABTimerDisplay() {
         const timerSpan = document.getElementById('ab-btn-timer');
-        const panel = document.getElementById('memorize-panel');
         if (!timerSpan) return;
         
-        if (memState.isActive && memState.currentCountdownTime && panel && !panel.classList.contains('visible')) {
+        // the countdown lives on the AB chip, panel open or not (owner 2026-11-02: not in two places)
+        if (memState.isActive && memState.currentCountdownTime) {
             timerSpan.style.display = 'inline-block';
             timerSpan.innerText = memState.currentCountdownTime;
         } else {
@@ -675,7 +675,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             if (left <= 0 || !memState.isActive) { clearInterval(_loopShowId); _loopShowId = null; return; }
             memState.currentCountdownTime = `${Math.floor(left / 60000)}:${String(Math.floor(left % 60000 / 1000)).padStart(2, '0')}`;
             const statusEl = document.getElementById('mem-status');
-            if (statusEl) statusEl.innerText = `${L.paused}${memState.currentCountdownTime}`;
+            if (statusEl) statusEl.innerText = L.paused;
             updateABTimerDisplay();
         };
         tick();
@@ -749,7 +749,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
             
             memState.currentCountdownTime = timeStr;
             const statusEl = document.getElementById('mem-status');
-            if (statusEl) statusEl.innerText = `${L.paused}${timeStr}`;
+            if (statusEl) statusEl.innerText = L.paused;
             updateABTimerDisplay();
             
             setPlayIcon(true);
