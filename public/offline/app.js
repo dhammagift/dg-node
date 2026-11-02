@@ -1349,6 +1349,10 @@
                 }, function (e) {
                     // A request the page cancelled itself (AbortController: a newer search replaced it) is not a lost connection.
                     if (e && e.name === 'AbortError') throw e;
+                    // Only the texts, the navigation and the search speak here. The other /api/ requests have their own way
+                    // round a failure - the voice (/api/tts/...) reads with another voice - and a toast on every line read
+                    // ("Couldn't load api/tts/pali: Failed to fetch", while the audio played) was noise (owner 2026-11-02)
+                    if (!isDataRoute(where.pathname)) throw e;
                     var ru = (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en') === 'ru';
                     var st = null;
                     try { st = JSON.parse(localStorage.getItem(STATE_KEY) || 'null'); } catch (err) { /* ignore */ }
