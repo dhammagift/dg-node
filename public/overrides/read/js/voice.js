@@ -1793,20 +1793,11 @@ function createPlaylistFromData(textData, mode) {
 
 
 
+// The screen stays on while the player plays, its pauses included, until the reader turns it off (owner 2026-11-02:
+// with the screen left to its timeout the phone went to sleep in a pause and the loop never came back). It used to be
+// let go for the DG voice and Google, which play through an <audio>.
 function shouldRequestWakeLockForItem(item) {
-  const googleKey = (localStorage.getItem(GOOGLE_KEY_STORAGE) || window.TRIAL_KEY);
-
-  // Если Google TTS недоступен, остаётся нативный голос — экран держим
-  if (!item) return true;
-  if (dgVoiceRequest(item)) return false;  // the DG voice reads it through an <audio>, no lock needed
-  if (!googleKey || googleKey.length <= 10) return true;
-
-  const useNativePali = localStorage.getItem(NATIVE_PALI_KEY) === 'true';
-  const useNativeTrn  = localStorage.getItem(NATIVE_TRN_KEY) === 'true';
-
-  // Если для текущего языка включен нативный режим, возвращаем true (экран не гаснет)
-  if (item.lang === 'pi-dev') return useNativePali;
-  return useNativeTrn;
+  return true;
 }
 
 // --- Ядро TTS ---
@@ -1921,7 +1912,7 @@ function withPause(b64, ms) {
 const PAUSE_IN_AUDIO_MAX = 600000;
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02b · pause in audio';
+const VOICE_BUILD = '2026-11-02c · screen stays on';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // ponytail: on for everyone while the pause is being checked on phones; set to false before the release.
 const VOICE_PAUSE_TOASTS = true;
@@ -2146,7 +2137,7 @@ async function playCurrentSegment() {
                           if (isRangeEnd) {
                               ttsState.speaking = false;
                               setButtonIcon('play');
-                              releaseWakeLock();
+                              if (!(window.dgMemoActive && window.dgMemoActive())) releaseWakeLock();  // a loop goes on: the screen stays
                               document.dispatchEvent(new CustomEvent('tts-range-finished', { detail: { pausePlayed: !!(pause && pause.loop) } }));
                           } else {
                               playCurrentSegment();
@@ -2245,7 +2236,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
               if (isRangeEnd) {
                   ttsState.speaking = false;
                   setButtonIcon('play');
-                  releaseWakeLock();
+                  if (!(window.dgMemoActive && window.dgMemoActive())) releaseWakeLock();  // a loop goes on: the screen stays
                   document.dispatchEvent(new CustomEvent('tts-range-finished'));
               } else {
                   playCurrentSegment();

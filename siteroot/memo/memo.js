@@ -737,6 +737,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 
         // voice.js writes this pause into the phrase's audio (pauseAfterLine): the same field, without the getter's countdown
+        window.dgMemoActive = () => !!window.isMemoPlaying;  // voice.js keeps the screen on between rounds
         window.dgSegmentDelayMs = () => (parseFloat(document.getElementById("ttsDelay")?.value) || 0) * 1000;
         // the pause written into the audio is counted down as it plays
         document.addEventListener('tts-pause-started', e => {

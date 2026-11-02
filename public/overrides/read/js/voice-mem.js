@@ -659,6 +659,7 @@ for (let i = state.playlist.length - 1; i >= 0; i--) {
     }
 
     // The pause between loops for voice.js to write into the pass's last line (pauseAfterLine): none after the last pass.
+    window.dgMemoActive = () => memState.isActive;  // voice.js keeps the screen on between passes
     window.dgLoopPauseMs = () => {
         if (!memState.isActive) return 0;
         return memState.repsLeft === Infinity || memState.repsLeft - 1 > 0 ? memState.intervalSeconds * 1000 : 0;
