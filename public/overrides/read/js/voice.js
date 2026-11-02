@@ -1942,9 +1942,6 @@ function dgPositionState(audio) {
       navigator.mediaSession.setPositionState({ duration: audio.duration, playbackRate: audio.playbackRate || 1, position: Math.min(audio.currentTime, audio.duration) });
   } catch (e) { /* a browser that refuses the numbers: no scrubber, nothing else lost */ }
 }
-// Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
-// owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-03a · audible hum';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // Off since 2026-11-02 (owner): the system player shows each line's length; true brings the toasts back for a check.
 const VOICE_PAUSE_TOASTS = false;
@@ -3001,7 +2998,6 @@ function getPlayerHtml() {
             <span id="audio-file-link-placeholder"></span>
             <a href="${helpUrl}" target="_blank" class="tts-link tts-help-link" data-t="help">${t.help}</a>
           </div>
-          <div class="tts-build" style="font-size:10px;color:var(--dg-text-muted);text-align:right;padding:0 12px 4px">voice ${VOICE_BUILD}</div>
       </div>
 
       <div id="tts-advanced-settings" class="tts-pan" data-pali-engine="${engine}" data-trn-engine="${trnEngine}">
