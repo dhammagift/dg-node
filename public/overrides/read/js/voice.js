@@ -265,7 +265,10 @@ const SILENCE_URL = (() => {
 })();
 let silenceAudio = new Audio(SILENCE_URL);
 silenceAudio.loop = true; 
-silenceAudio.volume = 0.05;
+// Full volume: the hum is -60 dBFS (amplitude 33), out of hearing at 25 Hz; at 0.05 it came out at -86 dBFS, under
+// Chromium's audible threshold (-72 dBFS), so a pause still counted as silence and the hidden page lost the playing-audio
+// exemption: the stream stopped 80-110 s into a 120 s pause (owner's bug reports 2026-11-03 01:21-01:31, build 571).
+silenceAudio.volume = 1;
 
 // Pauses (between phrases here, between loops in voice-mem.js) are played, not timed: the app's WebView in the
 // background holds timers back, and a pause never ended until the app was opened again (owner 2026-11-01/02,
@@ -1941,7 +1944,7 @@ function dgPositionState(audio) {
 }
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02f · no true silence';
+const VOICE_BUILD = '2026-11-03a · audible hum';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // Off since 2026-11-02 (owner): the system player shows each line's length; true brings the toasts back for a check.
 const VOICE_PAUSE_TOASTS = false;
