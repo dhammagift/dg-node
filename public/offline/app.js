@@ -1371,7 +1371,14 @@
                     // not "no connection": covering a working page with it, and then reloading a
                     // reader URL the app cannot serve, is what the owner got back to (2026-10-04).
                     var hidden = document.visibilityState === 'hidden';
-                    if (window.dgLaunch && !(st && st.present) && !networkAnswered && !hidden) {
+                    // The reader has its own words for this ("This text is not downloaded… Download…", megareader.js) and
+                    // a text's neighbours (/api/nav) failing there costs nothing: no window over a page that is reading
+                    var readerOwn = document.body.classList.contains('dg-state-reader') && /^\/api\/(text|nav)\//.test(where.pathname);
+                    if (readerOwn) throw e;
+                    // Everywhere else (search, contents, ...) the apps' own "no connection" window with Try again, not a
+                    // passing line at the bottom - also after the network had answered once (owner 2026-11-02: the window
+                    // fits every place that has no message of its own)
+                    if (window.dgLaunch && !(st && st.present) && !hidden) {
                         // What failed and what the request answered: the screen states facts, the
                         // report (error-report.js) gets the same line for the log.
                         var what = decodeURIComponent(where.pathname.replace(/^\/(api\/(text|nav|search)\/?)?/, '')) || '';
