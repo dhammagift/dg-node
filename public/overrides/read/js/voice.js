@@ -1952,7 +1952,9 @@ function pauseAfterLine() {
   // the Memo page has its own pause field (memo.js dgSegmentDelayMs); window.TTS_SEGMENT_DELAY can't be read here, its
   // getters start the countdown display
   const seg = window.dgSegmentDelayMs ? window.dgSegmentDelayMs() : (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000;
-  const ms = (cur && next && cur.id === next.id && !rangeEnd ? 0 : seg) + loop;
+  // a pass's last line gets the pause between loops only, not the phrase pause on top (owner 2026-11-03, Memo: 2 min after
+  // a phrase and 3 after a loop made the last line wait 5)
+  const ms = rangeEnd ? loop : (cur && next && cur.id === next.id ? 0 : seg);
   return ms > 0 && ms <= PAUSE_IN_AUDIO_MAX ? { ms, loop } : null;
 }
 const dgAudioSrc = c => (c.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + c;  // WAV: the voice on the device
