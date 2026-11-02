@@ -697,3 +697,9 @@ body.app:has(#up-splash)::after { display: none; }
 .up-switch input:checked ~ .up-thumb { transform: translateX(15px); }
 .up-switch input:focus-visible ~ .up-track { outline: 3px solid var(--dg-accent); outline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { .up-track, .up-thumb { transition: none; } }
+
+/* Settings: room between the groups (owner 2026-11-02: «слеплены в бесконечные колбасы… отступ между блоками, чтобы
+   выдохнуть»; tried on Uposatha first, then the other apps) - a gap and a hairline above each group after the first */
+#dg-drawer .dg-drawer-group + .dg-drawer-group,
+#dg-drawer .dg-drawer-body > .dg-drawer-group ~ .dg-group-title { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--dg-border); }
+#dg-drawer .dg-drawer-group + .dg-drawer-group > summary.dg-group-title { margin-top: 0; }
