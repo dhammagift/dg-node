@@ -288,6 +288,12 @@ async function ensureIastWord(word) {
 async function handleWordLookup(word, event) {
     if (!dictionaryVisible) return;
 
+    // The choice as it is now, not as it was when this script loaded: Settings (a sheet in its own frame) and other tabs write
+    // selectedDict without reaching this window, and "Built-in DPD" chosen there kept opening the online dictionary - offline,
+    // Android's "Webpage not available" - until the mode was switched here back and forth (owner 2026-11-02)
+    const nowDict = (localStorage.getItem('selectedDict') || '').toLowerCase();
+    if (nowDict && nowDict !== savedDict) applyDictConfig(nowDict);
+
     if (!word || /^[\d\-.,:; ]+$/.test(word.trim())) return;
 
     let cleanedWord = cleanWord(word);
