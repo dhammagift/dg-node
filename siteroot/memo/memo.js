@@ -736,6 +736,15 @@ window.addEventListener('DOMContentLoaded', () => {
 }
 
 
+        // voice.js writes this pause into the phrase's audio (pauseAfterLine): the same field, without the getter's countdown
+        window.dgSegmentDelayMs = () => (parseFloat(document.getElementById("ttsDelay")?.value) || 0) * 1000;
+        // the pause written into the audio is counted down as it plays
+        document.addEventListener('tts-pause-started', e => {
+            if (window.isLoopingPause) return;
+            window.startMemoVisualTimer(e.detail.ms, '');
+            window.memoNextAllowedTime = 0;  // display only: the audio itself holds the pause, a timer gate would stall it in the background
+        });
+
         Object.defineProperty(window, 'TTS_SEGMENT_DELAY', {
             get: function() {
                 const delayInput = document.getElementById("ttsDelay");

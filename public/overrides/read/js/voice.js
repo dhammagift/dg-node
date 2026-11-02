@@ -1923,7 +1923,10 @@ function pauseAfterLine() {
   const cur = ttsState.playlist[ttsState.currentIndex], next = ttsState.playlist[ttsState.currentIndex + 1];
   const rangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
   const loop = rangeEnd && window.dgLoopPauseMs ? window.dgLoopPauseMs() : 0;
-  const ms = (cur && next && cur.id === next.id && !rangeEnd ? 0 : (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000) + loop;
+  // the Memo page has its own pause field (memo.js dgSegmentDelayMs); window.TTS_SEGMENT_DELAY can't be read here, its
+  // getters start the countdown display
+  const seg = window.dgSegmentDelayMs ? window.dgSegmentDelayMs() : (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000;
+  const ms = (cur && next && cur.id === next.id && !rangeEnd ? 0 : seg) + loop;
   return ms > 0 && ms <= PAUSE_IN_AUDIO_MAX ? { ms, loop } : null;
 }
 const dgAudioSrc = c => (c.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + c;  // WAV: the voice on the device
