@@ -622,6 +622,15 @@ onReady(() => {
     // With several Pali editions on screen the contents follow one of them: the Mahāsaṅgīti, or the first edition shown
     // without it - every heading carried each edition's line and the list read "Indriyabhāvanāsutta3. 5. 10. indriyabhāvanā
     // suttaṃ10. ...", the summaries twice (owner 2026-11-01: «оглавление строить от канона по умолчанию»).
+    // A contents point is measured again until it holds (smoothScroll.js dgScrollToElement): the paragraphs between here and
+    // there are not rendered yet (content-visibility: auto), their heights are estimates, and one scroll to the first measure
+    // landed pages off - on a text opened at a line (/dn2:20.1, /mn66:1.1) every point went to the wrong place, opened from
+    // the top it held by chance (owner 2026-11-02)
+    function tocScrollTo(target, offset) {
+        if (typeof window.dgScrollToElement === 'function') return window.dgScrollToElement(target, offset);
+        window.scrollTo({ top: window.pageYOffset + target.getBoundingClientRect().top - offset, behavior: 'smooth' });
+    }
+
     function tocEdition() {
         var first = document.querySelector('#sutta .dg-ed-line[data-ed]');
         if (!first) return null;
@@ -817,8 +826,7 @@ onReady(() => {
                     e.stopPropagation();
                     tocPanel.classList.remove('active');
                     var offset = 120;
-                    var targetY = window.pageYOffset + el.getBoundingClientRect().top - offset;
-                    window.scrollTo({ top: targetY, behavior: 'smooth' });
+                    tocScrollTo(el, offset);
                     if (typeof window.activateSegmentForTTS === 'function') window.activateSegmentForTTS(el);
                 };
                 tocPanel.appendChild(item0);
@@ -883,8 +891,7 @@ onReady(() => {
                 if (!scrollTarget.offsetParent || scrollTarget.getBoundingClientRect().height === 0) {
                     scrollTarget = scrollTarget.closest('[id]') || scrollTarget.parentElement || scrollTarget;
                 }
-                var targetY = window.pageYOffset + scrollTarget.getBoundingClientRect().top - offset;
-                window.scrollTo({ top: targetY, behavior: 'smooth' });
+                tocScrollTo(scrollTarget, offset);
                 if (typeof window.activateSegmentForTTS === 'function') window.activateSegmentForTTS(targetElement);
             };
 
