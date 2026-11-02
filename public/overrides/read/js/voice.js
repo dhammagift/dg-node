@@ -1910,9 +1910,18 @@ function withPause(b64, ms) {
 // screen off on his phone a pause played separately never ended): the pause between phrases, plus at the end of an
 // A-B pass the pause between loops (voice-mem.js dgLoopPauseMs). Up to 10 minutes; a longer one is waited out as before.
 const PAUSE_IN_AUDIO_MAX = 600000;
+// The system player shows how long the line still plays (owner 2026-11-02: a line with a 3-minute pause in it, and no way
+// to see what is left): its length and position, set as it starts. The Android app's media shim takes it to the
+// notification (dg-apps src/tts.js); browsers and iOS have it built in.
+function dgPositionState(audio) {
+  try {
+    if (navigator.mediaSession && navigator.mediaSession.setPositionState && isFinite(audio.duration) && audio.duration > 0)
+      navigator.mediaSession.setPositionState({ duration: audio.duration, playbackRate: audio.playbackRate || 1, position: Math.min(audio.currentTime, audio.duration) });
+  } catch (e) { /* a browser that refuses the numbers: no scrubber, nothing else lost */ }
+}
 // Which voice code the page runs, in the voice settings: the apps take it from the site by their own update, and the
 // owner could not tell whether a change had arrived (2026-11-02). Raise it with every change worth checking on a phone.
-const VOICE_BUILD = '2026-11-02c · screen stays on';
+const VOICE_BUILD = '2026-11-02d · time left in the system player';
 // The owner's check on the phone (2026-11-02): a toast for each line whose audio carries a pause - its length and the pause.
 // ponytail: on for everyone while the pause is being checked on phones; set to false before the release.
 const VOICE_PAUSE_TOASTS = true;
@@ -2090,6 +2099,7 @@ async function playCurrentSegment() {
               // the last piece carries the pause; the page is told when its silence starts (the AB chip's countdown)
               const setSrc = (content, last) => {
                   audio.src = dgAudioSrc(last && pause ? withPause(content, pause.ms) : content);  // Google's mp3 too
+                  audio.onloadedmetadata = audio.onplaying = () => dgPositionState(audio);
                   if (last && pause && VOICE_PAUSE_TOASTS && typeof showBubbleNotification === 'function') {
                       audio.addEventListener('loadedmetadata', () => showBubbleNotification((window.isRu
                           ? `♪ аудио ${audio.duration.toFixed(1)} с, в нём пауза ${(pause.ms / 1000).toFixed(1)} с`
