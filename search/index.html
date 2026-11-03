@@ -3088,10 +3088,26 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         <!-- the external-links label and status in the page's language from the first paint: these rules live in
              reader/css/index.css, which loads later, and the closed menu's status is not in the critical CSS -->
         <style>.dg-external-links-ru{display:none}html[lang="ru"] .dg-external-links-en{display:none}html[lang="ru"] .dg-external-links-ru{display:inline}
+        /* the interface language as this browser has it (the script below), ahead of <html lang>: a text page comes with the
+           server's lang (en without ?lang=ru), and the label read "External links", then "Внеш. ссылки" ~0.8 s later
+           (owner 2026-11-03, his video) */
+        html[data-dg-ui="ru"] .dg-external-links-en{display:none}html[data-dg-ui="ru"] .dg-external-links-ru{display:inline}
+        html[data-dg-ui="en"] .dg-external-links-ru{display:none}html[data-dg-ui="en"] .dg-external-links-en{display:inline}
+        /* never the browser's own grey button: until reader/css/index.css styles it (zero specificity, so that file wins) */
+        :where(.dg-external-links-toggle){-webkit-appearance:none;appearance:none;background:transparent;border:1px solid transparent;border-radius:999px;color:inherit;font:inherit;font-size:12px;padding:3px 9px;min-height:28px}
         /* The toolbar whole or not at all: the page paints while it is still being parsed, and the half-read toolbar showed
            "External links" alone in the middle of the row for a moment on every reader load (owner 2026-11-01: «мигает
            голый стиль»). #smart-toc-btn is its last child. */
         #reader-toolbar:not(:has(#smart-toc-btn)){visibility:hidden}</style>
+        <script>(function () {
+          // the same choice as dhamma-i18n.js uiLanguage: ?lang, a /ru path, the saved language; ru or en only. <html lang>
+          // takes over whenever it is set (the language switched on the page).
+          var h = document.documentElement, l = null;
+          try { l = window.DHAMMA_LANG || new URLSearchParams(location.search).get('lang') || (/^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' : null);
+                if (l !== 'ru' && l !== 'en') l = localStorage.getItem('dhammaLanguage'); } catch (e) {}
+          if (l === 'ru' || l === 'en') h.setAttribute('data-dg-ui', l);
+          new MutationObserver(function () { if (h.lang === 'ru' || h.lang === 'en') h.setAttribute('data-dg-ui', h.lang); }).observe(h, { attributes: true, attributeFilter: ['lang'] });
+        })();</script>
         <div id="reader-toolbar" class="dg-reader-toolbar">
             <span class="dg-external-links dg-header-link">
                 <button type="button" class="dg-external-links-toggle" aria-expanded="false">
