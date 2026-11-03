@@ -662,8 +662,8 @@
         history.scrollRestoration = 'manual';
         history.pushState({ dgSettingsSheet: true }, '', location.href);
         // Wide screens: no dimming, the page beside the panel shows setting changes live; a click
-        // on it still closes the panel (shared backdrop handler). Below 768px the panel is centered
-        // over a dimmed page (home.css).
+        // on it still closes the panel (shared backdrop handler). Below 768px the panel takes the
+        // whole screen (home.css).
         var wide = window.matchMedia('(min-width: 768px)').matches;
         // Narrow screens only: the reader page keeps scrolling underneath a "centered over a dimmed
         // page" panel otherwise, and on iOS WKWebView a fixed/centered layer visibly drifts sideways

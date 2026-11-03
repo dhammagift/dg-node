@@ -2146,26 +2146,15 @@ body:not(.dg-state-home) #dg-announce { display: none; }
 .dg-sheet.dg-settings-embed { transform: translateX(100%); }
 .dg-sheet.dg-settings-embed.show { transform: translateX(0); }
 .dg-sheet.dg-settings-embed .dg-sheet-handle { display: none; }
-/* Below 768px there is no useful room for the page beside the panel (only a strip of it stuck out,
-   owner; at 820px the side panel is still fine) — the panel is centered over a dimmed page instead
-   (backdrop: openSettingsSheet()). Same 768px as home.js and settings/index.html (sample folded
-   only when the page is visible) and the site's other sheet breakpoint above. */
+/* Below 768px there is no useful room for the page beside the panel (only a strip of it stuck out, owner; at 820px the side
+   panel is still fine), and a card centred over the dimmed page between 481 and 767px (a tablet, an unfolded phone) was neither a
+   side panel nor a screen (owner 2026-11-03): the whole screen, as on a phone. Same 768px as home.js and settings/index.html
+   (sample folded only when the page is visible) and the site's other sheet breakpoint above. */
 @media (max-width: 767px) {
     .dg-sheet.dg-settings-embed,
-    .dg-sheet.dg-settings-embed.show {
-        left: 0;
-        right: 0;
-        margin: 0 auto;
-        border-right: 1px solid var(--dg-border-strong);
-        box-shadow: 0 0 32px rgba(0, 0, 0, 0.25);
-    }
+    .dg-sheet.dg-settings-embed.show { width: 100%; border-left: 0; box-shadow: none; }
     .dg-sheet.dg-settings-embed { transform: translateY(100%); }
     .dg-sheet.dg-settings-embed.show { transform: translateY(0); }
-}
-/* Full-width panel: nothing beside it to separate from. */
-@media (max-width: 480px) {
-    .dg-sheet.dg-settings-embed,
-    .dg-sheet.dg-settings-embed.show { border-left: 0; box-shadow: none; }
 }
 /* Заголовок набора отбит пустой строкой сверху и снизу — до правки он прилипал к предыдущему
    пункту и читался как его продолжение, а не как начало нового набора. */
