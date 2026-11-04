@@ -2209,14 +2209,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     }, true);
 
     /* Правый клик и долгое нажатие на тач-экране (браузер шлёт то же contextmenu) — контекстное
-       меню. Достаточно попасть в саму СТРОКУ цитаты, целиться в ✦ не нужно. */
+       меню. Только на самой ✦-ссылке (она скрыта в начале/конце строки и проявляется по тапу),
+       как в ридере (.copyLink). Раньше хватало попасть в любое место СТРОКИ — и долгий тап по
+       слову, чтобы выделить его, вместо выделения открывал меню (владелец 2026-11-04, Trello
+       8OmK5WY6). По словам — родное выделение/меню браузера. */
     document.addEventListener('contextmenu', function (e) {
       var pane = e.target.closest('#search-pane, #ai-pane');
       if (!pane) return;
-      var line = e.target.closest('[class*="-lang"], .variant');
+      var link = e.target.closest('a.fdgLink');
+      if (!link || !pane.contains(link)) return;
+      var line = link.closest('[class*="-lang"], .variant');
       if (!line) return;
-      var link = line.querySelector('a.fdgLink');
-      if (!link) return;
       e.preventDefault();
       ctx = { link: link, line: line };
       openAt(e.clientX, e.clientY);

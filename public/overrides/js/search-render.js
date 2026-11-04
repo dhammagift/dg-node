@@ -1758,3 +1758,32 @@ window.DgSearchRender = (function () {
         });
     });
 })();
+
+/* Выпадающее меню «Экспорт» (и любое другое .dt-button-collection) — сразу под кнопкой или,
+   если снизу не помещается, сразу над ней. Буттоны DataTables считают это сами, но на странице
+   стоит CSS-zoom на <html> (window.dgZoom, 1.1 и т.п.): кнопку они меряют в экранных пикселях
+   (offset()), а top/left ставят в CSS-пикселях — при zoom 1.1 меню съезжало вниз, на саму
+   кнопку, и уходило за нижний край экрана, а проверка «не влезает — открыть вверх» срабатывала
+   не там (владелец 2026-11-03, Trello F3DkWLx4: «открывает окошко не над кнопкой, а на кнопке»).
+   После того как библиотека меню показала, переставляем его по экранным координатам и
+   переводим сдвиг обратно в CSS-пиксели делением на zoom. */
+(function () {
+    function place(btn) {
+        var menu = document.querySelector('.dt-button-collection');
+        if (!menu || !btn.isConnected) return;
+        var z = (window.dgZoom && window.dgZoom()) || 1;
+        var b = btn.getBoundingClientRect(), m = menu.getBoundingClientRect();
+        var gap = 4, vh = window.innerHeight, vw = window.innerWidth;
+        var below = vh - b.bottom - gap, above = b.top - gap;
+        var top = (m.height <= below || below >= above) ? b.bottom + gap : b.top - gap - m.height;
+        var left = Math.max(8, Math.min(b.left, vw - m.width - 8));
+        menu.style.top = (parseFloat(menu.style.top) || 0) + (top - m.top) / z + 'px';
+        menu.style.left = (parseFloat(menu.style.left) || 0) + (left - m.left) / z + 'px';
+    }
+    document.addEventListener('click', function (e) {
+        var btn = e.target.closest && e.target.closest('.buttons-collection');
+        if (!btn) return;
+        // библиотека ставит меню своим обработчиком на этот же клик — ждём, пока поставит
+        setTimeout(function () { place(btn); }, 0);
+    });
+})();

@@ -4992,7 +4992,34 @@
             if (name === 'login') { try { if (localStorage.getItem('dg_cloud_session') === 'true') name = 'user'; } catch (e) {} }
             el.insertAdjacentHTML('afterbegin', faSvg(name, 'dg-row-ic'));
         });
+        paintLoginLabel();
     }
+
+    /* Signed in: the row says "Account", not "Login" — the icon alone already turned into a person
+       (owner 2026-11-03, Trello OSrCkxGl; "Профиль" rejected — it is not a profile). The label is a
+       {{global.common.login}} template that dhamma-i18n.js re-renders on every language change from
+       the text node it remembered, so the text node is REPLACED by a plain one (i18n leaves nodes
+       without {{ alone) and repainted here on dhamma:languagechange instead. */
+    function paintLoginLabel() {
+        var el = document.querySelector('#dg-drawer a[data-dg-icon="login"]') || document.querySelector('a.dg-drawer-row[data-dg-icon="login"]');
+        if (!el) return;
+        var signedIn = false;
+        try { signedIn = localStorage.getItem('dg_cloud_session') === 'true'; } catch (e) {}
+        if (!signedIn) return;
+        var label = t('global.common.account', menuLang() === 'ru' ? 'Аккаунт' : 'Account');
+        var node = el.querySelector('.dg-login-label');
+        if (!node) {
+            Array.prototype.slice.call(el.childNodes).forEach(function (n) {
+                if (n.nodeType === 3 && n.nodeValue.trim()) el.removeChild(n);
+            });
+            node = document.createElement('span');
+            node.className = 'dg-login-label';
+            el.appendChild(node);
+        }
+        node.textContent = label;
+    }
+    document.addEventListener('dhamma:languagechange', paintLoginLabel);
+    if (window.DHAMMA_I18N && window.DHAMMA_I18N.ready) window.DHAMMA_I18N.ready.then(paintLoginLabel);
 
     /* Any element whose TARGET (not just label) depends on UI language — "About the project" and
        the Help/Docs portal links (search/reader toolbars — /docs/... vs /ru/docs/..., separate
