@@ -113,6 +113,12 @@
     var local = false;
     var ownsLibrary = false;
 
+    // This site inside a frame of this site - the results page's quote preview (openFdg.js): the page around it holds
+    // the library, and a frame that tries to win its lock waits out every retry (6 x 400 ms) with its data requests
+    // held by the gate below - the preview's reader took ~2 s longer to boot for that alone (2026-11-04). The frame
+    // takes no part: it never probes, its data goes to the server, and offline to the tab that owns the library.
+    var inOwnFrame = (function () { try { return window.self !== window.top && window.parent.location.origin === location.origin; } catch (e) { return false; } })();
+
     var resolveReady, rejectReady;
     var ready = new Promise(function (resolve, reject) { resolveReady = resolve; rejectReady = reject; });
     window.dgOfflineLibrary = ready;
@@ -479,7 +485,7 @@
 
     // The tab the reader is actually looking at asks for the pool once; a hidden owner hands it over.
     function requestTakeover() {
-        if (local || downloadInFlight || probePending || !channel) return;
+        if (inOwnFrame || local || downloadInFlight || probePending || !channel) return;   // a preview frame never takes it over
         // Only the window being used takes the library over.
         if (!windowFocused && document.visibilityState === 'visible' && document.hasFocus && !document.hasFocus()) return;
         // Throttled, not one-shot: the holder may still have been busy (or downloading) the first
@@ -879,7 +885,7 @@
     // idempotent — it re-reads nothing, re-acquires the lock, adopts the stored copy and marks the
     // tab local again.
     function reopenIfNeeded() {
-        if (local || downloadInFlight || probePending) return;
+        if (inOwnFrame || local || downloadInFlight || probePending) return;
         probe().catch(function () { /* the console log already says what happened */ });
     }
     window.addEventListener('focus', function () { windowFocused = true; reopenIfNeeded(); requestTakeover(); });
@@ -1592,7 +1598,12 @@
 
     installFetchShim();
 
-    probeDone = probe();
-    probeDone.then(function () { probeSettled = true; resolveReady({ local: local }); },
-                   function (e) { probeSettled = true; rejectReady(e); });
+    if (inOwnFrame) {
+        probeSettled = true;
+        resolveReady({ local: false });
+    } else {
+        probeDone = probe();
+        probeDone.then(function () { probeSettled = true; resolveReady({ local: local }); },
+                       function (e) { probeSettled = true; rejectReady(e); });
+    }
 })();

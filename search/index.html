@@ -2155,6 +2155,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
           window.dgRevealFdgPopup(new URL(url, location.origin).href);
           if (w.dgPreviewOpen(abs.href, quoteSeed(link))) return;
         }
+        // The reader is still booting in the frame (the warm-up started before this click): show the popup and open
+        // the quote the moment it is up, instead of throwing the half-loaded reader away and starting over.
+        if (popupEl && frameEl && window.dgRevealFdgPopup && window.dgFdgFrameBooting && window.dgFdgFrameBooting()) {
+          var waitUrl = new URL(url, location.origin), seedNow = quoteSeed(link), waited = 0;
+          waitUrl.searchParams.set('scroll', 'instant');
+          window.dgRevealFdgPopup(new URL(url, location.origin).href);
+          (function wait() {
+            if (popupEl.style.display === 'none') return;                       // closed meanwhile
+            if (window.dgFdgFrameReady()) { if (!frameEl.contentWindow.dgPreviewOpen(waitUrl.href, seedNow)) window.dgShowFdgPopup(new URL(url, location.origin).href); return; }
+            if ((waited += 50) > 6000) { window.dgShowFdgPopup(new URL(url, location.origin).href); return; }
+            setTimeout(wait, 50);
+          })();
+          return;
+        }
         if (popupEl && frameEl && window.dgShowFdgPopup) {
           // Same plain full load as prod (the "warm" SPA-routing shortcuts were dropped on purpose, see
           // the owner's note in git history) — except when the frame was already warmed for this
@@ -4619,6 +4633,21 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         if (!document.body.classList.contains('dg-state-reader')) window.MEGAREADER_MANUAL_INIT = true;
         return ensureReaderAssets();
     };
+    // The quote preview's frame boots here with no text at all (openFdg.js loads /?dgPreviewBoot=1): the home page
+    // shell plus the reader's scripts, so the first quote has a reader ready without the API being asked for a text
+    // nobody chose (owner 2026-11-04: «прогревать без текста... тебе же не нужно прогревать апи»).
+    if (window.self !== window.top && /[?&]dgPreviewBoot=1(&|$)/.test(location.search)) {
+        // Into the reader screen and through the reader's first init now, while nobody is waiting (no slug: no
+        // request, the reader leaves its instruction in the hidden #sutta) - the first click then costs what every
+        // next one does, not the one-off 80-150 ms of switching screens and initialising (measured).
+        var dgBootReader = function () {
+            window.dgReaderAssets().then(function () {
+                dgSetState('reader');
+                return typeof window.initReader === 'function' ? window.initReader() : null;
+            }).catch(function () {}).then(function () { window.dgPreviewBooted = true; });
+        };
+        if (document.readyState === 'complete') dgBootReader(); else window.addEventListener('load', dgBootReader, { once: true });
+    }
     // Speed (PageSpeed, search results): the scripts of the warm-up wait for the visitor's first move on a
     // loaded page (pointer, touch, key, wheel). Started on idle they went out with the results still being
     // drawn - the reader's seven scripts ahead of the table's translated titles (LCP). A tap on a result is a
@@ -4803,9 +4832,19 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     window.dgPreviewOpen = function (href, seed) {
         try {
             var u = new URL(href, window.location.origin);
-            if (u.origin !== window.location.origin || typeof window.initReader !== 'function'
-                || !document.body.classList.contains('dg-state-reader')) return false;
+            if (u.origin !== window.location.origin || typeof window.initReader !== 'function') return false;
+            var inReader = document.body.classList.contains('dg-state-reader');
+            if (!inReader && !window.dgPreviewBooted) return false;
             var sutta = document.getElementById('sutta');
+            if (!inReader) {
+                // the empty booted frame: into the reader screen as it is, no pending-hide, no enter animation,
+                // and the reader's own view (lines/columns, as megareader.js sets it from viewMode)
+                dgSetState('reader');
+                var pane0 = document.getElementById('reader-pane');
+                if (pane0) pane0.classList.remove('reader-pending', 'reader-in', 'reader-out');
+                var vm = 'alternate'; try { vm = localStorage.getItem('viewMode') || 'alternate'; } catch (e) {}
+                if (sutta) sutta.classList.toggle('column-view', vm === 'columns');
+            }
             // the multi-column grid (3+ columns) lays lines out by edition/translator: no seed there, the text comes as is
             if (sutta && seed && seed.id && (seed.pali || seed.trans) && !sutta.classList.contains('dg-grid')) {
                 var langs = [];
@@ -4813,7 +4852,11 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 if (rc) Array.prototype.forEach.call(rc.querySelectorAll('[lang]'), function (el) {
                     var l = el.getAttribute('lang'); if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l);
                 });
-                if (!langs.length) langs = Object.keys(seed.trans || {}).slice(0, 1);
+                if (!langs.length) {
+                    // no text drawn yet (the booted frame): the reader's language - ?lang=, else the site's
+                    var ul = u.searchParams.get('lang') || (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || '';
+                    langs = seed.trans && seed.trans[ul] ? [ul] : Object.keys(seed.trans || {}).slice(0, 1);
+                }
                 var a0 = '<a class="text-decoration-none copyLink copyLink-start" role="none"></a>', a1 = '<a class="text-decoration-none copyLink" role="none"></a>';
                 var right = langs.filter(function (l) { return seed.trans && seed.trans[l]; }).map(function (l, i) {
                     return '<span class="' + l + '-lang' + (i ? ' lang-2nd' : '') + ' quote" lang="' + l + '">' + a0 + seed.trans[l] + a1 + '</span>';
