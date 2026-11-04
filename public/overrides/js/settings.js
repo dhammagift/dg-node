@@ -4125,6 +4125,12 @@ function dgSuttaText(plain) {
         if (byline) { md.push(plain ? byline : '*' + byline + '*'); md.push(''); }
     }
 
+    // Column view (#sutta.column-view, switchView.js): the text goes out as two parts, the whole Pali first and then the
+    // whole translation, not line by line - the two modes give two kinds of file (owner 2026-11-04). PDF keeps the
+    // columns themselves (its own handler above).
+    var columns = suttaArea.classList.contains('column-view');
+    var trPart = [];
+
     suttaArea.querySelectorAll('span[id]').forEach(function (node) {
         if (node.closest('#trn, #top-links-container, #bottom-links-container')) return;
         var paliEl = node.querySelector('.pli-lang');
@@ -4143,7 +4149,11 @@ function dgSuttaText(plain) {
         if (!pali && !trans) return;
 
         var headingEl = node.closest('h1, h2, h3');
-        if (headingEl) {
+        if (columns) {
+            var h = !headingEl ? '' : plain ? '' : (headingEl.tagName === 'H1' ? '## ' : (headingEl.tagName === 'H2' ? '### ' : '#### '));
+            if (pali) { md.push(h + pali); if (variant && !plain && !headingEl) md.push('> ↕ ' + variant); md.push(''); }
+            if (trans) { trPart.push(h + trans); trPart.push(''); }
+        } else if (headingEl) {
             var hashes = plain ? '' : (headingEl.tagName === 'H1' ? '## ' : (headingEl.tagName === 'H2' ? '### ' : '#### '));
             md.push(hashes + [pali, trans].filter(Boolean).join(' — '));
             md.push('');
@@ -4154,6 +4164,8 @@ function dgSuttaText(plain) {
             md.push('');
         }
     });
+
+    if (trPart.length) md.push(plain ? '— — —' : '---', '', ...trPart);
 
     if (plain) md.push(location.href.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, 'https://dhamma.gift'));
     return { title: title, text: md.join('\n') };
