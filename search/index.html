@@ -2109,7 +2109,24 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
        мимо попапа и немедленно закрывает (проверено: display возвращался в none, src в
        about:blank). Значения — те же, что строит openFdg: попапу ссылка со scroll=instant
        (резкий прыжок в маленьком окне), кнопке "в новом окне" — чистая, с плавной прокруткой. */
-    function openQuotePopup(url) {
+    // The clicked results line as the preview's first frame (window.dgPreviewOpen): its id, the Pali and each
+    // translation as the results drew them (search highlight included - the reader uses the same <b class="match finder">).
+    function quoteSeed(link) {
+        var seg = link && link.closest && link.closest('span[id]');
+        if (!seg) return null;
+        var inner = function (el) { var c = el.cloneNode(true); c.querySelectorAll('a, .variant').forEach(function (a) { a.remove(); }); return c.innerHTML.trim(); };
+        var seed = { id: seg.id, pali: '', trans: {} };
+        Array.prototype.forEach.call(seg.querySelectorAll('[lang]'), function (el) {
+            if (el.classList.contains('variant')) return;
+            var l = el.getAttribute('lang');
+            if (l === 'pi') { if (!seed.pali) seed.pali = inner(el); }
+            else if (l && !seed.trans[l]) seed.trans[l] = inner(el);
+        });
+        return seed;
+    }
+    window.dgQuoteSeed = quoteSeed;
+
+    function openQuotePopup(url, link) {
       // Offline app (window.dgOfflineReady only exists there, see dg-app-full src/app.js) has no
       // server behind this iframe's absolute local URL directly — every SPA-only path (anything
       // but the real root) 404s as a real navigation. On a phone there's no room for a preview
@@ -2129,6 +2146,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       setTimeout(function () {
         var popupEl = document.querySelector('.fdg-popup');
         var frameEl = document.querySelector('.fdg-iframe');
+        // A reader already booted in the frame (warmed, or a quote opened before): open this quote inside it.
+        if (popupEl && frameEl && window.dgRevealFdgPopup && window.dgFdgFrameReady && window.dgFdgFrameReady()) {
+          var w = frameEl.contentWindow, abs = new URL(url, location.origin);
+          abs.searchParams.set('scroll', 'instant');
+          // Shown first, in the same task (nothing is painted in between): a closed popup is display:none, its frame
+          // has no size, and the reader inside would centre the line in a 0 px tall window.
+          window.dgRevealFdgPopup(new URL(url, location.origin).href);
+          if (w.dgPreviewOpen(abs.href, quoteSeed(link))) return;
+        }
         if (popupEl && frameEl && window.dgShowFdgPopup) {
           // Same plain full load as prod (the "warm" SPA-routing shortcuts were dropped on purpose, see
           // the owner's note in git history) — except when the frame was already warmed for this
@@ -2210,7 +2236,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       e.preventDefault();
       e.stopImmediatePropagation();
       close();
-      openQuotePopup(link.href);
+      openQuotePopup(link.href, link);
     }, true);
 
     /* Правый клик и долгое нажатие на тач-экране (браузер шлёт то же contextmenu) — контекстное
@@ -2321,7 +2347,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       close(); // ctx обнуляется здесь, поэтому всё нужное снято в локальные переменные выше
 
       if (act === 'popup') {
-        openQuotePopup(url);
+        openQuotePopup(url, link);
       } else if (act === 'tab') {
         // Offline app: same reasoning as openQuotePopup() above — a real new tab to a SPA-only
         // path has no static asset to load. Fall back to in-place navigation instead of a dead
@@ -4714,6 +4740,104 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             if (u.origin !== window.location.origin) return false;
             history.pushState({ dgNav: true }, '', u.pathname + u.search + u.hash);
             routeFromUrl();
+            return true;
+        } catch (e) {
+            return false;
+        }
+    };
+
+    /* The quote preview (Trello X6lvilOf, owner 2026-11-04): the results page's popup frame boots the reader once and
+       every next quote opens INSIDE it - no reload (the boot is ~0.5 s of the ~0.5-0.7 s a quote took; the text
+       itself comes in 5-40 ms). First the clicked line, which the results already hold, is drawn with the reader's
+       own markup in the reader's current view (lines or columns: #sutta keeps column-view) and centred; then the
+       text opens through the normal route, without the reader's exit/enter animation (routeFromUrlNow, not
+       routeFromUrl), and buildSutta() centres the same line again - it stays on the same pixel, nothing blinks.
+       seed: { id: 'sn35.240:1.5', pali: html, trans: { ru: html, en: html } } from the results' line. Returns false
+       when it cannot (not a booted reader, another origin) - the caller then loads the frame as before. */
+    /* Keep the clicked line in the middle of the preview while the text settles under it: the full text replaces
+       the seed, then the icons and fonts above it load (~0.3 s, +370 px measured on sn35.240) and the reader's own
+       correction (dgScrollToElement) waits for document.fonts and then 350 ms - the line was seen to slide down and
+       back. Each animation frame, before it is painted, puts the line back on the centre, the same place the reader
+       aims for, so the two agree. Any scroll input of the reader's own ends it at once. */
+    var holdToken = 0;
+    function holdLineCentred(id) {
+        // Until the layout is quiet - 700 ms without a correction, after the first 1.5 s - and never longer than 5 s.
+        // On a phone the reader's own Pali toggle (setLanguage -> restoreReadingAnchor) puts back the position it
+        // took from the first frame, and dgScrollToElement corrects it after that: on dn1/dn2 that came at 1.3-1.9 s.
+        var my = ++holdToken, start = performance.now(), lastFix = start, ro = null;
+        var stop = function () {
+            if (my === holdToken) holdToken++;
+            if (ro) { ro.disconnect(); ro = null; }
+            if (window.dgScrollingTo === 'preview') window.dgScrollingTo = 0;
+        };
+        ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (ev) { window.addEventListener(ev, stop, { once: true, passive: true }); });
+        window.dgScrollingTo = 'preview';   // our own scroll: the auto-hiding header ignores it (dgScrollToElement does the same)
+        var centre = function () {
+            if (my !== holdToken) return;
+            // a verse couplet is drawn as one line under its first id (thig12.1: 6.1 holds 6.1 and 6.2 - a gāthā made
+            // whole from its lines) - the same fallback the reader lands on (smoothScroll.js findFallbackElement)
+            var el = document.getElementById(id)
+                || (typeof ScrollManager !== 'undefined' && ScrollManager.findFallbackElement ? ScrollManager.findFallbackElement(id) : null);
+            if (!el) return;
+            var r = el.getBoundingClientRect(), delta = (r.top + r.height / 2) - window.innerHeight / 2;
+            if (Math.abs(delta) > 0.5) { window.scrollTo({ top: window.pageYOffset + delta, behavior: 'instant' }); lastFix = performance.now(); }
+        };
+        // Layout that changes during the frame's own layout step (a web font swapping in, an icon learning its size)
+        // comes after requestAnimationFrame: ResizeObserver reports it after layout and before paint, so it is put
+        // right before it is ever seen.
+        // the popup's own window changing size as it opens on a phone: its "centre" moves with it
+        window.addEventListener('resize', centre);
+        var stop0 = stop; stop = function () { window.removeEventListener('resize', centre); stop0(); };
+        if (typeof ResizeObserver === 'function') {
+            ro = new ResizeObserver(centre);
+            [document.body, document.getElementById('reader-pane'), document.getElementById('sutta')].forEach(function (n) { if (n) ro.observe(n); });
+        }
+        (function frame() {
+            if (my !== holdToken) return;
+            centre();
+            var now = performance.now();
+            if (now - start < 5000 && (now - start < 1500 || now - lastFix < 700)) requestAnimationFrame(frame); else stop();
+        })();
+    }
+
+    window.dgPreviewOpen = function (href, seed) {
+        try {
+            var u = new URL(href, window.location.origin);
+            if (u.origin !== window.location.origin || typeof window.initReader !== 'function'
+                || !document.body.classList.contains('dg-state-reader')) return false;
+            var sutta = document.getElementById('sutta');
+            // the multi-column grid (3+ columns) lays lines out by edition/translator: no seed there, the text comes as is
+            if (sutta && seed && seed.id && (seed.pali || seed.trans) && !sutta.classList.contains('dg-grid')) {
+                var langs = [];
+                var rc = sutta.querySelector('.right-column');
+                if (rc) Array.prototype.forEach.call(rc.querySelectorAll('[lang]'), function (el) {
+                    var l = el.getAttribute('lang'); if (l && l !== 'pi' && langs.indexOf(l) === -1) langs.push(l);
+                });
+                if (!langs.length) langs = Object.keys(seed.trans || {}).slice(0, 1);
+                var a0 = '<a class="text-decoration-none copyLink copyLink-start" role="none"></a>', a1 = '<a class="text-decoration-none copyLink" role="none"></a>';
+                var right = langs.filter(function (l) { return seed.trans && seed.trans[l]; }).map(function (l, i) {
+                    return '<span class="' + l + '-lang' + (i ? ' lang-2nd' : '') + ' quote" lang="' + l + '">' + a0 + seed.trans[l] + a1 + '</span>';
+                }).join('');
+                // the reader's own id for the line: "21.3" in mn129, the full "an1.9:1.1" only in a range text
+                // (megareader.js: anchor = segment when the slug has a "1-10" range)
+                var full = String(seed.id).replace(/"/g, ''), cut = full.indexOf(':');
+                var textSlug = decodeURIComponent(u.pathname.replace(/^\/+/, '')).split(':')[0];
+                var safeId = cut > 0 && !/\d-\d/.test(textSlug) ? full.slice(cut + 1) : full;
+                // half a screen of room above and below: a lone line can be centred - where buildSutta() will put it
+                sutta.innerHTML = '<article style="padding:50vh 0"><p><span id="' + safeId + '">'
+                    + (seed.pali ? '<span class="pli-lang inputscript-ISOPali quote" lang="pi">' + a0 + seed.pali + a1 + '</span>' : '')
+                    + (right ? '<span class="right-column">' + right + '</span>' : '') + '</span></p></article>';
+                delete sutta.dataset.slug;   // a new text: buildSutta keeps no sideways column scroll from the old one
+                var t = document.getElementById(safeId);
+                if (t) {
+                    var r0 = t.getBoundingClientRect();
+                    window.scrollTo({ top: window.pageYOffset + r0.top - (window.innerHeight - r0.height) / 2, behavior: 'instant' });
+                    t.classList.add('active-word');
+                    holdLineCentred(safeId);
+                }
+            }
+            history.pushState({ dgNav: true }, '', u.pathname + u.search + u.hash);
+            routeFromUrlNow();
             return true;
         } catch (e) {
             return false;

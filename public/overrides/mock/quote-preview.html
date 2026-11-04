@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quote preview — prototype</title>
+<!--
+  Прототип предпросмотра цитаты из результатов поиска (владелец 2026-11-04, Trello X6lvilOf).
+  Идея: строки, по которым человек нажал, у нас уже есть (они в ответе /search) — окно открывается
+  СРАЗУ с ними, в его режиме (строки/колонки), а полный текст (/api/text) достраивается вокруг так,
+  что нажатая строка не сдвигается ни на пиксель и ничего не мигает:
+   1. первый кадр — сегменты этой сутты из выдачи, тем же рендером, что и полный текст
+      (у /search и /api/text один формат сегмента: segment/root_text/variant/translations);
+   2. полный текст рисуется в отсоединённый фрагмент, затем в ОДНОЙ синхронной задаче: замер
+      положения нажатой строки → подмена содержимого → scrollTop так, чтобы строка стояла там же.
+      Браузер не успевает отрисовать промежуточное состояние — сдвига нет;
+   3. новые строки проявляются opacity 0→1 за 180 мс (prefers-reduced-motion — сразу).
+  Без iframe и без второй копии приложения — тот же код работает на сайте и в приложении
+  (в приложении /search и /api/text отвечает локальная база, см. dg-app-full src/app.js).
+-->
+<style>
+:root {
+  --bg: #fafaf8; --fg: #1d1d1b; --muted: #6b6b66; --line: #e4e3de; --card: #fff;
+  --accent: #127a5f; --hl: #c0392b; --sheet-shadow: 0 -8px 30px rgba(0,0,0,.18);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121212; --fg: #e8e6e1; --muted: #9a978f; --line: #2c2b29; --card: #1b1b1a;
+  --accent: #4cc79e; --hl: #ff7a5c; --sheet-shadow: 0 -8px 30px rgba(0,0,0,.6); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121212; --fg: #e8e6e1; --muted: #9a978f; --line: #2c2b29; --card: #1b1b1a;
+  --accent: #4cc79e; --hl: #ff7a5c; --sheet-shadow: 0 -8px 30px rgba(0,0,0,.6); color-scheme: dark; }
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 var(--font); }
+body { padding: env(safe-area-inset-top, 0) 16px calc(env(safe-area-inset-bottom, 0) + 24px); }
+.bar { position: sticky; top: 0; z-index: 2; background: var(--bg); padding: 12px 0 10px; border-bottom: 1px solid var(--line); }
+.bar form { display: flex; gap: 8px; }
+.bar input[type=search] { flex: 1; min-width: 0; font: inherit; padding: 9px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--card); color: var(--fg); }
+.bar button, .seg button { font: inherit; border: 1px solid var(--line); background: var(--card); color: var(--fg); border-radius: 999px; padding: 8px 14px; cursor: pointer; }
+.opts { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.seg button { border: 0; border-radius: 0; padding: 5px 12px; font-size: 13px; background: transparent; }
+.seg button[aria-pressed=true] { background: var(--accent); color: #fff; }
+.opts label { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; }
+.note { font-size: 13px; color: var(--muted); margin: 14px 0 4px; }
+
+/* выдача (упрощённая) */
+.res { list-style: none; margin: 0; padding: 0; }
+.res > li { padding: 14px 0; border-bottom: 1px solid var(--line); }
+.res h3 { margin: 0 0 6px; font-size: 15px; font-weight: 600; }
+.res h3 span { color: var(--muted); font-weight: 400; }
+.q { display: block; width: 100%; text-align: left; font: inherit; color: inherit; background: none; border: 0; padding: 6px 8px; margin: 2px -8px; border-radius: 8px; cursor: pointer; }
+.q:hover, .q:focus-visible { background: color-mix(in srgb, var(--accent) 9%, transparent); outline: none; }
+.q .p { display: block; }
+.q .t { display: block; color: var(--muted); font-size: 14px; }
+b.m { color: var(--hl); font-weight: 600; }
+
+/* окно предпросмотра: шторка снизу на телефоне, панель справа от 768px */
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none; transition: opacity .22s ease; z-index: 10; }
+.scrim.on { opacity: 1; pointer-events: auto; }
+.sheet { position: fixed; z-index: 11; left: 0; right: 0; bottom: 0; height: 86vh; height: 86dvh; background: var(--card);
+  border-radius: 16px 16px 0 0; box-shadow: var(--sheet-shadow); display: flex; flex-direction: column;
+  transform: translateY(100%); transition: transform .28s cubic-bezier(.2,.8,.2,1); }
+.sheet.on { transform: none; }
+@media (min-width: 768px) {
+  .sheet { left: auto; top: 0; height: auto; width: min(640px, 56vw); border-radius: 0; transform: translateX(100%); }
+}
+.sheet header { display: flex; align-items: center; gap: 10px; padding: 10px 14px 10px 18px; border-bottom: 1px solid var(--line); }
+.grab { position: absolute; top: 6px; left: 50%; width: 38px; height: 4px; margin-left: -19px; border-radius: 2px; background: var(--line); }
+@media (min-width: 768px) { .grab { display: none; } }
+.sheet header .ttl { flex: 1; min-width: 0; font-size: 15px; line-height: 1.3; }
+.sheet header .ttl small { display: block; color: var(--muted); font-size: 12px; }
+.sheet header a, .sheet header button { font: inherit; font-size: 14px; color: var(--accent); background: none; border: 1px solid var(--line); border-radius: 999px; padding: 6px 12px; text-decoration: none; cursor: pointer; white-space: nowrap; }
+.sheet header button.x { color: var(--muted); padding: 6px 10px; }
+.body { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 18px 40px; -webkit-overflow-scrolling: touch;
+  overflow-anchor: none; /* якорим сами, одинаково в Chrome и Safari (у Safari overflow-anchor нет) */ }
+.status { position: absolute; right: 14px; bottom: calc(env(safe-area-inset-bottom, 0) + 10px); font-size: 12px; color: var(--muted);
+  background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; transition: opacity .3s; }
+.status.done { opacity: 0; }
+
+/* текст — та же разметка, что у ридера: span[id] > .pli-lang + .right-column > .xx-lang */
+#pv h1, #pv h2, #pv h3 { font-weight: 600; line-height: 1.3; margin: 1.1em 0 .5em; }
+#pv h1 { font-size: 1.25em; } #pv h2 { font-size: 1.1em; } #pv h3 { font-size: 1em; }
+#pv p { margin: 0 0 1em; }
+#pv span[id] { display: block; margin-bottom: .55em; border-radius: 6px; }
+#pv .pli-lang { display: block; }
+#pv .right-column { display: block; }
+#pv .right-column > span { display: block; color: var(--muted); font-size: .94em; }
+#pv .variant { display: block; font-size: .8em; color: var(--muted); opacity: .8; }
+#pv.cols span[id] { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2em; }
+#pv.cols .right-column > span { font-size: 1em; color: var(--fg); opacity: .82; }
+#pv span[id].hit { background: color-mix(in srgb, var(--accent) 10%, transparent); box-shadow: -8px 0 0 color-mix(in srgb, var(--accent) 10%, transparent), 8px 0 0 color-mix(in srgb, var(--accent) 10%, transparent); }
+#pv .gap { display: block; height: 0; border-top: 1px dashed var(--line); margin: .9em 0; }
+#pv .fresh { animation: fresh .18s ease-out both; }
+@keyframes fresh { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { #pv .fresh { animation: none; } .sheet, .scrim { transition: none; } }
+</style>
+</head>
+<body>
+<div class="bar">
+  <form id="f"><input type="search" id="qin" value="kacchapa" aria-label="Запрос" autocomplete="off"><button>Искать</button></form>
+  <div class="opts">
+    <span class="seg" role="group" aria-label="Вид"><button type="button" data-v="alternate">Строки</button><button type="button" data-v="columns">Колонки</button></span>
+    <label><input type="checkbox" id="slow"> медленная сеть (+1,5 с)</label>
+    <label><input type="checkbox" id="dark"> тёмная</label>
+  </div>
+</div>
+<p class="note">Прототип: нажмите на любую строку цитаты. Окно открывается сразу с этими строками, полный текст достраивается вокруг. Вид берётся из настройки ридера (<code>viewMode</code>), как в настоящем ридере.</p>
+<ul class="res" id="res"></ul>
+
+<div class="scrim" id="scrim"></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="pvt" hidden>
+  <span class="grab"></span>
+  <header><div class="ttl" id="pvt"></div><a id="open" href="#">Открыть текст</a><button class="x" id="close" aria-label="Закрыть">✕</button></header>
+  <div class="body" id="body"><div id="pv"></div></div>
+  <span class="status" id="st"></span>
+</section>
+
+<script>
+(function () {
+  var LANG = 'ru';
+  var $ = function (id) { return document.getElementById(id); };
+  var store = { get: function (k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+                set: function (k, v) { try { localStorage.setItem(k, v); } catch (e) {} } };
+  var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+  var query = '';
+
+  // --- вид (строки/колонки) — та же настройка, что у ридера
+  function view() { return store.get('viewMode') === 'columns' ? 'columns' : 'alternate'; }
+  function paintView() {
+    document.querySelectorAll('.seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.v === view())); });
+    $('pv').classList.toggle('cols', view() === 'columns');
+  }
+  document.querySelectorAll('.seg button').forEach(function (b) { b.onclick = function () { store.set('viewMode', b.dataset.v); paintView(); }; });
+  $('dark').onchange = function () { document.documentElement.dataset.theme = this.checked ? 'dark' : 'light'; };
+  $('dark').checked = matchMedia('(prefers-color-scheme: dark)').matches;
+
+  // --- подсветка слова: как в выдаче, одинаково в обоих кадрах
+  function hl(text) {
+    var t = esc(text);
+    if (!query) return t;
+    var q = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    try { return t.replace(new RegExp(q, 'gi'), function (m) { return '<b class="m">' + m + '</b>'; }); } catch (e) { return t; }
+  }
+  function pickTrans(tr) {
+    if (!tr) return '';
+    var keys = Object.keys(tr).filter(function (k) { return k.split('_')[0] === LANG; });
+    return keys.length ? tr[keys[0]] : '';
+  }
+
+  // --- ОДИН рендер сегмента для обоих кадров: та же разметка, что у ридера
+  function segHtml(s) {
+    var pali = (s.root_text || '').trim(), tr = (pickTrans(s.translations) || '').trim();
+    if (!pali && !tr) return '';
+    var h = '<span id="' + esc(s.segment) + '">';
+    if (pali) h += '<span class="pli-lang" lang="pi">' + hl(pali) + '</span>';
+    if (tr) h += '<span class="right-column"><span class="' + LANG + '-lang" lang="' + LANG + '">' + hl(tr) + '</span></span>';
+    return h + '</span>';
+  }
+  // Полный текст: html-шаблон сегмента ('<h1>{}</h1>' и т.п.) вокруг строки, как в ридере
+  function fullHtml(segs) {
+    var out = '';
+    segs.forEach(function (s) { var inner = segHtml(s); var tpl = s.html || '{}'; out += tpl.indexOf('{}') >= 0 ? tpl.replace('{}', inner) : tpl + inner; });
+    return out;
+  }
+
+  // --- выдача
+  var results = {};
+  function search(q) {
+    query = q.trim();
+    $('res').innerHTML = '<li class="note">Ищем…</li>';
+    fetch('/search?q=' + encodeURIComponent(query) + '&lang=' + LANG).then(function (r) { return r.json(); }).then(function (d) {
+      results = d.data || {};
+      var ids = Object.keys(results);
+      if (!ids.length) { $('res').innerHTML = '<li class="note">Ничего не найдено.</li>'; return; }
+      $('res').innerHTML = ids.map(function (id) {
+        var r = results[id], t = r.titles || {};
+        var tt = Object.keys(t).filter(function (k) { return k.split('_')[0] === LANG; })[0];
+        return '<li><h3>' + esc(id) + ' · ' + esc((t.root || '').trim()) + (tt ? ' <span>' + esc(t[tt]) + '</span>' : '') + '</h3>' +
+          (r.segments || []).slice(0, 4).map(function (s) {
+            return '<button class="q" data-id="' + esc(id) + '" data-seg="' + esc(s.segment) + '"><span class="p">' + hl(s.root_text) + '</span><span class="t">' + hl(pickTrans(s.translations)) + '</span></button>';
+          }).join('') + '</li>';
+      }).join('');
+    }).catch(function () { $('res').innerHTML = '<li class="note">Ошибка поиска.</li>'; });
+  }
+  $('f').onsubmit = function (e) { e.preventDefault(); search($('qin').value); };
+
+  // --- предпросмотр
+  var token = 0;
+  function open(id, segId) {
+    var my = ++token, r = results[id], body = $('body'), pv = $('pv');
+    var t0 = performance.now();
+    var tt = r.titles || {}, trk = Object.keys(tt).filter(function (k) { return k.split('_')[0] === LANG; })[0];
+    $('pvt').innerHTML = esc(id) + ' · ' + esc((tt.root || '').trim()) + (trk ? '<small>' + esc(tt[trk]) + '</small>' : '');
+    $('open').href = '/' + encodeURIComponent(id) + '?lang=' + LANG + '&s=' + encodeURIComponent(query) + '#' + encodeURIComponent(segId.split(':')[1] || '');
+    paintView();
+
+    // кадр 1: строки этой сутты из выдачи, по порядку; между несоседними — тонкий разрыв
+    var known = r.segments || [];
+    pv.innerHTML = known.map(function (s, i) { return (i ? '<span class="gap"></span>' : '') + segHtml(s); }).join('');
+    var hit = document.getElementById(segId);
+    if (hit) hit.classList.add('hit');
+    $('st').textContent = 'строки из выдачи · ' + Math.round(performance.now() - t0) + ' мс'; $('st').className = 'status';
+    $('sheet').hidden = false;
+    requestAnimationFrame(function () { $('scrim').classList.add('on'); $('sheet').classList.add('on'); });
+    // нажатая строка — на трети высоты окна
+    body.scrollTop = 0;
+    if (hit) body.scrollTop = Math.max(0, hit.offsetTop - body.clientHeight / 3);
+
+    // кадр 2: полный текст, достроенный вокруг без сдвига
+    var delay = $('slow').checked ? 1500 : 0;
+    fetch('/api/text/' + encodeURIComponent(id) + '?mode=single&lang=' + LANG).then(function (x) { return x.json(); }).then(function (d) {
+      return new Promise(function (res) { setTimeout(function () { res(d); }, delay); });
+    }).then(function (d) {
+      if (my !== token) return;                       // уже открыли другое
+      var frag = document.createElement('div');
+      frag.innerHTML = fullHtml(d.segments || []);     // рисуем вне документа
+      var knownIds = {}; known.forEach(function (s) { knownIds[s.segment] = 1; });
+      frag.querySelectorAll('span[id]').forEach(function (el) { if (!knownIds[el.id]) el.classList.add('fresh'); });
+      frag.querySelectorAll('h1,h2,h3,p').forEach(function (el) { if (!el.querySelector('span[id]:not(.fresh)')) el.classList.add('fresh'); });
+      // Якорь — нажатая строка (если её нет — первая видимая известная). Одна синхронная задача:
+      // замер → подмена → прокрутка. Промежуточный кадр не рисуется.
+      var anchorId = segId, a = document.getElementById(anchorId);
+      var before = a ? a.getBoundingClientRect().top : 0;
+      pv.innerHTML = frag.innerHTML;
+      var a2 = document.getElementById(anchorId);
+      if (a2) { a2.classList.add('hit'); a2.classList.remove('fresh'); body.scrollTop += a2.getBoundingClientRect().top - before; }
+      $('st').textContent = 'полный текст · ' + Math.round(performance.now() - t0) + ' мс';
+      setTimeout(function () { if (my === token) $('st').className = 'status done'; }, 1200);
+    }).catch(function () { if (my === token) $('st').textContent = 'текст не загрузился — показаны строки из выдачи'; });
+  }
+  function close() {
+    token++;
+    $('scrim').classList.remove('on'); $('sheet').classList.remove('on');
+    setTimeout(function () { if (!$('sheet').classList.contains('on')) $('sheet').hidden = true; }, 300);
+  }
+  document.addEventListener('click', function (e) { var q = e.target.closest('.q'); if (q) open(q.dataset.id, q.dataset.seg); });
+  $('close').onclick = close; $('scrim').onclick = close;
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('sheet').hidden) close(); });
+
+  paintView();
+  search($('qin').value);
+})();
+</script>
+</body>
+</html>

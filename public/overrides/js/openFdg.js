@@ -224,12 +224,43 @@ let fdgWarmUrl = null;
 const isFdgPopupOpen = () => fdgPopup.style.display === 'block' && fdgPopup.style.visibility !== 'hidden';
 window.isFdgPopupOpen = isFdgPopupOpen;
 
+// A reader booted in the frame (the results page's quote preview, search/index.html dgPreviewOpen): every next quote
+// opens inside it instead of reloading it (owner 2026-11-04, Trello X6lvilOf). Closing keeps it booted - hidden, its
+// sound stopped - so the next quote is as fast as this one.
+function fdgFrameReady() {
+    try {
+        const w = fdgIframe.contentWindow;
+        return !!(w && fdgIframe.src && fdgIframe.src !== 'about:blank' && w.document.readyState === 'complete'
+            && typeof w.dgPreviewOpen === 'function' && w.document.body.classList.contains('dg-state-reader')
+            && w.document.querySelector('#sutta span[id]'));
+    } catch (e) { return false; }   // another origin, or the frame is navigating
+}
+window.dgFdgFrameReady = fdgFrameReady;
+
+function fdgSilence() {
+    try {
+        const w = fdgIframe.contentWindow;
+        if (w.speechSynthesis) w.speechSynthesis.cancel();
+        w.document.querySelectorAll('audio, video').forEach(m => { try { m.pause(); } catch (e) {} });
+    } catch (e) {}
+}
+
 const closeFdgPopup = () => {
     fdgPopup.style.display = 'none';
     fdgPopup.style.visibility = '';
     fdgWarmUrl = null;
-    fdgIframe.src = 'about:blank';
+    if (fdgFrameReady()) fdgSilence();   // keep the booted reader for the next quote
+    else fdgIframe.src = 'about:blank';
 };
+
+// Show the popup over a frame that already holds the text (dgPreviewOpen just opened it inside).
+function revealFdgPopup(originalUrl) {
+    fdgWarmUrl = null;
+    fdgOpenNewWindowBtn.href = originalUrl;
+    fdgPopup.style.visibility = '';
+    fdgPopup.style.display = 'block';
+}
+window.dgRevealFdgPopup = revealFdgPopup;
 
 function fdgInstantUrl(href) {
     const urlObj = new URL(href, window.location.origin);
@@ -251,6 +282,7 @@ window.dgShowFdgPopup = showFdgPopup;
 function warmFdgPopup(link) {
     if (typeof window.dgOfflineReady !== 'undefined') return; // the app answers from its own SQLite, no second copy of it
     if (localStorage.getItem('quotePopupEnabled') === 'false' || isFdgPopupOpen()) return;
+    if (fdgFrameReady()) return;   // a reader is already booted there: the click opens the quote inside it
     const url = fdgInstantUrl(link.href);
     if (url === fdgWarmUrl) return;
     fdgWarmUrl = url;
