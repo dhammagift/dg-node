@@ -208,7 +208,11 @@ function fallbackCopy(text) {
 
 
 // Скрыть share icon на production
-document.addEventListener('DOMContentLoaded', function() {
+// The SPA loads this file with the reader's scripts, long after DOMContentLoaded: listening for it alone meant the block
+// below never ran - the long press / right click on a line's ✦ (copy that line's link) did nothing at all (owner
+// 2026-11-04, Trello CeXBxDe7: «при долгом нажатии на невидимые ссылки было какое-то действие... пропало»). It runs now
+// whenever the file arrives.
+(function (init) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); })(function() {
   const shareOnlineElement = document.getElementById('shareOnline');
   if (shareOnlineElement && window.location.href.includes('dhamma.gift')) {
     shareOnlineElement.style.display = 'none';
