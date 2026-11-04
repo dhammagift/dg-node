@@ -232,8 +232,7 @@ function fdgFrameReady() {
         const w = fdgIframe.contentWindow;
         return !!(w && fdgIframe.src && fdgIframe.src !== 'about:blank' && w.document.readyState === 'complete'
             && typeof w.dgPreviewOpen === 'function' && typeof w.initReader === 'function'
-            && (w.dgPreviewBooted === true   // booted empty (/?dgPreviewBoot=1): the reader's scripts, no text
-                || (w.document.body.classList.contains('dg-state-reader') && w.document.querySelector('#sutta span[id]'))));
+            && w.document.body.classList.contains('dg-state-reader') && w.document.querySelector('#sutta span[id]'));
     } catch (e) { return false; }   // another origin, or the frame is navigating
 }
 window.dgFdgFrameReady = fdgFrameReady;
@@ -291,10 +290,7 @@ function warmFdgPopup(link) {
     if (localStorage.getItem('quotePopupEnabled') === 'false' || isFdgPopupOpen()) return;
     // A reader booted there, or booting: any quote opens inside it, so another expansion must not restart it.
     if (fdgFrameReady() || fdgFrameBooting()) return;
-    // No text: the reader alone, booted on the home page shell (search/index.html dgPreviewBoot). The quote opens
-    // inside it on the click; nothing is asked of the API before the reader picks a quote.
-    const lang = new URL(link.href, location.origin).searchParams.get('lang') || new URLSearchParams(location.search).get('lang');
-    const url = location.origin + '/?dgPreviewBoot=1&scroll=instant' + (lang ? '&lang=' + encodeURIComponent(lang) : '');
+    const url = fdgInstantUrl(link.href);
     if (url === fdgWarmUrl) return;
     fdgWarmUrl = url;
     fdgPopup.style.visibility = 'hidden';
@@ -302,42 +298,9 @@ function warmFdgPopup(link) {
     fdgIframe.src = url;
 }
 
-// Warm-up as soon as the results are on screen and the browser is idle, not only after a row is expanded: the first
-// quote used to wait for the whole reader to boot in the frame (owner 2026-11-04: «первое окошко загружается очень
-// медленно»). Its scripts and styles are the page's own, mostly from the cache; any results link will do, since every
-// quote opens inside the booted reader. Not on a data-saving connection, and once per page.
-let fdgEarlyWarmQueued = false;
-function warmWhenIdle() {
-    if (fdgEarlyWarmQueued || typeof window.dgOfflineReady !== 'undefined') return;
-    if (navigator.connection && navigator.connection.saveData) return;
-    const link = document.querySelector('#pali .quote a.fdgLink, #pali a.fdgLink');
-    if (!link) return;
-    fdgEarlyWarmQueued = true;
-    const go = () => { if (!fdgFrameReady() && !fdgFrameBooting()) warmFdgPopup(link); };
-    const idle = () => (window.requestIdleCallback ? requestIdleCallback(go, { timeout: 3000 }) : setTimeout(go, 1000));
-    if (document.readyState === 'complete') idle(); else window.addEventListener('load', idle, { once: true });
-}
-
-// The results table expands a quote by inserting its <tr class="child">. A burst of them (the
-// "expand all" button) warms nothing after the first, a later single expansion re-warms for its own quote.
-document.addEventListener('DOMContentLoaded', function () {
-    const table = document.getElementById('pali');
-    if (!table) return;
-    let lastWarm = 0;
-    new MutationObserver(function (mutations) {
-        if (!fdgEarlyWarmQueued) warmWhenIdle();   // the first rows have just been drawn
-        for (const m of mutations) {
-            for (const node of m.addedNodes) {
-                if (node.nodeType !== 1 || !node.classList.contains('child')) continue;
-                const link = node.querySelector('.quote a.fdgLink');
-                if (!link || Date.now() - lastWarm < 1500) continue;
-                lastWarm = Date.now();
-                warmFdgPopup(link);
-                return;
-            }
-        }
-    }).observe(table, { childList: true, subtree: true });
-});
+// No warm-up (owner 2026-11-04): a frame loaded ahead showed the site's home page in the popup when the first quote
+// was opened during it, and a reader nobody asked for costs traffic. The first quote loads the reader as before; every
+// next one opens inside that reader (search/index.html dgPreviewOpen). warmFdgPopup stays for reference, unused.
 fdgCloseBtn.addEventListener('click', closeFdgPopup);
 fdgOpenNewWindowBtn.addEventListener('click', () => { setTimeout(closeFdgPopup, 100); });
 
