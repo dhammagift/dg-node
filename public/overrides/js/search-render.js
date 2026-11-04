@@ -1719,6 +1719,7 @@ window.DgSearchRender = (function () {
     // Close: intercept the control-cell click on an expanded row, fold, then let it through.
     document.addEventListener('click', function (e) {
         if (e.__dgFold || reduced()) return;
+        if (e.target.closest && e.target.closest('a[href]')) return;   // a link opens its text, it does not fold the row
         var td = e.target.closest && e.target.closest('td.dtr-control');
         if (!td) return;
         var tr = td.parentElement;
@@ -1786,4 +1787,24 @@ window.DgSearchRender = (function () {
         // библиотека ставит меню своим обработчиком на этот же клик — ждём, пока поставит
         setTimeout(function () { place(btn); }, 0);
     });
+})();
+
+
+/* The text link in a result row (dn1, sn35.2) sits in the row's expand/collapse cell (td.dtr-control). A tap on it both
+   opened the text and toggled the row - and on an expanded row the fold above ate the tap: the text opened on the
+   second one (owner 2026-11-04, Trello eoMYC4X4: «ссылка должна работать как ссылка; треугольник разворачивает и
+   сворачивает»). Caught before the table sees it: a plain click opens the text in place, the same route as any result
+   link; Ctrl/Cmd/Shift/middle click keeps the browser's own new tab. Either way the row stays as it is. The rest of the
+   cell, the triangle included, still expands and collapses. */
+(function () {
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('#search-pane td.dtr-control a.fdgLink[href]');
+        if (!a) return;
+        e.stopPropagation();   // not to DataTables Responsive (tbody) nor the fold above: the row is left alone
+        if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;   // the browser's new tab
+        var href = a.getAttribute('href') || '';
+        if (href.charAt(0) !== '/' || typeof window.dgNavigateInternal !== 'function') return;   // the plain link
+        e.preventDefault();
+        window.dgNavigateInternal(href);
+    }, true);
 })();
