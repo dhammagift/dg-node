@@ -4785,3 +4785,12 @@ html.dg-app .dynamic-tts-btn, html.dg-app .bubble-notification, html.dg-app .dg-
 body.dg-state-results #dg-hero-band,
 body.dg-state-reader #dg-hero-band,
 body.dg-state-toc #dg-hero-band { z-index: 851; }
+
+/* Quick settings stay compact (owner 2026-11-04, Trello ddwXEjqI: «нужно было увеличить отступы в бургер меню, но в
+   быстрых настройках ничего трогать не надо было»). Since the bigger base came to every touch screen (2026-10-31, tablets
+   too) the sheet's shared .dg-sheet titles and rows - sized for the burger's hierarchy - took several scrolls to get
+   through. Only #dg-quick: the drawer keeps its own sizes. */
+#dg-quick .dg-group-title { font-size: 0.78rem; margin: 1.1em 0 0.35em; letter-spacing: 0.05em; }
+#dg-quick .dg-group-title:first-child { margin-top: 0.2em; }
+#dg-quick .dg-toggle-row { padding: 6px 0; }
+#dg-quick .dg-sheet-body { padding-top: 4px; padding-bottom: 10px; }

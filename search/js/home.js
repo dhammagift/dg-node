@@ -2897,37 +2897,9 @@
                     window.DgSearchRender.redraw();
                 }
             }, 'Alt+G'));
-            // The Pali editions (megareader.js READER_EDITIONS), the same choice as the Translations window and /settings/
-            if (state === 'reader' && window.DG_EDITIONS && window.getEditions) {
-                host.appendChild(groupTitle(t('quick.editions', 'Издания пали')));
-                var edRow = document.createElement('div');
-                edRow.className = 'dg-ts-chips dg-qs-eds';
-                var paintEds = function () {
-                    var on = window.getEditions(), avail = window.READER_MODE ? window.READER_MODE.availableEditions : ['ms'];
-                    edRow.innerHTML = window.DG_EDITIONS.map(function (ed) {
-                        var missing = !!avail && avail.indexOf(ed.id) === -1;
-                        var onlineOnly = !missing && window.dgEditionOnDevice && window.dgEditionOnDevice(ed.id) === false;   // the app: not downloaded
-                        return '<button type="button" class="dg-ts-chip' + (missing ? ' is-missing' : '') + (onlineOnly ? ' is-local' : '') + '" data-ed="' + ed.id + '"' +
-                            ' title="' + esc(window.dgEditionLabel(ed, menuLang() === 'ru') + (onlineOnly ? ' — ' + tsStr('edOnline') : '')) + '" aria-pressed="' + (on.indexOf(ed.id) !== -1) + '">' + esc(ed.tag) + (onlineOnly ? ' •' : '') + '</button>';
-                    }).join('');
-                };
-                paintEds();
-                edRow.addEventListener('click', function (e) {
-                    var b = e.target.closest('[data-ed]');
-                    if (!b) return;
-                    var eds = window.getEditions(), ed = b.dataset.ed;
-                    window.setEditions(eds.indexOf(ed) !== -1 ? eds.filter(function (x) { return x !== ed; }) : eds.concat([ed]));
-                    paintEds();
-                    notifySaved();
-                    if (typeof window.buildSutta === 'function' && window._currentSlug) {
-                        var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-                        window.buildSutta(window._currentSlug).then(function () {
-                            if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
-                            paintEds();
-                        });
-                    }
-                });
-                host.appendChild(edRow);
+            // The editions themselves are chosen in the Translations window and /settings/ (owner 2026-11-04, Trello
+            // ddwXEjqI: «выбор разных редакций в быстрых настройках не нужен»); highlighting their differences stays here.
+            if (state === 'reader' && window.dgEditionsDiff && window.dgSetEditionsDiff) {
                 host.appendChild(toggleRow(t('quick.editionsDiff', 'Подсветить отличия'), window.dgEditionsDiff(), function (on) {
                     window.dgSetEditionsDiff(on);
                     notifySaved();
