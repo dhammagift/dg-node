@@ -1791,6 +1791,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (document.body.classList.contains('dg-state-toc')) {
         return { stack: [band], content: document.getElementById('toc-pane') };
       }
+      // ai (пустая выдача, см. dgSetState) — полоса с полем без ряда кнопок выдачи (он скрыт),
+      // контент — #ai-pane; #dynamicHeader там display:none, отступ ему бесполезен.
+      if (document.body.classList.contains('dg-state-ai')) {
+        return { stack: [band], content: document.getElementById('ai-pane') };
+      }
       if (document.body.classList.contains('dg-state-results')) {
         // content — #dynamicHeader (заголовок "слово — кол-во текстов"), не #search-pane: сам
         // заголовок теперь физически ВНЕ #results-toolbar (владелец: скрываться на скролле
@@ -4299,9 +4304,16 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     var DG_STATES = ['dg-state-home', 'dg-state-results', 'dg-state-reader', 'dg-state-toc', 'dg-state-ai'];
     function dgSetState(name) {
         var cls = 'dg-state-' + name;
+        /* «Не найдено / похожие слова» (ai) — это та же выдача, только пустая: шапка (поле-пилюля,
+           ракушка, бургер, закреплённая полоса с отступом под статус-бар в приложении) должна быть
+           как в results. Все правила шапки (~160 в home.css) висят на dg-state-results, у ai их не
+           было — бургер пропадал, поле теряло вид и в приложении уезжало под статус-бар (владелец
+           2026-11-03, Trello UYhNshje). Поэтому ai = results + ai; свои скрытия ai держит с
+           !important (home.css). */
+        var want = name === 'ai' ? ['dg-state-results', 'dg-state-ai'] : [cls];
         document.body.classList.remove('home-out', 'results-out'); // exit played, screen switches now
-        if (document.body.classList.contains(cls)) return;
-        DG_STATES.forEach(function (s) { document.body.classList.toggle(s, s === cls); });
+        if (DG_STATES.every(function (s) { return document.body.classList.contains(s) === (want.indexOf(s) !== -1); })) return;
+        DG_STATES.forEach(function (s) { document.body.classList.toggle(s, want.indexOf(s) !== -1); });
         // Native autofocus on #paliauto (see input markup above) fires at HTML-parse time,
         // well before this runs on a direct reader URL — so by the time we know we're in the
         // reader, the field may already be focused, eating hotkeys (Ctrl+Arrow next/prev sutta

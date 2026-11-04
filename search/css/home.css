@@ -1407,12 +1407,14 @@ body.dg-state-toc #variants-hint { display: none !important; }
    разметке всегда, содержимое приходит только когда реально нужно. */
 #ai-pane { display: none; }
 body.dg-state-ai #ai-pane { display: block; }
+/* !important: в ai у body есть и dg-state-results (dgSetState, search/index.html — шапка как в
+   выдаче), а правила results ниже по файлу показывают эти блоки той же специфичностью. */
 body.dg-state-ai #search-pane,
 body.dg-state-ai #results-toolbar,
 body.dg-state-ai #results-divider,
 body.dg-state-ai #dynamicHeader,
 body.dg-state-ai .forshellscript {
-    display: none;
+    display: none !important;
 }
 .ai { max-width: 840px; margin: 0 auto; padding: 22px 0 0; }
 .aihead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }

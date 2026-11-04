@@ -220,3 +220,11 @@ dg-node раз в неделю проверяет все внешние ссыл
   `dg_cloud_session` текст пункта заменяется на `global.common.account` (новый ключ в
   `lang_global_{en,ru,th}.json`, th — «บัญชี»), перекрашивается на `dhamma:languagechange`. Проверено в
   Chromium на test.dhamma.gift: не вошли — «Войти»/«Login», вошли — «Аккаунт»/«Account», RU→EN→RU — подпись следует.
+- done **«Не нашлось ничего»: сломан навбар (приложение, и сайт тоже)** (Trello UYhNshje). Экран ИИ/«не найдено»
+  (`dg-state-ai`, ai-search.js — включается, если поиск похожих слов дольше 0,5 с) не получал ни одного из ~160
+  правил шапки, висящих на `dg-state-results`: не было бургера, поле теряло вид, а `stackConfig()` возвращал
+  null — шапка не закреплялась, в приложении поле уезжало под статус-бар. `search/index.html`: `dgSetState('ai')`
+  ставит `dg-state-results` + `dg-state-ai`; `stackConfig()` для ai — полоса с полем, контент `#ai-pane`.
+  `search/css/home.css`: скрытия ai (`#search-pane`, `#results-toolbar`, `#dynamicHeader`…) с `!important`.
+  Проверено в Chromium 600×960 на test.dhamma.gift: пилюля+ракушка+бургер как в выдаче, бургер открывается,
+  ai → kacchapa → назад/вперёд — класс ai снимается. В самом APK не проверено (нужна сборка).
