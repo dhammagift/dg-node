@@ -65,8 +65,9 @@ function dgParaKey(id) { return String(id == null ? '' : id).replace(/\.\d+$/, '
 // The Memo page has a pause of its own (dgSegmentDelayMs) and keeps it after every line.
 // The text's title lines (paragraph 0: the collection, the chapter, the sutta's name) are no paragraph to pause after -
 // the text goes on right after them (owner 2026-11-04: it waited between the sutta's name and its first line).
+// Nothing after this line: the reading is over - no pause, no countdown, it just ends (owner 2026-11-04).
 function dgNoPauseBetween(cur, next) {
-  if (!cur || !next) return false;
+  if (!cur || !next) return true;
   if (cur.id === next.id) return true;
   if (window.dgSegmentDelayMs || !dgParagraphOnly()) return false;
   const a = dgParaKey(cur.id);
@@ -2174,7 +2175,8 @@ async function playCurrentSegment() {
                       const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
                       // TTS_SEGMENT_DELAY is read only when a pause is really due: reading it starts the AB chip's
                       // countdown (voice-mem.js getter), which ran after every phrase in paragraph mode (owner 2026-11-04)
-                      let delay = (pause || dgNoPauseBetween(currentItem, nextItem)) ? 0 : window.TTS_SEGMENT_DELAY || 0;  // pause: just played
+                      // the end of an A-B pass gets the pause between loops only (its own countdown), never a phrase pause
+                      let delay = (pause || isRangeEnd || dgNoPauseBetween(currentItem, nextItem)) ? 0 : window.TTS_SEGMENT_DELAY || 0;  // pause: just played
 
                       if (!isRangeEnd) {
                           ttsState.currentIndex++; 
@@ -2270,7 +2272,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
           const currentItem = ttsState.playlist[ttsState.currentIndex];
           const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
           // read only when a pause is due: reading TTS_SEGMENT_DELAY starts the AB chip's countdown (voice-mem.js)
-          let delay = dgNoPauseBetween(currentItem, nextItem) ? 0 : window.TTS_SEGMENT_DELAY || 0;
+          let delay = (isRangeEnd || dgNoPauseBetween(currentItem, nextItem)) ? 0 : window.TTS_SEGMENT_DELAY || 0;
 
           if (!isRangeEnd) {
               ttsState.currentIndex++; 
