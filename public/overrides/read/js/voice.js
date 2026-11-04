@@ -55,6 +55,19 @@ let wakeLock = null;
 
 const SCROLL_STORAGE_KEY = 'dg_tts_auto_scroll'; 
 const SEGMENT_DELAY_KEY = 'dg_tts_segment_delay';
+// "Pause only between paragraphs" (owner 2026-11-04, Trello NO8aKdr3): one pause length, two places it can go - after every
+// phrase (off, as it always was) or only where a new paragraph starts. A paragraph is the segment id without its last
+// number: 1.5 and 1.6 are paragraph 1, 2.1 starts paragraph 2 (a range text keeps its sutta: an1.29:1.1 -> an1.29:1).
+const PARA_PAUSE_KEY = 'dg_tts_pause_paragraphs';
+function dgParagraphOnly() { try { return localStorage.getItem(PARA_PAUSE_KEY) === '1'; } catch (e) { return false; } }
+function dgParaKey(id) { return String(id == null ? '' : id).replace(/\.\d+$/, ''); }
+// No pause between these two lines: the same line in another language, or - paragraph-only - the same paragraph.
+// The Memo page has a pause of its own (dgSegmentDelayMs) and keeps it after every line.
+function dgNoPauseBetween(cur, next) {
+  if (!cur || !next) return false;
+  if (cur.id === next.id) return true;
+  return !window.dgSegmentDelayMs && dgParagraphOnly() && dgParaKey(cur.id) === dgParaKey(next.id);
+}
 const MODE_STORAGE_KEY = 'tts_preferred_mode';
 // Once: a saved 'pi' may come from a Pali line tap (it used to save the mode), so Voice / Alt+R
 // went on starting in Pali. Drop it; a real choice in the mode list is saved again from now on.
@@ -1954,7 +1967,7 @@ function pauseAfterLine() {
   const seg = window.dgSegmentDelayMs ? window.dgSegmentDelayMs() : (parseFloat(localStorage.getItem(SEGMENT_DELAY_KEY)) || 0) * 1000;
   // a pass's last line gets the pause between loops only, not the phrase pause on top (owner 2026-11-03, Memo: 2 min after
   // a phrase and 3 after a loop made the last line wait 5)
-  const ms = rangeEnd ? loop : (cur && next && cur.id === next.id ? 0 : seg);
+  const ms = rangeEnd ? loop : (dgNoPauseBetween(cur, next) ? 0 : seg);
   return ms > 0 && ms <= PAUSE_IN_AUDIO_MAX ? { ms, loop } : null;
 }
 const dgAudioSrc = c => (c.startsWith('UklGR') ? 'data:audio/wav;base64,' : 'data:audio/mp3;base64,') + c;  // WAV: the voice on the device
@@ -2157,7 +2170,7 @@ async function playCurrentSegment() {
 
                       const currentItem = ttsState.playlist[ttsState.currentIndex];
                       const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
-                      if (currentItem && nextItem && currentItem.id === nextItem.id) {
+                      if (dgNoPauseBetween(currentItem, nextItem)) {
                           delay = 0;
                       }
 
@@ -2256,7 +2269,7 @@ function playBrowserTTS(text, langKey, rate, isPali) {
 
           const currentItem = ttsState.playlist[ttsState.currentIndex];
           const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
-          if (currentItem && nextItem && currentItem.id === nextItem.id) {
+          if (dgNoPauseBetween(currentItem, nextItem)) {
               delay = 0;
           }
 
@@ -2994,7 +3007,8 @@ function getPlayerHtml() {
       <div id="tts-settings-panel" class="tts-pan">
           <div class="tts-grp" data-t="playback">${t.playback}</div>
           <label class="tts-row"><span class="lb"><span data-t="scroll">${t.scroll}</span> <span class="tts-kbd">S</span><small data-t="scrollSub">${t.scrollSub}</small></span><span class="tts-sw"><input type="checkbox" id="tts-scroll-toggle" ${ttsState.autoScroll ? 'checked' : ''}><span></span></span></label>
-          <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}" data-t="delay">${t.delay}</span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
+          <label class="tts-row"><span class="lb"><span data-t="paraOnly">${t.paraOnly}</span><small id="tts-para-sub" data-t="${dgParagraphOnly() ? 'paraSubOn' : 'paraSubOff'}">${dgParagraphOnly() ? t.paraSubOn : t.paraSubOff}</small></span><span class="tts-sw"><input type="checkbox" id="tts-para-toggle" ${dgParagraphOnly() ? 'checked' : ''}><span></span></span></label>
+          <div class="tts-row tts-delay-row"><span class="lb" title="${t.delayTitle}"><span data-t="delay">${t.delay}</span><small id="tts-delay-sub" data-t="${dgParagraphOnly() ? 'delaySubPara' : 'delaySubPhr'}">${dgParagraphOnly() ? t.delaySubPara : t.delaySubPhr}</small></span><span class="tts-stp"><button type="button" data-stp="tts-segment-delay-input" data-d="-0.5" aria-label="−">−</button><span id="tts-segment-delay-input" class="stp-v" contenteditable="true" inputmode="decimal" spellcheck="false">${localStorage.getItem('dg_tts_segment_delay') || 0}</span><span class="u" data-t="sec">${t.sec}</span><button type="button" data-stp="tts-segment-delay-input" data-d="0.5" aria-label="+">+</button></span></div>
           <div class="tts-links tts-links-row">
             <a href="javascript:void(0)" id="tts-advanced-toggle-btn" title="${t.engineSettingsTitle}">${gi('wrench-solid-full.svg')}${t.engineSettings}</a>
             <span id="audio-file-link-placeholder"></span>
@@ -3048,9 +3062,14 @@ function ttsUiText() {
     playback: ru ? "Воспроизведение" : "Playback",
     scroll: ru ? "Автоскролл" : "Scroll",
     scrollSub: ru ? "Текст едет за голосом" : "Text follows the voice",
-    delay: ru ? "Пауза м-у фразами" : "Delay",
+    delay: ru ? "Пауза" : "Pause",
+    delaySubPhr: ru ? "Между фразами" : "Between phrases",
+    delaySubPara: ru ? "Между абзацами" : "Between paragraphs",
+    paraOnly: ru ? "Пауза только м-у абзацами" : "Pause only between paragraphs",
+    paraSubOff: ru ? "Выкл — пауза после каждой фразы" : "Off: after every phrase",
+    paraSubOn: ru ? "Только когда начинается новый абзац" : "Only where a new paragraph starts",
     sec: ru ? "с" : "sec",
-    delayTitle: ru ? "Пауза между фразами (секунды)" : "Pause between phrases (seconds)",
+    delayTitle: ru ? "Длительность паузы (секунды)" : "Pause length (seconds)",
     modeTitle: ru ? "Что читать (клавиши 1–4)" : "What to read (keys 1–4)",
     pali: ru ? "Пали" : "Pāḷi",
     trn: ru ? "Перевод" : "Translation",
@@ -3270,6 +3289,18 @@ async function handleTTSSettingChange(e) {
       }
       playCurrentSegment();
     }
+  }
+
+  // Pause only between paragraphs: the two captions follow the switch (their data-t keeps them in the page's language)
+  if (e.target.id === 'tts-para-toggle') {
+     try { localStorage.setItem(PARA_PAUSE_KEY, e.target.checked ? '1' : '0'); } catch (err) {}
+     const tt = ttsUiText();
+     [['tts-para-sub', e.target.checked ? 'paraSubOn' : 'paraSubOff'], ['tts-delay-sub', e.target.checked ? 'delaySubPara' : 'delaySubPhr']].forEach(([id, key]) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.dataset.t = key;
+        if (tt && tt[key]) el.textContent = tt[key];
+     });
   }
 
   // 5. Scroll
