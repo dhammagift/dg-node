@@ -63,10 +63,14 @@ function dgParagraphOnly() { try { return localStorage.getItem(PARA_PAUSE_KEY) =
 function dgParaKey(id) { return String(id == null ? '' : id).replace(/\.\d+$/, ''); }
 // No pause between these two lines: the same line in another language, or - paragraph-only - the same paragraph.
 // The Memo page has a pause of its own (dgSegmentDelayMs) and keeps it after every line.
+// The text's title lines (paragraph 0: the collection, the chapter, the sutta's name) are no paragraph to pause after -
+// the text goes on right after them (owner 2026-11-04: it waited between the sutta's name and its first line).
 function dgNoPauseBetween(cur, next) {
   if (!cur || !next) return false;
   if (cur.id === next.id) return true;
-  return !window.dgSegmentDelayMs && dgParagraphOnly() && dgParaKey(cur.id) === dgParaKey(next.id);
+  if (window.dgSegmentDelayMs || !dgParagraphOnly()) return false;
+  const a = dgParaKey(cur.id);
+  return a === dgParaKey(next.id) || /(^|:)0$/.test(a);
 }
 const MODE_STORAGE_KEY = 'tts_preferred_mode';
 // Once: a saved 'pi' may come from a Pali line tap (it used to save the mode), so Voice / Alt+R
@@ -2165,14 +2169,12 @@ async function playCurrentSegment() {
                   ttsState.googleAudio = null;
                   audio.ontimeupdate = null;
                   if (ttsState.speaking && !ttsState.paused) {
-                      let delay = pause ? 0 : window.TTS_SEGMENT_DELAY || 0;  // the pause has just been played
                       const isRangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
-
                       const currentItem = ttsState.playlist[ttsState.currentIndex];
                       const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
-                      if (dgNoPauseBetween(currentItem, nextItem)) {
-                          delay = 0;
-                      }
+                      // TTS_SEGMENT_DELAY is read only when a pause is really due: reading it starts the AB chip's
+                      // countdown (voice-mem.js getter), which ran after every phrase in paragraph mode (owner 2026-11-04)
+                      let delay = (pause || dgNoPauseBetween(currentItem, nextItem)) ? 0 : window.TTS_SEGMENT_DELAY || 0;  // pause: just played
 
                       if (!isRangeEnd) {
                           ttsState.currentIndex++; 
@@ -2264,14 +2266,11 @@ function playBrowserTTS(text, langKey, rate, isPali) {
 
   utterance.onend = () => {
       if (ttsState.speaking && !ttsState.paused) {
-          let delay = window.TTS_SEGMENT_DELAY || 0;
           const isRangeEnd = ttsState.endIndex !== undefined && ttsState.currentIndex >= ttsState.endIndex;
-
           const currentItem = ttsState.playlist[ttsState.currentIndex];
           const nextItem = ttsState.playlist[ttsState.currentIndex + 1];
-          if (dgNoPauseBetween(currentItem, nextItem)) {
-              delay = 0;
-          }
+          // read only when a pause is due: reading TTS_SEGMENT_DELAY starts the AB chip's countdown (voice-mem.js)
+          let delay = dgNoPauseBetween(currentItem, nextItem) ? 0 : window.TTS_SEGMENT_DELAY || 0;
 
           if (!isRangeEnd) {
               ttsState.currentIndex++; 
