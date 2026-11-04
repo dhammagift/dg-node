@@ -4088,13 +4088,13 @@ document.addEventListener('click', function (e) {
 // Pali + the first non-Pali translation of the current reader mode), emitted as Markdown so it
 // pastes into notes/docs. No external library needed. Headings become ##/###/####, segments plain
 // paragraphs, a Pali variant a blockquote line.
-document.addEventListener('click', function (e) {
-    var btn = e.target.closest('#reader-export-md');
-    if (!btn) return;
-    dgCloseReaderExportMenu();
-
+// The open sutta as text, one walk for both the MD file and "Copy" (owner 2026-11-04, Trello Ktu1n0Dr: copy the sutta
+// from the reader's export menu, Copy / TXT / MD / PDF in the order the search results' Export has). plain=false: Markdown
+// (headings ##/###/####, a Pali variant as a blockquote, links as [text](url)); plain=true: the same lines without any
+// markup, the text's address at the end - what pastes into a message or a note.
+function dgSuttaText(plain) {
     var suttaArea = document.getElementById('sutta');
-    if (!suttaArea) return;
+    if (!suttaArea) return null;
 
     function cleanText(el) {
         if (!el) return '';
@@ -4104,23 +4104,25 @@ document.addEventListener('click', function (e) {
     }
 
     var title = document.title || 'Sutta';
-    var md = ['# ' + title, ''];
+    var md = [(plain ? '' : '# ') + title, ''];
 
-    var links = [];
-    document.querySelectorAll('#top-links-container a, #reader-toolbar .sc-ext-link').forEach(function (a) {
-        var txt = (a.textContent || '').trim();
-        // Skip script-only buttons (e.g. Voice, href="javascript:void(0)") - a dead link in a
-        // Markdown file is just noise.
-        if (txt && !/^javascript:/i.test(a.getAttribute('href') || '')) links.push('[' + txt + '](' + a.href + ')');
-    });
-    if (links.length) { md.push(links.join(' · ')); md.push(''); }
+    if (!plain) {
+        var links = [];
+        document.querySelectorAll('#top-links-container a, #reader-toolbar .sc-ext-link').forEach(function (a) {
+            var txt = (a.textContent || '').trim();
+            // Skip script-only buttons (e.g. Voice, href="javascript:void(0)") - a dead link in a
+            // Markdown file is just noise.
+            if (txt && !/^javascript:/i.test(a.getAttribute('href') || '')) links.push('[' + txt + '](' + a.href + ')');
+        });
+        if (links.length) { md.push(links.join(' · ')); md.push(''); }
+    }
 
     var bylineEl = suttaArea.querySelector('#trn');
     if (bylineEl) {
         var byline = [cleanText(bylineEl.querySelector('.pli-lang')),
                       cleanText(bylineEl.querySelector('[class*="-lang"]:not(.pli-lang)'))]
                      .filter(Boolean).join(' — ');
-        if (byline) { md.push('*' + byline + '*'); md.push(''); }
+        if (byline) { md.push(plain ? byline : '*' + byline + '*'); md.push(''); }
     }
 
     suttaArea.querySelectorAll('span[id]').forEach(function (node) {
@@ -4142,25 +4144,63 @@ document.addEventListener('click', function (e) {
 
         var headingEl = node.closest('h1, h2, h3');
         if (headingEl) {
-            var hashes = headingEl.tagName === 'H1' ? '## ' : (headingEl.tagName === 'H2' ? '### ' : '#### ');
+            var hashes = plain ? '' : (headingEl.tagName === 'H1' ? '## ' : (headingEl.tagName === 'H2' ? '### ' : '#### '));
             md.push(hashes + [pali, trans].filter(Boolean).join(' — '));
             md.push('');
         } else {
             if (pali) md.push(pali);
-            if (variant) md.push('> ↕ ' + variant);
+            if (variant && !plain) md.push('> ↕ ' + variant);
             if (trans) md.push(trans);
             md.push('');
         }
     });
 
-    var filename = title.replace(/[^a-zA-Z0-9_¡-￿\.,\-_ !\(\)]/g, '');
-    var blob = new Blob([md.join('\n')], { type: 'text/markdown;charset=utf-8' });
+    if (plain) md.push(location.href.replace(/https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i, 'https://dhamma.gift'));
+    return { title: title, text: md.join('\n') };
+}
+
+// Markdown export of the open sutta - same DOM walk as the PDF above (span[id] in document order,
+// Pali + the first non-Pali translation of the current reader mode), emitted as Markdown so it
+// pastes into notes/docs. No external library needed.
+// MD and TXT: the same text as a file - TXT is exactly what "Copy" puts on the clipboard (owner 2026-11-04).
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#reader-export-md, #reader-export-txt');
+    if (!btn) return;
+    var md = btn.id === 'reader-export-md';
+    dgCloseReaderExportMenu();
+    var out = dgSuttaText(!md);
+    if (!out) return;
+
+    var filename = out.title.replace(/[^a-zA-Z0-9_¡-￿\.,\-_ !\(\)]/g, '');
+    var blob = new Blob([out.text], { type: (md ? 'text/markdown' : 'text/plain') + ';charset=utf-8' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
-    a.download = filename + '.md';
+    a.download = filename + (md ? '.md' : '.txt');
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+});
+
+// "Copy": the whole sutta as plain text to the clipboard (Pali and translation line by line, the address at the end).
+document.addEventListener('click', function (e) {
+    var btn = e.target.closest('#reader-export-copy');
+    if (!btn) return;
+    e.preventDefault();
+    dgCloseReaderExportMenu();
+    var out = dgSuttaText(true);
+    if (!out) return;
+    var ru = !!window.notEn;
+    var done = function () { if (window.showBubbleNotification) window.showBubbleNotification(ru ? 'Текст скопирован' : 'Text copied'); };
+    var fallback = function () {
+        var ta = document.createElement('textarea');
+        ta.value = out.text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+        document.body.appendChild(ta); ta.select();
+        var ok = false; try { ok = document.execCommand('copy'); } catch (err) {}
+        document.body.removeChild(ta);
+        if (ok) done(); else if (window.showBubbleNotification) window.showBubbleNotification(ru ? 'Не удалось скопировать' : 'Could not copy', 2500, 'error');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(out.text).then(done, fallback);
+    else fallback();
 });

@@ -228,3 +228,17 @@ dg-node раз в неделю проверяет все внешние ссыл
   `search/css/home.css`: скрытия ai (`#search-pane`, `#results-toolbar`, `#dynamicHeader`…) с `!important`.
   Проверено в Chromium 600×960 на test.dhamma.gift: пилюля+ракушка+бургер как в выдаче, бургер открывается,
   ai → kacchapa → назад/вперёд — класс ai снимается. В самом APK не проверено (нужна сборка).
+- done (ветка dg-apps `build-in-version-name`, ждёт проверки на APK) **Номер сборки в «О приложении» Android** (Trello FCvLiOrX):
+  `versionName` = «1.20 (573)» во всех трёх (`android`, `dict`, `uposatha` build.gradle); строка «Версия» в
+  Словаре/Uposatha больше не дописывает код второй раз; `github-release.yml` берёт голую версию для тега/имени APK.
+  iOS не трогали (MARKETING_VERSION — только цифры, TestFlight/настройки сами показывают сборку).
+- done (та же ветка) **Ссылка dhamma.gift/memo/index.html?text=… в приложении открывала поиск** (Trello 4T39JhsG):
+  `native-bridge.js` — своя страница узнавалась только как `/memo` и `/memo/`; теперь и `/memo/index.html`, с query/hash.
+  `MainActivity.java` — маршрут из закодированных path/query/fragment: `getQuery()` раскодировал `%0A` (строки текста
+  склеивались, `& # %` ломали адрес), а `#фрагмент` не передавался вовсе — это же и п.2 (`an8.73?mode=memorize#8.5`
+  из Telegram без `#8.5`), Trello QjENQCew. deep-link тесты dg-apps: 47/47 ок.
+- done **Ридер: «Копировать сутту» в меню экспорта** (Trello Ktu1n0Dr). Меню теперь Copy / TXT / MD / PDF — порядок как
+  у «Экспорта» в результатах поиска. `settings.js`: `dgSuttaText(plain)` — один обход сегментов для MD и простого
+  текста; Copy кладёт простой текст в буфер (пали и перевод построчно, в конце адрес), TXT — он же файлом (владелец:
+  «с copy разницы не должно быть»). Разметка — `search/index.html` и `reader/reader-template.html`. Проверено в Chromium
+  на test.dhamma.gift/sn56.11?lang=ru: 184 строки, TXT == Copy, MD как раньше.
