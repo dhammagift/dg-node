@@ -151,6 +151,18 @@ async function waitForServer(url, timeoutMs = 15000) {
 // fingerprint of "Capacitor answered a missing path with index.html".
 async function pageFingerprint(page, url, waitMs = 1500) {
     try {
+        // Only the two servers under test: a third-party stylesheet in <head> holds DOMContentLoaded until it answers, and
+        // /assets/materials/prat.html takes dhamma.ru's style.css - with dhamma.ru not answering (2026-11-04) the app half
+        // timed out and failed the build. The fingerprint (title, text, search page or not) needs nothing from outside.
+        if (!page.__dgLocalOnly) {
+            page.__dgLocalOnly = true;
+            const own = new Set([new URL(APP).host, new URL(SITE).host]);
+            await page.route('**/*', r => {
+                let host = '';
+                try { host = new URL(r.request().url()).host; } catch (e) {}
+                return own.has(host) || !/^https?:/.test(r.request().url()) ? r.continue() : r.abort();
+            });
+        }
         await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
         await page.waitForTimeout(waitMs);
         return await page.evaluate(() => ({
