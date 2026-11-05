@@ -1,0 +1,169 @@
+name: Build DPD dictionary (original exporters)
+# The reader's standalone dictionary (public/overrides/js/standalone-dpd), built here with the exporters DPD and SBS run
+# themselves - dg-node is its home (owner 2026-11-05; dictPlugin was only a neutral drop-box other people could push to):
+#   en  - digitalpalidictionary/dpd-db exporter/tbw/tbw_exporter.py on DPD's latest released dpd.db
+#         -> dpd_i2h.js, dpd_ebts.js, dpd_deconstructor.js
+#   ru  - sasanarakkha/dpd-db-sbs (sbs-ru) exporter/tbw/tbw_exporter_ru.py on SBS's latest released dpd.db -> ru/dpd_ebts.js
+#   out - const/let -> var (the reader reads them as globals), the DG glossary as its own entries with a link to the sutta
+#         segment (scripts/dpd-dg-glossary.py, glossary from dg-docs src/data/glossary.json, synced daily from the
+#         Google Sheet), and a table against the files in this repo.
+# Manual only. Without "publish" it commits nothing: the result is an artifact to check. WITH it the files are committed
+# to main - and scripts/dpd-pull.sh (servers' cron, 22:00 UTC) fast-forwards prod onto a dictionary-only commit, so they
+# are on dhamma.gift (and in dict.dhamma.gift's offline lookup, which loads them from there) within a day.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publish: commit the result to public/overrides/js/standalone-dpd on main (live on dhamma.gift within a day)'
+        type: boolean
+        default: false
+      glossary:
+        description: 'Add the Dhamma.Gift glossary (dg-docs) as extra entries'
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  en:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: DPD source (code only)
+        run: git clone -q --depth 1 https://github.com/digitalpalidictionary/dpd-db.git dpd
+      - name: Pali texts the word list is made from (DPD's sc-data, root/pli/ms only)
+        working-directory: dpd
+        run: |
+          rm -rf resources/sc-data
+          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/digitalpalidictionary/sc-data.git resources/sc-data
+          git -C resources/sc-data sparse-checkout set sc_bilara_data/root/pli/ms
+      - name: DPD's latest released database
+        working-directory: dpd
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG=$(gh release view -R digitalpalidictionary/dpd-db --json tagName -q .tagName)
+          echo "DPD release: $TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh release download "$TAG" -R digitalpalidictionary/dpd-db -p dpd.db.tar.xz
+          tar -xJf dpd.db.tar.xz && rm dpd.db.tar.xz
+          ls -la dpd.db
+          echo "$TAG" > release.txt
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Install
+        working-directory: dpd
+        run: uv sync -q
+      - name: Run tbw_exporter.py
+        working-directory: dpd
+        run: |
+          printf '[exporter]\nmake_tbw = yes\n' > config.ini
+          mkdir -p resources/fdg_dpd/assets/standalone-dpd resources/bw2/js
+          uv run python exporter/tbw/tbw_exporter.py
+          mkdir -p ../out && cp resources/fdg_dpd/assets/standalone-dpd/dpd_*.js release.txt ../out/
+          ls -la ../out
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dpd-en
+          path: out/
+
+  ru:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: SBS source (code only)
+        run: git clone -q --depth 1 -b sbs-ru https://github.com/sasanarakkha/dpd-db-sbs.git sbs
+      - name: Pali texts the word list is made from (sc-data, root/pli/ms only)
+        working-directory: sbs
+        run: |
+          rm -rf resources/sc-data
+          git clone -q --depth 1 --filter=blob:none --sparse https://github.com/digitalpalidictionary/sc-data.git resources/sc-data
+          git -C resources/sc-data sparse-checkout set sc_bilara_data/root/pli/ms
+      - name: SBS's latest released database (with the russian table)
+        working-directory: sbs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          TAG=$(gh release view -R sasanarakkha/dpd-db-sbs --json tagName -q .tagName)
+          echo "SBS release: $TAG" | tee -a "$GITHUB_STEP_SUMMARY"
+          gh release download "$TAG" -R sasanarakkha/dpd-db-sbs -p dpd.db.tar.xz
+          tar -xJf dpd.db.tar.xz && rm dpd.db.tar.xz
+          ls -la dpd.db
+          echo "$TAG" > release.txt
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: '3.13'
+      - name: Install
+        working-directory: sbs
+        run: uv sync -q
+      - name: Run tbw_exporter_ru.py
+        working-directory: sbs
+        run: |
+          printf '[exporter]\nmake_tbw = yes\n' > config.ini
+          mkdir -p resources/fdg_dpd/assets/standalone-dpd/ru resources/bw2/js
+          uv run python exporter/tbw/tbw_exporter_ru.py
+          mkdir -p ../out/ru && cp resources/fdg_dpd/assets/standalone-dpd/ru/dpd_ebts.js ../out/ru/ && cp release.txt ../out/ru/
+          ls -la ../out/ru
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dpd-ru
+          path: out/
+
+  out:
+    needs: [en, ru]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: art
+      - name: Assemble, var patch
+        run: |
+          set -e
+          O=standalone-dpd; mkdir -p $O/ru
+          cp art/dpd-en/dpd_i2h.js art/dpd-en/dpd_ebts.js art/dpd-en/dpd_deconstructor.js $O/
+          cp art/dpd-ru/ru/dpd_ebts.js $O/ru/
+          find $O -name '*.js' -exec sed -i -E '1s/^([[:space:]]*(const|let|var)?[[:space:]]*)?(dpd_i2h|dpd_deconstructor|dpd_ebts)([[:space:]]*=)/var \3\4/' {} +
+          head -c 40 $O/dpd_i2h.js; echo
+      - name: DG glossary
+        if: ${{ inputs.glossary }}
+        run: |
+          # the glossary as dg-docs keeps it, synced daily from the Google Sheet (dg-docs glossary-sync.yml)
+          curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json -o glossary.json
+          python3 scripts/dpd-dg-glossary.py standalone-dpd glossary.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Compare with the files in this repo
+        run: |
+          python3 - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
+          import json, re, os
+          def rd(p):
+              t = open(p, encoding='utf-8').read()
+              return json.loads(re.sub(r'^\s*(?:var|let|const)?\s*dpd_\w+\s*=\s*', '', t).rstrip().rstrip(';'))
+          print('| file | entries now | entries built | MB now | MB built |\n|---|---|---|---|---|')
+          for f in ['dpd_i2h.js', 'dpd_ebts.js', 'ru/dpd_ebts.js', 'dpd_deconstructor.js']:
+              a, b = 'public/overrides/js/standalone-dpd/' + f, 'standalone-dpd/' + f
+              print(f'| {f} | {len(rd(a))} | {len(rd(b))} | {os.path.getsize(a)/1e6:.1f} | {os.path.getsize(b)/1e6:.1f} |')
+          EOF
+          echo "DPD $(cat art/dpd-en/release.txt), SBS $(cat art/dpd-ru/ru/release.txt)" >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: standalone-dpd
+          path: standalone-dpd/
+      - name: Publish (commit to main)
+        if: ${{ inputs.publish }}
+        run: |
+          set -e
+          DST=public/overrides/js/standalone-dpd
+          cp standalone-dpd/dpd_i2h.js standalone-dpd/dpd_ebts.js standalone-dpd/dpd_deconstructor.js $DST/
+          cp standalone-dpd/ru/dpd_ebts.js $DST/ru/
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add $DST
+          if git diff --cached --quiet; then echo "unchanged" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
+          git commit -m "DPD dictionary: DPD $(cat art/dpd-en/release.txt), SBS $(cat art/dpd-ru/ru/release.txt)$([ '${{ inputs.glossary }}' = true ] && echo ', DG glossary')"
+          git pull -q --rebase origin main
+          git push
+          echo "published" | tee -a "$GITHUB_STEP_SUMMARY"

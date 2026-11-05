@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Keeps the reader's dictionary (public/overrides/js/standalone-dpd) current on a dg-node checkout.
-# sync-dpd.yml commits a new DPD release to GitHub daily at 21:30 UTC (02:30 Almaty), but a server only gets it
+# build-dpd-dictionary.yml commits a new dictionary to main when run with "publish" (by hand), but a server only gets it
 # when someone pulls (owner 2026-10-29: the dictionary must be current on every prod, reserve and
 # test host). Run from cron after the sync.
 #
