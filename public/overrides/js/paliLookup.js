@@ -695,7 +695,8 @@ function showDictError(text) {
 
 
 function createClickableLink(wordToLink) {
-    const wordSearchUrl = createDictSearchUrl(wordToLink);
+    // "diṭṭhi (DG)" is the glossary's entry: the dictionary is asked for the word itself (it searched "diṭṭhi dg")
+    const wordSearchUrl = createDictSearchUrl(String(wordToLink).replace(/\s*\(DG\)$/, ''));
     let clickAction;
 
     if (isLocalhost || (!navigator.onLine && !isNativeApp)) {
