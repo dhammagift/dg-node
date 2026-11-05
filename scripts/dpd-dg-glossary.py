@@ -47,8 +47,15 @@ def load_glossary(path):
     text = Path(path).read_text(encoding='utf-8')
     if path.endswith('.json'):
         data = json.loads(text)
-        return [{'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''),
-                 'link': ((t.get('canon') or {}).get('link') or '')} for t in data.get('terms', [])]
+        out = []
+        for t in data.get('terms', []):
+            canon = t.get('canon') or {}
+            # every place the term is defined (canon.where), the main link first (owner 2026-11-05: all of them, at most 4)
+            where = ['/' + w.lstrip('/') for w in (canon.get('where') or []) if w]
+            link = canon.get('link') or ''
+            links = ([link] if link else []) + [w for w in where if w != link]
+            out.append({'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''), 'links': links})
+        return out
     for m in LD_RE.finditer(text):
         try:
             data = json.loads(m.group(1))
@@ -61,19 +68,29 @@ def load_glossary(path):
                 url = ((t.get('subjectOf') or {}).get('url') or '')
                 mm = re.match(r'^https?://[^/]+(/[^?#\s]+)', url)
                 out.append({'name': t.get('name', ''), 'ru': alt[0] if alt else '', 'en': alt[1] if len(alt) > 1 else (alt[0] if alt else ''),
-                            'link': mm.group(1) if mm else ''})
+                            'links': [mm.group(1)] if mm else []})
             return out
     sys.exit(f'{path}: neither glossary.json nor a page with a DefinedTermSet')
 
 
-def entry(meaning, seg, lang):
+MAX_LINKS = 4
+
+
+def entry(meaning, links, lang):
     out = f'<b>{meaning}</b>' if meaning else ''
-    if seg:
-        label = seg.lstrip('/').split(':')[0]   # the text only (mn9); the segment stays in the address (owner 2026-11-05)
-        # "def." / "опред." in italics says what the link is: the sutta where the term is defined (owner 2026-11-05).
+    shown, seen = [], set()
+    for seg in links:
+        sutta = seg.lstrip('/').split(':')[0]   # the text only (mn9); the segment stays in the address
+        if sutta in seen:
+            continue                            # one link per text: its first place
+        seen.add(sutta)
         # class dg-seg: the reader keeps it a link (paliLookup.js linkify) and opens it in the reader itself
-        out += (f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i>'
-                f' <a class="dg-seg" href="{seg}" target="_top">{label}</a>')
+        shown.append(f'<a class="dg-seg" href="{seg}" target="_top">{sutta}</a>')
+        if len(shown) == MAX_LINKS:
+            break
+    if shown:
+        # "def." / "опред." in italics says what the links are: the suttas where the term is defined (owner 2026-11-05)
+        out += f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i> ' + ', '.join(shown)
     return out
 
 
@@ -113,12 +130,12 @@ def main():
         if not name:
             continue
         ru, en = t.get('ru') or '', t.get('en') or t.get('ru') or ''
-        seg = (t.get('link') or '').strip() or None
+        links = [l.strip() for l in (t.get('links') or []) if l and l.strip()]
         key = f'{name} (DG)'
-        ebts_en[key] = entry(en, seg, 'en')
-        ebts_ru[key] = entry(ru, seg, 'ru')
+        ebts_en[key] = entry(en, links, 'en')
+        ebts_ru[key] = entry(ru, links, 'ru')
         added += 1
-        with_link += bool(seg)
+        with_link += bool(links)
         forms = by_base.get(norm(name), set())
         if not forms:
             forms = {norm(name).replace('ṁ', nig)}
