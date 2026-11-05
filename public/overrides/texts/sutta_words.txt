@@ -17,7 +17,7 @@ taṇh.*vedan.*samud.*paṭipad
 dukkh.*samud.*nirodh.*magg
 ko.*assād.*ādīnav.*nissaraṇ
 
-bhikkhave 24899
+bhikkhave 24897
 hoti 15669
 bhikkhu 9042
 evaṁ 8386
@@ -34,7 +34,7 @@ tassa 4454
 ayaṁ 4204
 viharati 3607
 nikāya 3413
-idha 3410
+idha 3408
 yaṁ 3350
 bhagavato 3292
 nāma 3144
@@ -668,12 +668,12 @@ samaṇaṁ 230
 sohaṁ 230
 vadeti 230
 vedayitaṁ 230
+idhāvuso 229
 mano 229
 paññāvimuttiṁ 229
 rūpā 229
 saṅghādisesā 228
 yoniso 228
-idhāvuso 227
 kinti 227
 nisīdiṁsu 227
 pārājikaṁ 227
@@ -1239,6 +1239,7 @@ gahapatiṁ 131
 itthattāyā’ti 131
 kesamassuṁ 131
 pajāya 131
+sammukhāvinayena 131
 sāratto 131
 sevato 131
 ṭhitaṁ 131
@@ -1249,7 +1250,6 @@ devaputto 130
 imesu 130
 pāṇupetaṁ 130
 sammadeva 130
-sammukhāvinayena 130
 saṅghādiseso 130
 sataṁ 130
 tayā 130
@@ -5901,6 +5901,7 @@ pajahanti 28
 pajahathā’ti 28
 paññāpanāya 28
 paññapesi 28
+parimutto 28
 pariṇataṁ 28
 pariyāpuṇāti 28
 pāsaṁsā 28
@@ -6599,7 +6600,6 @@ pāraṅgato 25
 paraṅkataṁ 25
 paribhuñji 25
 pariharituṁ 25
-parimutto 25
 parinibbānakālo 25
 parinibbāyissāmi 25
 pariññaṁ 25
@@ -6971,6 +6971,7 @@ vedanāyapi 24
 vedanupādānakkhandho 24
 vimariyādīkatena 24
 vinayasammukhatā 24
+vipassanā 24
 vipulaṁ 24
 virecanaṁ 24
 visaṁyuttaṁ 24
@@ -7257,7 +7258,6 @@ vimuttiñāṇadassanakkhandhena 23
 vinayadharā 23
 vinetīti 23
 viññāṇanirodhā 23
-vipassanā 23
 vippasanno 23
 visesabhāgiyā 23
 voropeyya 23
@@ -8730,7 +8730,6 @@ anuvicaramāno 18
 apalokanakammaṁ 18
 aparantakappikā 18
 aparihāniye 18
-aparimutto 18
 apassatā 18
 apassato 18
 apāyamukhāni 18
@@ -10264,6 +10263,7 @@ apacayāya 15
 apaloketvā 15
 aparantaṁ 15
 apariḷāho 15
+aparimutto 15
 aphāsuṁ 15
 āposaññī 15
 appahīnaṁ 15
@@ -33602,7 +33602,6 @@ dīpañca 3
 disāmukho 3
 disāvidisāvikkhittāni 3
 diso 3
-display 3
 diṭṭhasaññino 3
 diṭṭhassutenāpi 3
 diṭṭhasutamutaviññātabbesu 3
@@ -35395,7 +35394,6 @@ omukkassa 3
 onaddhamañcaṁ 3
 onataṁ 3
 onītapattapāṇino 3
-only 3
 opāsādā 3
 opāsādake 3
 opātetha 3
@@ -37078,7 +37076,6 @@ sāyato 3
 sāyitabbaṁ 3
 sāyitaṁ 3
 sāyituṁ 3
-section 3
 sedagatena 3
 sedakaṁ 3
 sekhabalena 3
@@ -37556,7 +37553,6 @@ tissametteyyo 3
 tissannañca 3
 tissattheragāthā 3
 tissattheravatthu 3
-title 3
 tiṭṭhantipī’ti 3
 titthena 3
 titthiyapakkantakassa 3
@@ -40269,6 +40265,7 @@ appamādādhigato 2
 appamādagaru 2
 appamādamhi 2
 appamādaratā 2
+appamādavagga-balakaraṇīyavaggā 2
 appamādavihārino 2
 appamādepi 2
 appamāṇasaññiṁ 2
@@ -43627,6 +43624,7 @@ indagopako 2
 indako 2
 indaṁva 2
 indasālaguhā 2
+indriya 2
 indriyaasaṁvarampāhaṁ 2
 indriyaasaṁvarassa 2
 indriyaasaṁvaro’tissa 2
@@ -55634,7 +55632,6 @@ amittatāpanā 1
 amittatopi 1
 amitte 1
 amīyamāno 1
-ammukhāvinayena 1
 amocayī 1
 āmodayāmahaṁ 1
 amohajā 1
@@ -57436,7 +57433,7 @@ appalābho 1
 appalābhopi 1
 appamādādhigatā 1
 appamādagāravasutta 1
-appamādavagga-balakaraṇīyavaggā 1
+appamādavagga-balakaraṇīyavagga 1
 appamādavagga-balakaraṇīyavagga-esanāvaggā 1
 appamādavagge 1
 appamādavihārinaṁ 1
@@ -59455,6 +59452,7 @@ bākulasutta 1
 bākulasuttaṁ 1
 bākulattheragāthā 1
 bākulena 1
+bala 1
 balā 1
 balabhāvanā 1
 bālabhūmīti 1
@@ -60451,6 +60449,7 @@ bodhisattesu 1
 bodhīti 1
 bodhivaggo 1
 bojjhaṁ 1
+bojjhaṅga 1
 bojjhaṅgabalāni 1
 bojjhaṅgabhāvanā 1
 bojjhaṅgadesanāsutta 1
@@ -64369,6 +64368,7 @@ esanāpāḷi 1
 esanāpasuto 1
 esanāpeyyālaṁ 1
 esanāsutta 1
+esanāvaggā 1
 esānisaṁso 1
 esanīti 1
 esāpi 1
@@ -65762,6 +65762,7 @@ iddhimassa 1
 iddhimatā 1
 iddhimāva 1
 iddhīnaṁ 1
+iddhipāda 1
 iddhipādabhāvanāgāminiñca 1
 iddhipādabhāvanañca 1
 iddhipādañca 1
@@ -65841,7 +65842,6 @@ indakūṭe 1
 indaṁ 1
 indamavhayāma 1
 indasagotta 1
-indriya 1
 indriyā 1
 indriyabalabojjhaṅgā 1
 indriyabhāvanāsutta 1
@@ -69392,6 +69392,7 @@ maggamisippaveditaṁ 1
 maggan 1
 magganā 1
 maggānaṭṭhaṅgiko 1
+maggaṅga 1
 maggaṅgaṁ 1
 maggaṅgasutta 1
 magganimittaṁ 1
@@ -72224,6 +72225,7 @@ nigamampāhaṁ 1
 nigamāni 1
 nigamasīmā 1
 nigamavāsitissattheravatthu 1
+nigaṇṭhanāṭaputtakālaṅkiriyā 1
 nigaṇṭhanāṭaputtasutta 1
 nigaṇṭhanāṭaputtavāda 1
 nigaṇṭhasuttādi 1
@@ -79902,6 +79904,7 @@ sammāpaṭipattī 1
 sammāpaṭipattiñca 1
 sammāpayuttenā 1
 sammapekkhanti 1
+sammappadhāna 1
 sammappadhānāni 1
 sammappadhānānīti 1
 sammappadhānasampanno 1
@@ -81359,6 +81362,7 @@ satindriyampi 1
 satindriyena 1
 satipaññañca 1
 satipārisuddhi 1
+satipaṭṭhāna 1
 satipaṭṭhānabhāvanāgāminiñca 1
 satipaṭṭhānabhāvanañca 1
 satipaṭṭhānagīvo 1
@@ -82979,6 +82983,7 @@ suññampi 1
 suññatalokasutta 1
 suññatāppaṭisaṁyuttā 1
 suññatappaṭisaṁyuttānaṁ 1
+suññatasamādhi 1
 suññatasamādhisutta 1
 suññatassānimittassa 1
 suññatavaggo 1
@@ -84657,6 +84662,7 @@ ubbhamukhā 1
 ubbhamuppatitalomavā 1
 ubbhanābhi 1
 ubbhārassaṭṭhamātikā 1
+ubbhatakanavasandhāgāra 1
 ubbhatehi 1
 ubbhaṭṭhakamattena 1
 ubbhegauttāsabhayāpanūdano 1
@@ -88519,6 +88525,7 @@ vitakkanidāno 1
 vitakkapabhavo 1
 vitakkapariyāyapathesu 1
 vitakkāsakkārasadda 1
+vitakkasamādhi 1
 vitakkasamudayo 1
 vitakkasaṇṭhānasutta 1
 vitakkasaṇṭhānasuttaṁ 1
