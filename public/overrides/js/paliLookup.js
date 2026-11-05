@@ -708,6 +708,24 @@ function createClickableLink(wordToLink) {
 } 
 
 
+// A word inside an entry (its construction [dukkhassa + antakara], a root, ...): the built-in dictionary first, in this same
+// popup; the online one only when the word is not in it (owner 2026-11-05). The headword keeps opening the online one.
+function createInnerLink(wordToLink) {
+    const url = createDictSearchUrl(wordToLink);
+    return `<a href="${url}" onclick="event.preventDefault(); event.stopPropagation(); parent.dgDictInner(${JSON.stringify(wordToLink).replace(/"/g, '&quot;')}, this.href); return false;" style="text-decoration: none; color: inherit;">${wordToLink}</a>`;
+}
+window.dgDictInner = function (word, href) {
+    let found = '';
+    try { found = (typeof dpd_i2h !== 'undefined' && typeof dpd_ebts !== 'undefined') ? lookupWordInStandaloneDict(word) : ''; } catch (e) { found = ''; }
+    if (found && found.trim()) {
+        handleWordLookup(word, { clientX: 0, clientY: 0, target: document.body });
+    } else if (typeof window.openDictionaryWindow === 'function') {
+        window.openDictionaryWindow(href);
+    } else {
+        window.open(href, '_blank');
+    }
+};
+
 function lookupWordInStandaloneDict(word) {
    // Защита от пустых строк и чисел (игнорируем 1, 2, 11-19 и т.д.)
     if (!word || /^[\d\-]+$/.test(word)) return ""; 
@@ -719,7 +737,9 @@ function lookupWordInStandaloneDict(word) {
         const wordRegex = /(?![^<]*>)([a-zA-ZāīūṅñṭḍṇḷṃĀĪŪṄÑṬḌṆḶṂёЁа-яА-Я']+)/g;
         // a link already in the entry (the DG glossary's segment, a.dg-seg) stays one link - its text is not split into words
         return text.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/i)
-            .map((part, i) => i % 2 ? part : part.replace(wordRegex, (foundWord) => createClickableLink(foundWord)))
+            // every word of an entry opens in the built-in dictionary first, the online one only when it is not there
+            // (owner 2026-11-05); the headword keeps opening the online dictionary
+            .map((part, i) => i % 2 ? part : part.replace(wordRegex, (foundWord) => createInnerLink(foundWord)))
             .join('');
     }
 
