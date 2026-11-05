@@ -1445,7 +1445,9 @@
                 // nR9sztTK, variant (a)): from the library the reader online had only the downloaded languages, no other
                 // Pali editions and no MP3 line - poorer than with no library at all. A server that does not answer in 8 s,
                 // or answers with an error, falls back to the library.
-                if (navigator.onLine !== false) {
+                // The site only: the apps answer from their own database (offline-first; a language or edition they lack
+                // still goes online above) - the build's parity check holds them to that.
+                if (!IN_APP && navigator.onLine !== false) {
                     var ctl = typeof AbortController === 'function' ? new AbortController() : null;
                     var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
                     return realFetch(withOnlineBase(input, init), ctl ? { signal: ctl.signal } : undefined).then(function (res) {
