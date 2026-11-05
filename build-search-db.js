@@ -715,8 +715,8 @@ function writeAtomic(file, obj) {
 // 2026-11-01). The order of this list is the manifest's: the three national canons first, then the composite editions.
 const EDITION_TITLES = {
     bjt: { ru: 'Будда Джаянти', en: 'Buddha Jayanti', tag: 'BJT', note: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
-    my: { ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
     th: { ru: 'Сиам Рат', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
+    my: { ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
     mso: { ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', tag: 'MS05' },
     pts: { ru: 'Pali Text Society', en: 'Pali Text Society', tag: 'PTS', note: { ru: 'Великобритания', en: 'UK' } },
 };
