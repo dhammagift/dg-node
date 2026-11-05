@@ -668,6 +668,20 @@
     // Mahāsaṅgīti and the interface language's translation - and "Add ›" unfolds the packs in this same sheet, totals and
     // contents following the ticks (owner 2026-11-01, mockup v2: «одна плашка маленькая аккуратная… с возможностью её
     // развернуть»). Download keeps the choice where app.js reads it (dg.offline.packs); Settings shows the same list later.
+    // The three national canons in the alphabet of the names the reader sees (owner 2026-11-05): Buddha Jayanti, Chaṭṭha
+    // Saṅgāyana, Siam Rath in English, Будда Джаянти, Сиам Рат, Чаттха Сангаяна in Russian; the rest in the manifest's order.
+    function nationalByName(list, ru) {
+        var NAT = ['ed-bjt', 'ed-my', 'ed-th'], lang = ru ? 'ru' : 'en';
+        var title = function (p) { return (p.title && (p.title[lang] || p.title.en)) || p.id; };
+        var nat = list.filter(function (p) { return NAT.indexOf(p.id) !== -1; })
+            .sort(function (a, b) { return title(a).localeCompare(title(b), lang); });
+        var out = [], placed = false;
+        list.forEach(function (p) {
+            if (NAT.indexOf(p.id) === -1) out.push(p);
+            else if (!placed) { out = out.concat(nat); placed = true; }
+        });
+        return out;
+    }
     function askPacksConsent(ru, detail) {
         var packs = detail.packs, on = {};
         (detail.selected || []).forEach(function (id) { on[id] = true; });
@@ -717,7 +731,7 @@
                 '<span class="dgc-sz">' + MB(p.bytes) + ' ' + (ru ? 'МБ' : 'MB') + '<small>↓ ' + MB(p.bytes_gz) + ' ' + (ru ? 'МБ' : 'MB') + '</small></span></label>';
         };
         // in the manifest's order, with its plates, names and countries (build-search-db.js EDITION_TITLES: one place)
-        var roots = packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; });
+        var roots = nationalByName(packs.filter(function (p) { return p.kind === 'root' || p.kind === 'edition'; }), ru);
         var trs = packs.filter(function (p) { return p.kind === 'translation'; });
         return new Promise(function (resolve) {
             var previouslyFocused = document.activeElement;

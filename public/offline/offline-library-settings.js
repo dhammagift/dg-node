@@ -199,6 +199,20 @@
     // localStorage (dg.offline.packs, read by app.js) and the download itself runs on the main page as before.
     var PACKS_KEY = 'dg.offline.packs';
     var packsRow = false;
+    // The three national canons in the alphabet of the names the reader sees (owner 2026-11-05): Buddha Jayanti, Chaṭṭha
+    // Saṅgāyana, Siam Rath in English, Будда Джаянти, Сиам Рат, Чаттха Сангаяна in Russian; the rest in the manifest's order.
+    function nationalByName(list, ru) {
+        var NAT = ['ed-bjt', 'ed-my', 'ed-th'], lang = ru ? 'ru' : 'en';
+        var title = function (p) { return (p.title && (p.title[lang] || p.title.en)) || p.id; };
+        var nat = list.filter(function (p) { return NAT.indexOf(p.id) !== -1; })
+            .sort(function (a, b) { return title(a).localeCompare(title(b), lang); });
+        var out = [], placed = false;
+        list.forEach(function (p) {
+            if (NAT.indexOf(p.id) === -1) out.push(p);
+            else if (!placed) { out = out.concat(nat); placed = true; }
+        });
+        return out;
+    }
     var packsBase = window.DG_PACKS_BASE || (window.dgPlatform && window.dgPlatform.distBase) || window.DG_DIST_BASE || '/mobile-data';
     // On the site, off in the apps for now — the same switch as app.js (PACKS_ON). The settings sheet is a frame of the
     // app's page, which may be where window.Capacitor lives.
@@ -219,7 +233,7 @@
             ? { h: 'Что скачать', sub: 'Офлайн-библиотека: выберите корни и переводы. Остальное откроется онлайн. Размер — место на устройстве; скачивается сжатый архив, он примерно втрое меньше.', roots: 'Корневые тексты (пали)', tr: 'Переводы', total: 'На устройстве', get: 'Скачать', getHint: 'сжатый архив', upd: 'Применить', refresh: 'Обновить', cancel: 'Отмена', mb: 'МБ', have: 'скачано', del: 'будет удалено', isNew: 'будет скачано', changed: 'есть обновление', free: 'Освободится', rm: 'Удалить', delAll: 'Удалить всё', nothing: 'Нет изменений', required: 'обязательно', core: 'основа библиотеки: оглавление, поиск, подсказки', choose: 'Выбрать…', change: 'Изменить…', old: 'вся база (прежний формат)', texts: ' текстов', more: function (n) { return 'Ещё ' + n + ' ' + (n % 10 === 1 && n % 100 !== 11 ? 'язык' : n % 10 >= 2 && n % 10 <= 4 && (n % 100 < 12 || n % 100 > 14) ? 'языка' : 'языков'); }, row: function (names, size) { return 'Скачано: ' + names.join(', ') + ' · ' + size + ' МБ.'; } }
             : { h: 'What to download', sub: 'Offline library: pick root texts and translations. Everything else opens online. Size is space on the device; the download is a compressed archive, about a third of that.', roots: 'Root texts (Pali)', tr: 'Translations', total: 'On device', get: 'Download', getHint: 'compressed archive', upd: 'Apply', refresh: 'Update', cancel: 'Cancel', mb: 'MB', have: 'downloaded', del: 'will be removed', isNew: 'will be downloaded', changed: 'update available', free: 'Frees', rm: 'Remove', delAll: 'Remove all', nothing: 'No changes', required: 'required', core: 'library core: contents, search, suggestions', choose: 'Choose…', change: 'Change…', old: 'whole database (earlier format)', texts: ' texts', more: function (n) { return n + ' more languages'; }, row: function (names, size) { return 'Downloaded: ' + names.join(', ') + ' · ' + size + ' MB.'; } };
         var EDITIONS = { ms: 'Mahāsaṅgīti', th: isRu ? 'Сиам Рат (Таиланд)' : 'Siam Rath (Thailand)', bjt: isRu ? 'BJT (Шри-Ланка)' : 'BJT (Sri Lanka)', vri: isRu ? 'VRI (Мьянма)' : 'VRI (Myanmar)' };
-        var packs = manifest.packs;
+        var packs = nationalByName(manifest.packs, isRu);
         var main = packs.filter(function (p) { return p.main; })[0];
         // The other Pali editions (ed-bjt, …, kind 'edition') are listed with the root texts, under the Mahāsaṅgīti.
         var isRoot = function (p) { return p.kind === 'root' || p.kind === 'edition'; };
