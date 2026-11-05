@@ -1440,7 +1440,25 @@
                 if (langNeedsOnline(qs)) return toServer(input, init, 'lang');
                 if (editionNeedsOnline(qs)) return toServer(input, init, 'edition');
                 var textId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
-                return withLoadingEvent(function () {
+                var localText = function () { return withLoadingEvent(localTextCall); };
+                // Online, the text comes from the server; the library answers only without it (owner 2026-11-05, Trello
+                // nR9sztTK, variant (a)): from the library the reader online had only the downloaded languages, no other
+                // Pali editions and no MP3 line - poorer than with no library at all. A server that does not answer in 8 s,
+                // or answers with an error, falls back to the library.
+                if (navigator.onLine !== false) {
+                    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+                    var timer = setTimeout(function () { if (ctl) ctl.abort(); }, 8000);
+                    return realFetch(withOnlineBase(input, init), ctl ? { signal: ctl.signal } : undefined).then(function (res) {
+                        clearTimeout(timer);
+                        return res.ok ? res : localText();
+                    }, function () { clearTimeout(timer); return localText(); });
+                }
+                return localText();
+            }
+            // the library's own answer (offline, or the server failed above)
+            function localTextCall() {
+                var textId = decodeURIComponent(p.slice('/api/text/'.length)).toLowerCase();
+                return (function () {
                     return call('text', {
                         script: scriptRequested(qs),
                         suttaId: textId,
@@ -1458,7 +1476,7 @@
                         }
                         return r;
                     }).then(function (r) { return r && r.__needsServer ? r : withOnlineParts(r, textId); }).then(function (r) { return localOrServer(r, input, init); });
-                });
+                })();
             }
 
             if (p.indexOf('/api/nav/') === 0) {
