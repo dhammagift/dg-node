@@ -59,6 +59,16 @@ PHP; на F1 к ней 2 запроса в логе). Незакоммиченн
 `d11cbc5e77dc`), бэкап старых — `~/claudeBak/offline-prod-20261105/` на обоих. Проверено в браузере: сегменты
 скачиваются, без сети открываются sn56.11 и поиск kacchapa.
 
+**6. Тестовая копия словаря (с 05.11).** `test.dhamma.gift/dict` идёт из `/var/www/ddg-ui-test/public` (копия
+`/var/www/ddg-ui` через rsync, своя `.git`); прод (`dict.dhamma.gift`, `dhamma.gift/dict`) — по-прежнему из
+`/var/www/ddg-ui`. Переключено симлинком `siteroot/dict` только в `/var/www/dg-node-test`, с
+`git update-index --skip-worktree siteroot/dict` (в git симлинк по-прежнему на `/var/www/ddg-ui/public`, `git pull` его
+не трогает; старая цель — `~/claudeBak/dg-node-test.siteroot-dict.link`). Вернуть: `ln -sfn /var/www/ddg-ui/public
+siteroot/dict && git update-index --no-skip-worktree siteroot/dict`. Правки словаря — сначала в ddg-ui-test,
+`git -C /var/www/ddg-ui-test diff` показывает, что переносить на прод. Сейчас там: перевод из глоссария DG в карточке
+слова (`static/ui.js` updateDgGloss, `static/dg.css`, данные `static/dg-glossary.json` из dg-docs glossary.json — пока
+копия, не обновляется сама) и версии `ui.js?v=ui18g`, `dg.css?v=ui38g` во всех html.
+
 ## Layout
 
 | What | Path | Repo / branch | Served as |
