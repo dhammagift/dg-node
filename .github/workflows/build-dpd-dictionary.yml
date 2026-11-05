@@ -7,13 +7,21 @@ name: Build DPD dictionary (original exporters)
 #   out - const/let -> var (the reader reads them as globals), the DG glossary as its own entries with a link to the sutta
 #         segment (scripts/dpd-dg-glossary.py, glossary from dg-docs src/data/glossary.json, synced daily from the
 #         Google Sheet), and a table against the files in this repo.
-# Manual only. Without "publish" it commits nothing: the result is an artifact to check. WITH it the files are committed
-# to main - and scripts/dpd-pull.sh (servers' cron, 22:00 UTC) fast-forwards prod onto a dictionary-only commit, so they
+# Daily check (owner 2026-11-05: «включить кроны… можем откатиться»): it builds only when something changed - DPD's or
+# SBS's release, the glossary (glossary.json), or the glossary script - against build-info.json of the last publish, and a
+# scheduled build publishes. By hand: "publish" unticked commits nothing (an artifact to check); "force" builds even with
+# nothing new. A publish commits to main - and scripts/dpd-pull.sh (servers' cron, 22:00 UTC) fast-forwards prod onto a dictionary-only commit, so they
 # are on dhamma.gift (and in dict.dhamma.gift's offline lookup, which loads them from there) within a day.
 
 on:
+  schedule:
+    - cron: '30 3 * * *'   # after dg-docs glossary-sync (00:17 UTC), long before the servers' dpd-pull (22:00 UTC)
   workflow_dispatch:
     inputs:
+      force:
+        description: 'Build even when nothing changed since the last publish'
+        type: boolean
+        default: false
       publish:
         description: 'Publish: commit the result to public/overrides/js/standalone-dpd on main (live on dhamma.gift within a day)'
         type: boolean
@@ -27,7 +35,32 @@ permissions:
   contents: write
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    outputs:
+      run: ${{ steps.k.outputs.run }}
+      key: ${{ steps.k.outputs.key }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: k
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          DPD=$(gh release view -R digitalpalidictionary/dpd-db --json tagName -q .tagName)
+          SBS=$(gh release view -R sasanarakkha/dpd-db-sbs --json tagName -q .tagName)
+          GL=$(curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json | sha256sum | cut -c1-16)
+          SC=$(sha256sum scripts/dpd-dg-glossary.py | cut -c1-16)
+          KEY="dpd=$DPD sbs=$SBS glossary=$GL script=$SC"
+          OLD=$(python3 -c "import json;print(json.load(open('public/overrides/js/standalone-dpd/build-info.json')).get('key',''))" 2>/dev/null || true)
+          echo "now: $KEY" | tee -a "$GITHUB_STEP_SUMMARY"; echo "last publish: ${OLD:-none}" | tee -a "$GITHUB_STEP_SUMMARY"
+          RUN=true; [ "$KEY" = "$OLD" ] && [ "${{ inputs.force }}" != true ] && RUN=false
+          echo "run=$RUN" >> "$GITHUB_OUTPUT"; echo "key=$KEY" >> "$GITHUB_OUTPUT"
+          [ $RUN = true ] || echo "nothing new - no build" | tee -a "$GITHUB_STEP_SUMMARY"
+
   en:
+    needs: check
+    if: needs.check.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -71,6 +104,8 @@ jobs:
           path: out/
 
   ru:
+    needs: check
+    if: needs.check.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -114,7 +149,7 @@ jobs:
           path: out/
 
   out:
-    needs: [en, ru]
+    needs: [check, en, ru]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -130,7 +165,7 @@ jobs:
           find $O -name '*.js' -exec sed -i -E '1s/^([[:space:]]*(const|let|var)?[[:space:]]*)?(dpd_i2h|dpd_deconstructor|dpd_ebts)([[:space:]]*=)/var \3\4/' {} +
           head -c 40 $O/dpd_i2h.js; echo
       - name: DG glossary
-        if: ${{ inputs.glossary }}
+        if: ${{ github.event_name == 'schedule' || inputs.glossary }}
         run: |
           # the glossary as dg-docs keeps it, synced daily from the Google Sheet (dg-docs glossary-sync.yml)
           curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json -o glossary.json
@@ -153,17 +188,19 @@ jobs:
           name: standalone-dpd
           path: standalone-dpd/
       - name: Publish (commit to main)
-        if: ${{ inputs.publish }}
+        if: ${{ github.event_name == 'schedule' || inputs.publish }}
         run: |
           set -e
           DST=public/overrides/js/standalone-dpd
           cp standalone-dpd/dpd_i2h.js standalone-dpd/dpd_ebts.js standalone-dpd/dpd_deconstructor.js $DST/
           cp standalone-dpd/ru/dpd_ebts.js $DST/ru/
+          # what this dictionary is built from: the next check compares against it; a rollback is a git revert of this commit
+          python3 -c "import json,sys,datetime;json.dump({'key':sys.argv[1],'built_at':datetime.datetime.utcnow().isoformat()+'Z','run':sys.argv[2]},open(sys.argv[3],'w'),indent=1)" "${{ needs.check.outputs.key }}" "${{ github.run_id }}" $DST/build-info.json
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add $DST
           if git diff --cached --quiet; then echo "unchanged" | tee -a "$GITHUB_STEP_SUMMARY"; exit 0; fi
-          git commit -m "DPD dictionary: DPD $(cat art/dpd-en/release.txt), SBS $(cat art/dpd-ru/ru/release.txt)$([ '${{ inputs.glossary }}' = true ] && echo ', DG glossary')"
+          git commit -m "DPD dictionary: ${{ needs.check.outputs.key }}"
           git pull -q --rebase origin main
           git push
           echo "published" | tee -a "$GITHUB_STEP_SUMMARY"
