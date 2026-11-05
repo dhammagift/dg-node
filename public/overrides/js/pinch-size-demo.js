@@ -25,8 +25,11 @@
         // the results and the reader only (owner 2026-11-05): the home page, menus and sheets keep the plain gesture
         if (!/\bdg-state-(reader|results)\b/.test(document.body.className + ' ' + document.documentElement.className)) return;
         start = { dist: dist(e.touches), steps: 0, anchor: window.captureReadingAnchor ? window.captureReadingAnchor() : null };
+        // The non-passive touchmove only while two fingers are down: kept on the page all the time it made the app's WebView
+        // keep every touch for the page, and the app's pull to refresh stopped working (owner 2026-11-05, build 588)
+        document.addEventListener('touchmove', onPinchMove, { passive: false });
     }, { passive: true });
-    document.addEventListener('touchmove', function (e) {
+    function onPinchMove(e) {
         if (!start || e.touches.length !== 2) return;
         e.preventDefault(); // not the browser's own page zoom
         var want = Math.round(Math.log(dist(e.touches) / start.dist) / Math.log(STEP));
@@ -36,8 +39,10 @@
         start.steps = want;
         if (scale() !== before && start.anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(start.anchor);
         show(scale() + '%');
-    }, { passive: false });
-    document.addEventListener('touchend', function (e) { if (e.touches.length < 2) start = null; }, { passive: true });
+    }
+    document.addEventListener('touchend', function (e) {
+        if (e.touches.length < 2) { start = null; document.removeEventListener('touchmove', onPinchMove, { passive: false }); }
+    }, { passive: true });
     // One step from a trackpad (a Mac): the same label, the reading place kept from the gesture's start.
     var padAnchor = null, padTimer = null;
     function padStep(delta) {
