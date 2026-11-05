@@ -433,6 +433,20 @@ body.dict-iframe-body.dark {
   color: #E1EAED !important;
 }
 
+/* The DG glossary's link to the sutta where a term is defined (scripts/dpd-dg-glossary.py): the site's green, readable
+   on both backgrounds, a quiet underline - not the browser's default blue (owner 2026-11-05) */
+.dict-iframe-body .dg-def { color: #5f6b66; font-weight: normal; }
+.dict-iframe-body a.dg-seg {
+  color: #157a5f;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(21, 122, 95, 0.35);
+  text-underline-offset: 3px;
+}
+.dict-iframe-body a.dg-seg:hover { text-decoration-color: currentColor; }
+body.dict-iframe-body.dark .dg-def { color: #9aa7a2; }
+body.dict-iframe-body.dark a.dg-seg { color: #8fd8c0; text-decoration-color: rgba(143, 216, 192, 0.4); }
+
 .dict-iframe-body strong {
   font-size: 1.2em;
 }

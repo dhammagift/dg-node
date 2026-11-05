@@ -59,12 +59,14 @@ def segment_path(term):
     return m.group(1) if m else None
 
 
-def entry(meaning, seg):
+def entry(meaning, seg, lang):
     out = f'<b>{meaning}</b>' if meaning else ''
     if seg:
-        label = seg.lstrip('/')
+        label = seg.lstrip('/').split(':')[0]   # the text only (mn9); the segment stays in the address (owner 2026-11-05)
+        # "def." / "опред." in italics says what the link is: the sutta where the term is defined (owner 2026-11-05).
         # class dg-seg: the reader keeps it a link (paliLookup.js linkify) and opens it in the reader itself
-        out += f' <a class="dg-seg" href="{seg}" target="_top">{label}</a>'
+        out += (f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i>'
+                f' <a class="dg-seg" href="{seg}" target="_top">{label}</a>')
     return out
 
 
@@ -96,8 +98,8 @@ def main():
         en = alt[1] if len(alt) > 1 else ru
         seg = segment_path(t)
         key = f'{name} (DG)'
-        ebts_en[key] = entry(en, seg)
-        ebts_ru[key] = entry(ru, seg)
+        ebts_en[key] = entry(en, seg, 'en')
+        ebts_ru[key] = entry(ru, seg, 'ru')
         added += 1
         with_link += bool(seg)
         forms = by_base.get(norm(name), set())
