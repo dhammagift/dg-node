@@ -27,9 +27,9 @@ on:
         type: boolean
         default: false
       glossary:
-        description: 'Add the Dhamma.Gift glossary (dg-docs) as extra entries'
+        description: 'Add the Dhamma.Gift glossary (dg-docs) as extra entries - OFF until the new Android and iOS apps are out (the old ones cannot open its links)'
         type: boolean
-        default: true
+        default: false
 
 permissions:
   contents: write
@@ -51,7 +51,7 @@ jobs:
           SBS=$(gh release view -R sasanarakkha/dpd-db-sbs --json tagName -q .tagName)
           GL=$(curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json | sha256sum | cut -c1-16)
           SC=$(sha256sum scripts/dpd-dg-glossary.py | cut -c1-16)
-          KEY="dpd=$DPD sbs=$SBS glossary=$GL script=$SC"
+          if [ "${{ inputs.glossary }}" = true ]; then KEY="dpd=$DPD sbs=$SBS glossary=$GL script=$SC"; else KEY="dpd=$DPD sbs=$SBS glossary=off"; fi
           OLD=$(python3 -c "import json;print(json.load(open('public/overrides/js/standalone-dpd/build-info.json')).get('key',''))" 2>/dev/null || true)
           echo "now: $KEY" | tee -a "$GITHUB_STEP_SUMMARY"; echo "last publish: ${OLD:-none}" | tee -a "$GITHUB_STEP_SUMMARY"
           RUN=true; [ "$KEY" = "$OLD" ] && [ "${{ inputs.force }}" != true ] && RUN=false
@@ -165,7 +165,9 @@ jobs:
           find $O -name '*.js' -exec sed -i -E '1s/^([[:space:]]*(const|let|var)?[[:space:]]*)?(dpd_i2h|dpd_deconstructor|dpd_ebts)([[:space:]]*=)/var \3\4/' {} +
           head -c 40 $O/dpd_i2h.js; echo
       - name: DG glossary
-        if: ${{ github.event_name == 'schedule' || inputs.glossary }}
+        # held back (owner 2026-11-05): the apps in the stores read this dictionary from the site, and their old code breaks the
+        # glossary's sutta links; on again (here and in the key below) once the new Android and iOS apps are out
+        if: ${{ inputs.glossary }}
         run: |
           # the glossary as dg-docs keeps it, synced daily from the Google Sheet (dg-docs glossary-sync.yml)
           curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json -o glossary.json
