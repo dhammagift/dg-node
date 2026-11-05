@@ -464,6 +464,18 @@ async function handleWordLookup(word, event) {
         keepPopupOnScreen(popup);
 
         iframe.onload = function() {
+            // The DG glossary's segment link (scripts/dpd-dg-glossary.py): opens the text in this page's reader, no reload - the
+            // same path a link in the text takes, so the app opens it offline too; target=_top is only the fallback.
+            try {
+                iframe.contentDocument.addEventListener('click', function (e) {
+                    const a = e.target.closest && e.target.closest('a.dg-seg');
+                    if (!a || typeof window.dgNavigateInternal !== 'function') return;
+                    e.preventDefault();
+                    const btn = popup.querySelector('.close-btn');
+                    if (btn) btn.click();
+                    window.dgNavigateInternal(a.getAttribute('href'));
+                });
+            } catch (e) { /* the page's own frame only */ }
             try {
                 const iframeBody = iframe.contentDocument.body;
                 const scrollHeight = iframeBody.scrollHeight;
@@ -705,7 +717,10 @@ function lookupWordInStandaloneDict(word) {
   
     function linkifyPaliWords(text) {
         const wordRegex = /(?![^<]*>)([a-zA-ZāīūṅñṭḍṇḷṃĀĪŪṄÑṬḌṆḶṂёЁа-яА-Я']+)/g;
-        return text.replace(wordRegex, (foundWord) => createClickableLink(foundWord));
+        // a link already in the entry (the DG glossary's segment, a.dg-seg) stays one link - its text is not split into words
+        return text.split(/(<a\b[^>]*>[\s\S]*?<\/a>)/i)
+            .map((part, i) => i % 2 ? part : part.replace(wordRegex, (foundWord) => createClickableLink(foundWord)))
+            .join('');
     }
 
     if (word in dpd_i2h) {
