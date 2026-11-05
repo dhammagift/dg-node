@@ -1,6 +1,6 @@
 name: Generate Standalone DPD
 # Locally generates the reader's standalone dictionary files from the DPD database (SBS fork for RU).
-# Built here in dg-node instead of pulling from external repositories.
+# Enhanced with Dhamma.Gift Glossary from dg-docs.
 
 on:
   schedule:
@@ -21,24 +21,22 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Install dependencies
-        run: |
-          # No extra dependencies needed as we use standard sqlite3 and json
-
       - name: Fetch latest DPD database
         run: |
           set -e
-          # Get browser_download_url for dpd.db.tar.xz from sasanarakkha/dpd-db-sbs
           DB_URL=$(curl -s https://api.github.com/repos/sasanarakkha/dpd-db-sbs/releases/latest | grep "browser_download_url.*dpd.db.tar.xz" | cut -d '"' -f 4)
           echo "Downloading $DB_URL"
           curl -fsSL "$DB_URL" -o dpd.db.tar.xz
           tar -xJf dpd.db.tar.xz
-          # The tarball usually contains dpd.db
+
+      - name: Fetch latest Glossary (dg-docs)
+        run: |
+          git clone -q --depth 1 -b dist https://github.com/dhammagift/dg-docs.git dg-docs
 
       - name: Run generator
         run: |
           mkdir -p output/ru
-          python3 scripts/build-standalone-dpd.py . output dpd.db
+          python3 scripts/build-standalone-dpd.py . output dpd.db dg-docs/build-ru/glossary/index.html
 
       - name: Deploy files
         run: |
@@ -58,5 +56,5 @@ jobs:
             echo "No changes in dictionary files."
             exit 0
           fi
-          git commit -m "Standalone DPD: automated local generation from SBS database"
+          git commit -m "Standalone DPD: automated generation (DPD SBS + DG Glossary)"
           git push
