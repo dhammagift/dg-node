@@ -2,9 +2,10 @@ name: Generate Standalone DPD
 # Locally generates the reader's standalone dictionary files from the DPD database (SBS fork for RU).
 # Enhanced with Dhamma.Gift Glossary from dg-docs.
 
+# Manual only (owner 2026-11-05): nothing may replace the working dictionary on its own. A scheduled run committed to main,
+# and scripts/dpd-pull.sh (server cron, 22:00 UTC) fast-forwards prod onto a dictionary-only commit - an unchecked
+# dictionary would have gone live by itself, and fought sync-dpd.yml (21:30) over the same files every night.
 on:
-  schedule:
-    - cron: '0 21 * * *' # Daily at 21:00 UTC
   workflow_dispatch:
 
 permissions:
