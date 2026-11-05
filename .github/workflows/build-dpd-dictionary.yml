@@ -127,8 +127,9 @@ jobs:
       - name: DG glossary
         if: ${{ inputs.glossary }}
         run: |
-          git clone -q --depth 1 -b dist https://github.com/dhammagift/dg-docs.git dg-docs
-          python3 scripts/dpd-dg-glossary.py standalone-dpd dg-docs/build-ru/glossary/index.html | tee -a "$GITHUB_STEP_SUMMARY"
+          # the glossary as dg-docs keeps it, synced daily from the Google Sheet (dg-docs glossary-sync.yml)
+          curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json -o glossary.json
+          python3 scripts/dpd-dg-glossary.py standalone-dpd glossary.json | tee -a "$GITHUB_STEP_SUMMARY"
       - name: Compare with the files in this repo
         run: |
           python3 - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"

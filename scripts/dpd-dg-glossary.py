@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Adds the Dhamma.Gift glossary to the reader's standalone DPD files, as an extra entry - never in place of DPD's.
 
-    scripts/dpd-dg-glossary.py <dir with dpd_i2h.js, dpd_ebts.js, ru/dpd_ebts.js> <dg-docs glossary index.html>
+    scripts/dpd-dg-glossary.py <dir with dpd_i2h.js, dpd_ebts.js, ru/dpd_ebts.js> <dg-docs src/data/glossary.json (or the built glossary index.html)>
 
 Owner 2026-11-05: the glossary's own words and a link to the sutta segment it comes from - not the Pali quote. The link is
 a plain relative address (/an10.114:2.1), so the site and the app open it, online and offline.
@@ -41,22 +41,29 @@ def write_js(path, name, data):
     path.write_text(f'var {name} = ' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';', encoding='utf-8')
 
 
-def load_glossary(html_path):
-    html = Path(html_path).read_text(encoding='utf-8')
-    for m in LD_RE.finditer(html):
+def load_glossary(path):
+    """[{name, ru, en, link}] from dg-docs' src/data/glossary.json (synced daily from the Google Sheet), or from the built
+    glossary page's JSON-LD (older input)."""
+    text = Path(path).read_text(encoding='utf-8')
+    if path.endswith('.json'):
+        data = json.loads(text)
+        return [{'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''),
+                 'link': ((t.get('canon') or {}).get('link') or '')} for t in data.get('terms', [])]
+    for m in LD_RE.finditer(text):
         try:
             data = json.loads(m.group(1))
         except ValueError:
             continue
         if data.get('@type') == 'DefinedTermSet':
-            return data.get('hasDefinedTerm', [])
-    sys.exit(f'{html_path}: no DefinedTermSet in its JSON-LD')
-
-
-def segment_path(term):
-    url = ((term.get('subjectOf') or {}).get('url') or '').strip()
-    m = re.match(r'^https?://[^/]+(/[^?#\s]+)', url)
-    return m.group(1) if m else None
+            out = []
+            for t in data.get('hasDefinedTerm', []):
+                alt = t.get('alternateName') or []
+                url = ((t.get('subjectOf') or {}).get('url') or '')
+                mm = re.match(r'^https?://[^/]+(/[^?#\s]+)', url)
+                out.append({'name': t.get('name', ''), 'ru': alt[0] if alt else '', 'en': alt[1] if len(alt) > 1 else (alt[0] if alt else ''),
+                            'link': mm.group(1) if mm else ''})
+            return out
+    sys.exit(f'{path}: neither glossary.json nor a page with a DefinedTermSet')
 
 
 def entry(meaning, seg, lang):
@@ -80,6 +87,18 @@ def main():
     n_en, ebts_en = read_js(base / 'dpd_ebts.js')
     n_ru, ebts_ru = read_js(base / 'ru' / 'dpd_ebts.js')
 
+    # A run on files that already carry the glossary starts from DPD alone: a term removed or renamed in the sheet must
+    # not stay behind
+    for d in (ebts_en, ebts_ru):
+        for k in [k for k in d if k.endswith(' (DG)')]:
+            del d[k]
+    for form in list(i2h):
+        kept = [h for h in i2h[form] if not h.endswith(' (DG)')]
+        if kept:
+            i2h[form] = kept
+        else:
+            del i2h[form]
+
     by_base = {}   # lemma base -> the forms (i2h keys) whose headwords include it
     for form, headwords in i2h.items():
         for hw in headwords:
@@ -93,10 +112,8 @@ def main():
         name = (t.get('name') or '').strip()
         if not name:
             continue
-        alt = t.get('alternateName') or []
-        ru = alt[0] if len(alt) > 0 else ''
-        en = alt[1] if len(alt) > 1 else ru
-        seg = segment_path(t)
+        ru, en = t.get('ru') or '', t.get('en') or t.get('ru') or ''
+        seg = (t.get('link') or '').strip() or None
         key = f'{name} (DG)'
         ebts_en[key] = entry(en, seg, 'en')
         ebts_ru[key] = entry(ru, seg, 'ru')
