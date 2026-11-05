@@ -10,34 +10,21 @@ import sys
 # and https://github.com/sasanarakkha/dpd-db-sbs/blob/sbs-ru/exporter/tbw/tbw_exporter_ru.py
 
 if len(sys.argv) < 3:
-    print("Usage: build-standalone-dpd.py <REPO_ROOT> <OUTPUT_DIR>")
+    print("Usage: build-standalone-dpd.py <REPO_ROOT> <OUTPUT_DIR> [DPD_DB_PATH]")
     sys.exit(1)
 
 REPO_ROOT = sys.argv[1]
 OUTPUT_DIR = sys.argv[2]
-DPD_DB_PATH = os.path.join("/tmp/dpd_gen", "dpd.db")
+DPD_DB_PATH = sys.argv[3] if len(sys.argv) > 3 else os.path.join("/tmp/dpd_gen", "dpd.db")
+DG_DB_PATH = os.path.join(REPO_ROOT, "dg.db")
 SUTTA_WORDS_PATH = os.path.join(REPO_ROOT, "public/overrides/texts/sutta_words.txt")
 
 # POS Abbreviations mapping (EN to RU)
 POS_RU = {
-    "adj.": "прил.",
-    "pron.": "местоим.",
-    "masc.": "муж.",
-    "fem.": "жен.",
-    "nt.": "ср.",
-    "ind.": "нескл.",
-    "pp.": "прич.прош.",
-    "ptp.": "прич.долж.",
-    "prp.": "прич.наст.",
-    "ger.": "герунд.",
-    "inf.": "инф.",
-    "abs.": "абс.",
-    "prefix": "прист.",
-    "suffix": "суф.",
-    "root": "корень",
-    "idiom": "идиом.",
-    "sandhi": "сандхи",
-    "var.": "вар.",
+    "adj.": "прил.", "pron.": "местоим.", "masc.": "муж.", "fem.": "жен.", "nt.": "ср.",
+    "ind.": "нескл.", "pp.": "прич.прош.", "ptp.": "прич.долж.", "prp.": "прич.наст.",
+    "ger.": "герунд.", "inf.": "инф.", "abs.": "абс.", "prefix": "прист.", "suffix": "суф.",
+    "root": "корень", "idiom": "идиом.", "sandhi": "сандхи", "var.": "вар.",
 }
 
 # Pali sort order
@@ -63,19 +50,26 @@ def pali_sort_key(word):
 
 def get_word_set():
     word_set = set()
-    if not os.path.exists(SUTTA_WORDS_PATH):
-        print(f"Warning: {SUTTA_WORDS_PATH} not found.")
-        return word_set
-    
-    with open(SUTTA_WORDS_PATH, "r", encoding="utf-8") as f:
-        for line in f:
-            line = line.strip()
-            if not line: continue
-            parts = line.split()
-            if len(parts) >= 1:
-                word = parts[0].lower().replace("ṃ", "ṁ")
-                if re.match(r"^[a-zāīūṅñṭḍṇḷṁ\.\*]+$", word):
+    # In GHA we might not have dg.db, so we prefer sutta_words.txt if available
+    if os.path.exists(SUTTA_WORDS_PATH):
+        print(f"Loading word set from {SUTTA_WORDS_PATH}...")
+        with open(SUTTA_WORDS_PATH, "r", encoding="utf-8") as f:
+            for line in f:
+                parts = line.strip().split()
+                if parts:
+                    word = parts[0].lower().replace("ṃ", "ṁ")
                     word_set.add(word)
+    elif os.path.exists(DG_DB_PATH):
+        print(f"Extracting word set from {DG_DB_PATH}...")
+        conn = sqlite3.connect(DG_DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT word FROM vocab")
+        for row in cursor.fetchall():
+            word_set.add(row[0].lower().replace("ṃ", "ṁ"))
+        conn.close()
+    
+    # Common small words fallback
+    word_set.update(["a", "ā", "i", "ī", "u", "ū", "e", "o", "ca", "ti", "iti", "na", "hi", "tu", "nu", "kho", "kho-pana"])
     return word_set
 
 def translate_pos(pos):
@@ -90,7 +84,6 @@ def generate():
         print(f"Error: {DPD_DB_PATH} not found.")
         sys.exit(1)
 
-    print("Loading word set...")
     word_set = get_word_set()
     print(f"Word set size: {len(word_set)}")
 
@@ -98,8 +91,18 @@ def generate():
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
+    print("Making deconstructor splits set...")
+    deconstructed_splits_set = set()
+    cursor.execute("SELECT deconstructor FROM lookup WHERE deconstructor != \"\"")
+    for row in cursor.fetchall():
+        try:
+            dec_list = json.loads(row["deconstructor"])
+            for dec in dec_list:
+                for part in dec.split(" + "):
+                    deconstructed_splits_set.add(part.lower().replace("ṃ", "ṁ"))
+        except: pass
+
     print("Fetching headwords and translations...")
-    # Join with russian table (SBS specific)
     query = """
     SELECT h.*, r.ru_meaning, r.ru_meaning_raw, r.ru_meaning_lit
     FROM dpd_headwords h
@@ -108,81 +111,71 @@ def generate():
     cursor.execute(query)
     headwords = cursor.fetchall()
 
-    i2h_dict = {}
-    ebts_en_dict = {}
-    ebts_ru_dict = {}
-    matched_headwords = set()
+    i2h_dict, ebts_en_dict, ebts_ru_dict, matched_headwords = {}, {}, {}, set()
     
     print("Processing headwords...")
     for h in headwords:
         lemma_1 = h["lemma_1"]
-        # Skip grammar entries
-        if "(gram)" in (h["meaning_1"] or ""):
-            continue
-            
+        if "(gram)" in (h["meaning_1"] or ""): continue
         infl_all = (h["inflections"] or "") + "," + (h["inflections_api_ca_eva_iti"] or "")
         infl_list = [i.strip().lower().replace("ṃ", "ṁ") for i in infl_all.split(",") if i.strip()]
         
-        # Original logic: words in EBTs or deconstructor splits
-        found_in_texts = False
+        found = False
         for infl in infl_list:
-            if infl in word_set:
+            if infl in word_set or infl in deconstructed_splits_set:
                 i2h_dict.setdefault(infl, []).append(lemma_1)
-                found_in_texts = True
+                found = True
         
-        if found_in_texts:
+        if found:
             matched_headwords.add(lemma_1)
-            
-            # Format EN
-            pos_en = h['pos']
             meaning_en = h["meaning_1"] or h["meaning_2"] or ""
-            en_text = f"{pos_en}. <b>{meaning_en}</b>"
+            ebts_en_dict[lemma_1] = f"{h['pos']}. <b>{meaning_en}</b>"
             if h["meaning_lit"]:
-                en_text = en_text.replace("</b>", f"; lit. {h['meaning_lit']}</b>")
+                ebts_en_dict[lemma_1] = ebts_en_dict[lemma_1].replace("</b>", f"; lit. {h['meaning_lit']}</b>")
             if h["construction"]:
-                en_text += f" [{h['construction'].splitlines()[0]}]"
-            ebts_en_dict[lemma_1] = en_text
+                ebts_en_dict[lemma_1] += f" [{h['construction'].splitlines()[0]}]"
             
-            # Format RU
-            pos_ru = translate_pos(pos_en)
+            # RU
+            pos_ru = translate_pos(h['pos'])
+            pos_ru_str = pos_ru if pos_ru.endswith('.') else pos_ru + "."
             if h["ru_meaning"]:
                 ru_text = f"<b>{h['ru_meaning']}</b>"
-                if h["ru_meaning_lit"]:
-                    ru_text += f"; досл. {h['ru_meaning_lit']}"
+                if h["ru_meaning_lit"]: ru_text += f"; досл. {h['ru_meaning_lit']}"
             elif h["ru_meaning_raw"]:
                 ru_text = f"<i>[пер. ИИ]</i> {h['ru_meaning_raw']}"
-            else:
-                ru_text = meaning_en
+            else: ru_text = meaning_en
             
-            ru_full = f"{pos_ru}. {ru_text}"
-            if h["construction"]:
-                ru_full += f" [{h['construction'].splitlines()[0]}]"
+            ru_full = f"{pos_ru_str} {ru_text}"
+            if h["construction"]: ru_full += f" [{h['construction'].splitlines()[0]}]"
             ebts_ru_dict[lemma_1] = ru_full
 
-    print("Sorting i2h...")
-    for infl in i2h_dict:
-        i2h_dict[infl] = sorted(list(set(i2h_dict[infl])), key=pali_sort_key)
-        
+    print("Sorting data...")
+    for infl in i2h_dict: i2h_dict[infl] = sorted(list(set(i2h_dict[infl])), key=pali_sort_key)
+    ebts_en_dict = dict(sorted(ebts_en_dict.items(), key=lambda x: pali_sort_key(x[0])))
+    ebts_ru_dict = dict(sorted(ebts_ru_dict.items(), key=lambda x: pali_sort_key(x[0])))
+
     print("Processing deconstructor...")
     deconstructor_dict = {}
-    cursor.execute("SELECT lookup_key, deconstructor FROM lookup WHERE deconstructor != \"\"")
+    cursor.execute("SELECT lookup_key, deconstructor, spelling FROM lookup WHERE deconstructor != \"\" OR spelling != \"\"")
     for row in cursor.fetchall():
         key = row["lookup_key"].lower().replace("ṃ", "ṁ")
         if key in word_set and key not in matched_headwords:
-            try:
-                dec_list = json.loads(row["deconstructor"])
-                deconstructor_dict[key] = "<br>".join(dec_list)
-            except:
-                pass
+            content = []
+            if row["deconstructor"]:
+                try: content.extend(json.loads(row["deconstructor"]))
+                except: pass
+            if row["spelling"]:
+                try:
+                    sp = json.loads(row["spelling"])
+                    for s in sp: content.append(f"incorrect spelling of <i>{s}</i>")
+                except: pass
+            if content:
+                deconstructor_dict[key] = "<br>".join(content)
     
-    ebts_en_dict = dict(sorted(ebts_en_dict.items(), key=lambda x: pali_sort_key(x[0])))
-    ebts_ru_dict = dict(sorted(ebts_ru_dict.items(), key=lambda x: pali_sort_key(x[0])))
     deconstructor_dict = dict(sorted(deconstructor_dict.items(), key=lambda x: pali_sort_key(x[0])))
 
-    print("Saving files...")
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    print(f"Saving to {OUTPUT_DIR}...")
     os.makedirs(os.path.join(OUTPUT_DIR, "ru"), exist_ok=True)
-    
     def save_js(filename, var_name, data):
         with open(os.path.join(OUTPUT_DIR, filename), "w", encoding="utf-8") as f:
             f.write(f"var {var_name} = " + json.dumps(data, ensure_ascii=False, indent=2) + ";")
@@ -191,9 +184,8 @@ def generate():
     save_js("dpd_ebts.js", "dpd_ebts", ebts_en_dict)
     save_js("ru/dpd_ebts.js", "dpd_ebts", ebts_ru_dict)
     save_js("dpd_deconstructor.js", "dpd_deconstructor", deconstructor_dict)
-
     conn.close()
-    print(f"Generation complete. Files saved to {OUTPUT_DIR}")
+    print("Done!")
 
 if __name__ == "__main__":
     generate()
