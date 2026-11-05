@@ -67,7 +67,10 @@ PHP; на F1 к ней 2 запроса в логе). Незакоммиченн
 siteroot/dict && git update-index --no-skip-worktree siteroot/dict`. Правки словаря — сначала в ddg-ui-test,
 `git -C /var/www/ddg-ui-test diff` показывает, что переносить на прод. Сейчас там: перевод из глоссария DG в карточке
 слова (`static/ui.js` updateDgGloss, `static/dg.css`, данные `static/dg-glossary.json` из dg-docs glossary.json — пока
-копия, не обновляется сама) и версии `ui.js?v=ui18g`, `dg.css?v=ui38g` во всех html.
+копия, не обновляется сама) и версии `ui.js?v=ui18g`, `dg.css?v=ui38h` во всех html. С 05.11 это в ddg-ui main
+(`2a6fdf2`, `2860b28`, `25d1687`); прод-папка `/var/www/ddg-ui` стоит на `92bbc16` — выкатывает владелец сам. Перед
+`git pull` там: `git -C /var/www/ddg-ui checkout public/static/extra.js` (незакоммиченная правка 27.10, она же теперь в
+`25d1687`, иначе pull откажет).
 
 ## Layout
 
