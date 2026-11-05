@@ -279,6 +279,10 @@ HOME/offline-data/dhammagift/
   ок, выкатываем в прод сами: `git pull --ff-only` + `pm2 restart dg-prod` в
   `/var/www/dg-node-prod` (владелец разрешил, 2026-09-16). Рестарт нужен не только ради нового
   кода: бандлы (`home-bundle.js`, `settings-bundle.js`) пересобираются при старте сервера.
+  **Плюс `npm run build-offline`**, если менялись `core/search-core.js` или `public/offline/*`:
+  офлайн-движок `public/offline/core-bundle.js` (+ `build-id.json`) в git не лежит, при старте не собирается, и `git pull`
+  его не обновляет. 05.11 на проде он стоял с 5.10 (F1 — с 20.09), и офлайн-чтение в PWA падало
+  (`core.principlesLineHtml is not a function`). Проверка: `node test/offline-parity.js` → `OFFLINE PARITY OK`.
 - **`/var/www/ddg-ui` — исключение: тестовой копии у него нет.** Одна папка обслуживает и
   `dict.dhamma.gift`, и `dhamma.gift/dict/`, поэтому правка там видна в проде сразу — говорить об
   этом владельцу до правки.

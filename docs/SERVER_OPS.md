@@ -47,6 +47,12 @@ and how to repeat it on another server. Everything here was set up and checked o
 PHP; на F1 к ней 2 запроса в логе). Незакоммиченные правки, которые были в проде f3, — в `git stash`
 («f3 prod local edits before catch-up 2026-11-04»).
 
+**5. Выкатка: офлайн-движок собирается отдельно.** После `git pull` в проде, если менялись `core/search-core.js` или
+`public/offline/*`, запустить `npm run build-offline` (перезапуск не нужен) и `node test/offline-parity.js`. Файл
+`public/offline/core-bundle.js` в git не хранится, и сам он не обновляется. 05.11 пересобран на f3 и F1 (build id
+`d11cbc5e77dc`), бэкап старых — `~/claudeBak/offline-prod-20261105/` на обоих. Проверено в браузере: сегменты
+скачиваются, без сети открываются sn56.11 и поиск kacchapa.
+
 ## Layout
 
 | What | Path | Repo / branch | Served as |
