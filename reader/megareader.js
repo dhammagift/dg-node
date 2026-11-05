@@ -963,7 +963,9 @@ function keepServerText(html) {
     return window.dgServerTextKept;
 }
 
-window.mergeGathas = function(htmlData, dataObjects) {
+// sparseObjects: maps where a missing segment means "not in this source" and must stay missing (the other Pali editions:
+// undefined draws "—"); they are joined like the rest, so a couplet carries its second line in every edition column too.
+window.mergeGathas = function(htmlData, dataObjects, sparseObjects) {
     const originalSegments = Object.keys(htmlData);
     if (localStorage.getItem("mergeGathas") === "false") return originalSegments;
 
@@ -988,6 +990,13 @@ window.mergeGathas = function(htmlData, dataObjects) {
 
                 dataObjects.forEach(obj => {
                     if (obj[nextSegment]) obj[segment] = (obj[segment] || "").trim() + " " + toLower(obj[nextSegment].trim());
+                });
+                // An edition's couplet showed only its first line, and Differences marked the second as missing (owner
+                // 2026-11-05, Trello BPYP00Xv, sn35.229 BJT: «avijjā ca virājitā» lit up though BJT has it).
+                (sparseObjects || []).forEach(obj => {
+                    const a = obj[segment], b = obj[nextSegment];
+                    if (b === undefined || !String(b).trim()) return;
+                    obj[segment] = (a !== undefined && String(a).trim()) ? String(a).trim() + " " + toLower(String(b).trim()) : String(b).trim();
                 });
 
                 let [currOpen, currClose] = htmlData[segment].split(/{}/);
@@ -1600,6 +1609,18 @@ window.switchReadingLanguage = async function (lang) {
     // FIRST/primary language, even in multi-language modes (reordering columns IS changing lang).
     READER_MODE.lang = lang;
     setLangOrderFirst(lang, cols);
+    // Multi with a saved set of translations: the request is built from that set (buildSutta's getStack branch), so it is the
+    // set that must put this language first - reordering only the language list left the text on the old first language,
+    // and READER_MODE.lang came back from the server as the old one, so switching back did nothing (owner 2026-11-05,
+    // Trello Se898lR3). The language's translators keep their own order; a session-only trial stays session-only.
+    const stack = getStack();
+    if (stack.length) {
+        const mineFirst = stack.filter(k => k.startsWith(lang + '_')).concat(stack.filter(k => !k.startsWith(lang + '_')));
+        if (mineFirst.join(',') !== stack.join(',')) {
+            const local = readLocalStack();
+            setStack(mineFirst, local && local.trial ? { local: true } : undefined);
+        }
+    }
     let params = new URLSearchParams(document.location.search);
     params.set('lang', lang);
     if (cols.length > 1) params.delete('langs'); // let it re-derive from the fresh column order below, not a stale explicit langs=
@@ -2163,7 +2184,7 @@ window.buildSutta = async function(rawSlug, opts) {
     }
 
     const allTransData = columns.flatMap(lang => transEntriesByLang[lang].map(e => e.data));
-    const segments = window.mergeGathas(htmlData, [paliData, varData, ...allTransData]);
+    const segments = window.mergeGathas(htmlData, [paliData, varData, ...allTransData], Object.values(edMaps));
     // .quote отличает реальный текст сегмента (который можно скрыть переключателем
     // Pāḷi/Рус) от byline/заголовков с тем же .pli-lang, которые всегда должны быть видны
     // (см. #sutta.hide-pali .pli-lang.quote в uiextra.css).

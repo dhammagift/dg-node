@@ -460,7 +460,9 @@
   /* content-visibility:auto on the paragraphs (index.css) clips painting to their own box: the columns past the screen
      width stayed blank while scrolled to. The paragraph is made as wide as its grid instead, so it keeps skipping the
      layout of what is off the screen: switching it off for the whole text cost ~0.4 s per layout (Ultra 2026-11-01). */
-  #sutta.column-view.dg-grid > article > p { min-width: calc(var(--dg-gridw) + 2em); }   /* + its left padding (index.css), border-box */
+  /* ...and a verse's, inside blockquote.gatha: its columns past the screen stayed blank (owner 2026-11-05, Trello BPYP00Xv) */
+  #sutta.column-view.dg-grid > article > p,
+  #sutta.column-view.dg-grid > article > blockquote p { min-width: calc(var(--dg-gridw) + 2em); }   /* + its left padding (index.css), border-box */
   #sutta.column-view.dg-grid span[id],
   #sutta.column-view.dg-grid .dg-cols-head-in {
     display: grid;

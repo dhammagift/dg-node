@@ -65,7 +65,7 @@ window.dg_restackLoaders = function() {
                 document.body.appendChild(loadingEl);
             }
             
-            loadingEl.textContent = customText || (window.notEn ? 'Словарь загружается...' : 'Dictionary is loading...');
+            loadingEl.textContent = customText || (window.dgUiRu() ? 'Словарь загружается...' : 'Dictionary is loading...');
             
             setTimeout(() => loadingEl.classList.add('show'), 10);
         } else {
@@ -74,6 +74,14 @@ window.dg_restackLoaders = function() {
                 setTimeout(() => loadingEl.remove(), 300);
             }
         }
+    };
+
+    // The interface language NOW: window.notEn/isRu are set once at load, and a switch in the burger left the dictionary's
+    // toasts in the old language (owner 2026-11-05). paliLookup.js uses the same.
+    window.dgUiRu = function () {
+        var l = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || '';
+        try { l = l || localStorage.getItem('dhammaLanguage') || ''; } catch (e) {}
+        return l ? l === 'ru' : !!window.notEn;
     };
 
     window.dg_loadDictionaryScripts = function() {
@@ -213,7 +221,7 @@ window.addEventListener('suttaRenderedCentral', () => {
 
                 lazyLoadStandaloneScripts(lang).then((dbWasSlow) => {
                     if (scriptWasSlow || dbWasSlow) {
-                        window.dg_toggleNativeLoader(true, window.notEn ? 'Словарь загружен.' : 'Dictionary is loaded.');
+                        window.dg_toggleNativeLoader(true, window.dgUiRu() ? 'Словарь загружен.' : 'Dictionary is loaded.');
                         
                         setTimeout(() => {
                             window.dg_toggleNativeLoader(false);

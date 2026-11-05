@@ -224,6 +224,19 @@ window.DHAMMA_I18N = (() => {
       // Storage may be unavailable in privacy modes.
     }
 
+    // The address follows the language chosen (owner 2026-11-05, Trello Se898lR3: «язык указанный в URL непобедим»): a
+    // switch in the burger, Settings or a shortcut changed the interface, but ?lang=ru stayed in the address, so a reload,
+    // a shared link or the next page went back to Russian. Only between interface languages - a reading language beyond
+    // them (?lang=th, see uiLanguage) is the reader's to keep; the reader's own switch already writes it (megareader.js).
+    try {
+      const u = new URL(window.location.href);
+      const q = u.searchParams.get("lang");
+      if (q && q !== activeLanguage && UI_LANGUAGES.indexOf(q) !== -1 && UI_LANGUAGES.indexOf(activeLanguage) !== -1) {
+        u.searchParams.set("lang", activeLanguage);
+        history.replaceState(history.state, "", u.pathname + u.search + u.hash);
+      }
+    } catch (_) { /* no history API */ }
+
     revealPage();
     document.dispatchEvent(
       new CustomEvent("dhamma:languagechange", {

@@ -22,6 +22,8 @@
 
     document.addEventListener('touchstart', function (e) {
         if (e.touches.length !== 2 || typeof window.dgStepUiScale !== 'function') return;
+        // the results and the reader only (owner 2026-11-05): the home page, menus and sheets keep the plain gesture
+        if (!/\bdg-state-(reader|results)\b/.test(document.body.className + ' ' + document.documentElement.className)) return;
         start = { dist: dist(e.touches), steps: 0, anchor: window.captureReadingAnchor ? window.captureReadingAnchor() : null };
     }, { passive: true });
     document.addEventListener('touchmove', function (e) {

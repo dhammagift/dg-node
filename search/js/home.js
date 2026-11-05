@@ -5714,9 +5714,9 @@
     var BIG_BASE = window.matchMedia('(max-width: 767.98px), (pointer: coarse)');
     // After a size change the pinned header must be re-measured (zoom fires no resize).
     var reMeasure = function () { window.dispatchEvent(new Event('resize')); };
-    function uiBase() { return (BIG_BASE.matches || document.documentElement.classList.contains('dg-app')) ? 1.1 : 1; } // owner: 1.2 read big and wrapped the phone toolbar; 1.1
+    function uiBase() { return window.dgUiBase ? window.dgUiBase() : ((BIG_BASE.matches || document.documentElement.classList.contains('dg-app')) ? 1.1 : 1); } // index.html: tablet 1.2, phone/app 1.1 // owner: 1.2 read big and wrapped the phone toolbar; 1.1
     function applyUiScale(scale) {
-        var root = document.documentElement, z = scale / 100 * uiBase();
+        var root = document.documentElement, z = scale / 100 * uiBase() / (window.dgInheritedZoom ? window.dgInheritedZoom() : 1); // the part a parent frame has not applied (index.html)
         if (!CAN_ZOOM) { root.style.fontSize = (z * 100) + '%'; return; }
         // The settings sheet has the page's zoom off while it is open (unzoomForSheet): the new value waits for its close.
         if (root.dataset.dgSheetZoom != null) { root.dataset.dgSheetZoom = z; root.dataset.dgSheetZoomVar = z; return; }

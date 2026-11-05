@@ -1631,17 +1631,18 @@ body.dark .dg-toast-close:hover { color: #fff; }
     transition: opacity 0.3s ease;
 }
 
+/* Shown whole: at 0.6 the text itself faded with the box and read like a broken font (owner 2026-11-05) */
 .dict-loading-indicator.show {
-    opacity: 0.6;
+    opacity: 1;
 }
 
 /* Темная тема */
 body.dark .dict-loading-indicator,
 [data-theme="dark"] .dict-loading-indicator,
 [data-bs-theme="dark"] .dict-loading-indicator {
-    background-color: rgba(0, 0, 0, 0.8);
+    background-color: rgba(24, 26, 27, 0.96);
     color: #E1EAED;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 

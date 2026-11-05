@@ -172,11 +172,17 @@ function savePopupState() {
     localStorage.setItem(`popupLeft_${mode}`, popupElements.popup.style.left);
 }
 
+// No dictionary chosen by the reader: the built-in DPD in the interface language, and it follows a language switch
+// (handleWordLookup). It used to be decided once, from an old /ru/ path - the site says ?lang=ru or the burger's EN/RU now,
+// so a Russian page opened the English dictionary and a switch never reached it (owner 2026-11-05).
+function autoDictForLanguage() {
+    let ui = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || '';
+    try { ui = ui || localStorage.getItem('dhammaLanguage') || ''; } catch (e) {}
+    return (ui === 'ru' || /^\/(ru|r|ml)\//.test(window.location.pathname)) ? "standaloneru" : "standalone";
+}
 if (savedDict) {
     savedDict = savedDict.toLowerCase();
-} else if (window.location.pathname.includes('/r/') ||
-           window.location.pathname.includes('/ml/') ||
-           window.location.pathname.includes('/ru/')) {
+} else if (autoDictForLanguage() === "standaloneru") {
     savedDict = "standaloneru";
 } else {
     savedDict = "standalone";
@@ -208,9 +214,9 @@ let dictUrl;
 let externalDict = false;
 let inNewWindow = false;
 
-function applyDictConfig(newDict) {
+function applyDictConfig(newDict, opts) {
     savedDict = newDict;
-    localStorage.setItem('selectedDict', newDict);
+    if (!(opts && opts.auto)) localStorage.setItem('selectedDict', newDict);   // auto: the language's default, not a choice
 
     // Удаляем скрипт противоположного языка при переключении standalone-режима
     if (savedDict === "standalone") {
@@ -246,7 +252,16 @@ const requestIdleCallback = window.requestIdleCallback ||
     function(cb) { return setTimeout(() => { cb({ didTimeout: false }); }, 0); };
 
 // Функция-обещание загрузки стилей
+// The popup's article is a fresh srcdoc document every time, and its <link> to paliLookup.css was fetched again for each
+// word: the file is served "revalidate every time" (no ?v=), so every lookup waited a round trip to the server before
+// it drew anything - the PHP site had it from the browser cache (owner 2026-11-05, Trello yGVTuM6f: «при повторных
+// открывается медленно»). The text is read once and written into the document itself; the <link> stays the fallback.
+let dictCssText = null;
+function dictCssTag() {
+    return dictCssText !== null ? `<style>${dictCssText}</style>` : '<link rel="stylesheet" href="/assets/css/paliLookup.css">';
+}
 function loadDictCSS() {
+    if (dictCssText === null) fetch('/assets/css/paliLookup.css').then(r => r.ok ? r.text() : null).then(t => { if (t) dictCssText = t; }).catch(() => {});
     return new Promise((resolve) => {
         if (document.getElementById('palilookup-css-lazy')) {
             resolve();
@@ -293,6 +308,7 @@ async function handleWordLookup(word, event) {
     // Android's "Webpage not available" - until the mode was switched here back and forth (owner 2026-11-02)
     const nowDict = (localStorage.getItem('selectedDict') || '').toLowerCase();
     if (nowDict && nowDict !== savedDict) applyDictConfig(nowDict);
+    else if (!nowDict && autoDictForLanguage() !== savedDict) applyDictConfig(autoDictForLanguage(), { auto: true });
 
     if (!word || /^[\d\-.,:; ]+$/.test(word.trim())) return;
 
@@ -433,7 +449,7 @@ async function handleWordLookup(word, event) {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <link rel="stylesheet" href="/assets/css/paliLookup.css">
+                ${dictCssTag()}
             </head>
             <body class="dict-iframe-body ${themeClass}">
                 ${translation}
@@ -577,7 +593,7 @@ function lazyLoadStandaloneScripts(lang = 'en') {
             const loadingEl = document.createElement('div');
             loadingEl.id = loadingId;
             loadingEl.className = 'dict-loading-indicator';
-            loadingEl.textContent = window.isRu ? 'Словарь загружается...' : 'Dictionary is loading...';
+            loadingEl.textContent = (window.dgUiRu ? window.dgUiRu() : window.isRu) ? 'Словарь загружается...' : 'Dictionary is loading...';
             document.body.appendChild(loadingEl);
             setTimeout(() => loadingEl.classList.add('show'), 10);
         }, 150);
@@ -592,7 +608,7 @@ function lazyLoadStandaloneScripts(lang = 'en') {
             clearTimeout(slowLoadTimer);
             removeLoader();
             dbLoadPromise = null; // allow retry on the next word click, don't cache a stuck state
-            showDictError(window.isRu ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
+            showDictError((window.dgUiRu ? window.dgUiRu() : window.isRu) ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
             resolve(slowLoadTriggered);
         }, 25000);
 
@@ -636,7 +652,7 @@ function lazyLoadStandaloneScripts(lang = 'en') {
             // click retries instead of silently doing nothing forever.
             if (anyFailed) {
                 dbLoadPromise = null;
-                showDictError(window.isRu ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
+                showDictError((window.dgUiRu ? window.dgUiRu() : window.isRu) ? 'Не удалось загрузить словарь. Попробуйте ещё раз.' : "Couldn't load the dictionary. Try again.");
             } else {
                 // the browser now holds it: from here on settings.js may preload it with the text
                 try { localStorage.setItem('dgDpdLoaded', '1'); } catch (e) {}

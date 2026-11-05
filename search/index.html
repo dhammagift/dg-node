@@ -117,7 +117,35 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       s = (s >= 70 && s <= 250) ? s : 100;
       // touch screens too, not only narrow ones: a foldable or a tablet is wider than 768 px and read too small at 1.0
       // (owner 2026-10-31: «очень мелкий… мы это чинили») - the same query as home.js BIG_BASE
-      var z = s / 100 * ((document.documentElement.classList.contains('dg-app') || matchMedia('(max-width: 767.98px), (pointer: coarse)').matches) ? 1.1 : 1);
+      // A page inside a same-origin frame (the quote preview, .fdg-iframe): Chromium carries the parent's zoom into the
+      // frame, so applying the full scale again made it 121% (owner 2026-11-05, Trello eqfat6t0: the text in the preview
+      // bigger than the page). Only the part the ancestors have not applied is added - as settings/index.html does.
+      window.dgInheritedZoom = function () {
+        var iz = 1, w = window;
+        try {
+          while (w !== w.parent) {
+            var fe = w.frameElement, pz = parseFloat(w.parent.document.documentElement.style.zoom) || 1;
+            if (!fe || w.innerWidth <= fe.getBoundingClientRect().width + 1) iz *= pz;   // WebKit does not carry it
+            w = w.parent;
+          }
+        } catch (e) {}
+        return iz;
+      };
+      // The bigger base is the DEVICE's, not the frame's: a preview frame is narrower than 768 px even on a desktop, where
+      // the page around it is at 100% (the topmost same-origin window decides; home.js uiBase asks the same).
+      // The base the size control's "100%" stands for: a tablet 1.2, a phone and the app 1.1, a desktop 1. A tablet is a touch
+      // screen whose shorter side is 600 px or more (Android's own line between phone and tablet): its window can still be
+      // narrower than 768 (owner's 8.4" iPlay: 706 px), and the tablet is held further away - its 110% read like a phone's
+      // 100% (owner 2026-11-05: it looked right only at "110%" in the menu, i.e. 121%).
+      window.dgUiBase = function () {
+        var w = window;
+        try { while (w !== w.parent && w.parent.document) w = w.parent; } catch (e) {}
+        var touch = w.matchMedia('(pointer: coarse)').matches;
+        if (touch && Math.min(w.screen.width, w.screen.height) >= 600) return 1.2;
+        return (w.document.documentElement.classList.contains('dg-app') || touch || w.matchMedia('(max-width: 767.98px)').matches) ? 1.1 : 1;
+      };
+      window.dgBigBase = function () { return window.dgUiBase() > 1; };
+      var z = s / 100 * window.dgUiBase() / window.dgInheritedZoom();
       if (z !== 1 && window.CSS && CSS.supports && CSS.supports('zoom', '1.5')) {
         document.documentElement.style.zoom = z;
         document.documentElement.style.setProperty('--dg-zoom', z);
@@ -5492,9 +5520,11 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
 <!-- randPlaceholder.js + home.js concatenated at server startup (see settings-bundle.js comment
      above) — same reasoning, both dg-node-owned, order preserved. -->
 <script src="/assets/js/home-bundle.js" defer></script>
-<!-- Pinch = Text size, a demo on test only (owner 2026-10-26): ?pinch=1 turns it on for the tab, ?pinch=0 off -->
+<!-- Pinch = Text size (owner 2026-10-26, a demo on the site: ?pinch=1 turns it on for the tab, ?pinch=0 off). In the app
+     it is on by default (owner 2026-11-05, Trello eMG1vK69: pinch in the results and the reader of the app). -->
 <script>try { var pm = /[?&]pinch=([01])/.exec(location.search); if (pm) sessionStorage.setItem('dgPinchDemo', pm[1]);
-  if (sessionStorage.getItem('dgPinchDemo') === '1') { var ps = document.createElement('script'); ps.src = '/assets/js/pinch-size-demo.js'; document.head.appendChild(ps); } } catch (e) {}</script>
+  var pinchOn = sessionStorage.getItem('dgPinchDemo') === '1' || (document.documentElement.classList.contains('dg-app') && sessionStorage.getItem('dgPinchDemo') !== '0');
+  if (pinchOn) { var ps = document.createElement('script'); ps.src = '/assets/js/pinch-size-demo.js'; document.head.appendChild(ps); } } catch (e) {}</script>
 
 <script>
            //to enable bootstrap tooltip
