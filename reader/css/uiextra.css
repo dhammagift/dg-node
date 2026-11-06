@@ -1858,6 +1858,11 @@ smart TOC
 body.dg-mode-mem .pli-lang {
   font-size: 1.4em !important;
 }
+/* a tablet's base is 1.2, a phone's 1.1: the same 1.4em came out ~10% bigger than on a phone, too big for the spaced
+   first letters (owner 2026-11-06, an10.69 on his tablet) - the phone's size there */
+html.dg-tablet body.dg-mode-mem #sutta article .pli-lang {
+  font-size: 1.25em !important;
+}
 body.dg-mode-mem .byline .pli-lang {
   font-size: 1em !important;
 }

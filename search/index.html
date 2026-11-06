@@ -145,6 +145,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         return (w.document.documentElement.classList.contains('dg-app') || touch || w.matchMedia('(max-width: 767.98px)').matches) ? 1.1 : 1;
       };
       window.dgBigBase = function () { return window.dgUiBase() > 1; };
+      // a tablet (base 1.2): some modes sized for a phone's 1.1 read too big there (uiextra.css, Memorize)
+      if (window.dgUiBase() > 1.1) document.documentElement.classList.add('dg-tablet');
       var z = s / 100 * window.dgUiBase() / window.dgInheritedZoom();
       if (z !== 1 && window.CSS && CSS.supports && CSS.supports('zoom', '1.5')) {
         document.documentElement.style.zoom = z;
