@@ -199,6 +199,9 @@
   var detected = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
   var SOUTHERN_ZONE = /^(Australia|Antarctica)\/|^Pacific\/(Auckland|Chatham|Fiji|Tongatapu|Apia|Noumea|Tahiti|Port_Moresby)|^Africa\/(Johannesburg|Maseru|Mbabane|Windhoek|Harare|Lusaka|Maputo)|^America\/(Sao_Paulo|Argentina|Buenos_Aires|Santiago|Lima|La_Paz|Asuncion|Montevideo)/;
   var TWI = { sun: null, civil: -6, nautical: -12, astro: -18 }; // read by state.twi below: it has to exist before `state` (a stored twilight choice threw a TypeError at load)
+  // A zone stored with a place the phone found (no name: a city picked from the list has one) was such a nearest-of-a-list guess:
+  // forgotten, the phone's own zone is followed (owner 2026-11-07: «через минуту» showed a time half an hour behind his clock).
+  try { var placeL = JSON.parse(store('dgUposathaLoc') || 'null'); if (placeL && !placeL.name && store('dgUposathaTz')) localStorage.removeItem('dgUposathaTz'); } catch (e) { /* a broken stored place */ }
   var state = {
     tz: store('dgUposathaTz') || detected,
     south: null,
@@ -1529,11 +1532,9 @@
     onSeg('sw-det', function (v) { state.lite = v === '0'; store('dgUposathaLite', state.lite ? '1' : '0'); paint(); });
     onSeg('sw-moons', function (v) { state.allMoons = v === '1'; store('dgUposathaAllMoons', state.allMoons ? '1' : '0'); paint(); });
     function km(a, b, c, d) { var r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2), h = x * x + Math.cos(a * r) * Math.cos(c * r) * y * y; return 12742 * Math.asin(Math.sqrt(h)); }
-    function zoneNear(lat, lon, keep) { // the time zone by the place: the browser's own when it is close enough, else the nearest zone we know
-      var k = ZONE_COORDS[keep]; if (k && km(lat, lon, k[0], k[1]) < 300) return keep;
-      var best = keep, bd = 1e9; Object.keys(ZONE_COORDS).forEach(function (z) { var d = km(lat, lon, ZONE_COORDS[z][0], ZONE_COORDS[z][1]); if (d < bd) { bd = d; best = z; } });
-      return best;
-    }
+    // A place the phone found is where the phone is: its zone is the phone's own. It used to be the nearest zone of a list (when the
+    // phone's zone city was over 300 km away), and the times ran half an hour off the phone's clock (owner 2026-11-07).
+    function followPhoneZone() { try { localStorage.removeItem('dgUposathaTz'); } catch (e) { /* storage off */ } state.tz = Intl.DateTimeFormat().resolvedOptions().timeZone || state.tz; }
     function setPlace(lat, lon, name) { // the place fixes the Sun; south of the equator flips the moon's shape
       state.loc = { lat: lat, lon: lon }; if (name) state.loc.name = name; store('dgUposathaLoc', JSON.stringify(state.loc));
       state.south = lat < 0; store('dgUposathaHemisphere', state.south ? 'south' : 'north');
@@ -1544,7 +1545,7 @@
       navigator.geolocation.getCurrentPosition(function (pos) {
         // about a kilometre is plenty for a sunrise, and less to keep
         var la = Math.round(pos.coords.latitude * 100) / 100, lo = Math.round(pos.coords.longitude * 100) / 100;
-        setPlace(la, lo); state.tz = zoneNear(la, lo, state.tz); store('dgUposathaTz', state.tz); state.locMsg = ''; paint(); // the place gives the zone; the picker is for a person without a place
+        setPlace(la, lo); followPhoneZone(); state.locMsg = ''; paint();
       }, function () { if (state.loc) { if (btn) btn.classList.remove('spin'); var n = $('locnote'); if (n) n.textContent = t.locDenied; setTimeout(paint, 2500); return; } state.locMsg = t.locDenied; paint(); }, { timeout: 15000, maximumAge: fresh ? 0 : 3600000, enableHighAccuracy: !!fresh });
     }
     window.__upoDetect = detectLocation;
@@ -1556,7 +1557,7 @@
       navigator.geolocation.getCurrentPosition(function (pos) {
         var la = Math.round(pos.coords.latitude * 100) / 100, lo = Math.round(pos.coords.longitude * 100) / 100;
         if (state.loc && state.loc.lat === la && state.loc.lon === lo) return;
-        setPlace(la, lo); state.tz = zoneNear(la, lo, state.tz); store('dgUposathaTz', state.tz); paint();
+        setPlace(la, lo); followPhoneZone(); paint();
       }, function () { /* no answer: the place stays as it was */ }, { timeout: 15000, maximumAge: 3600000 });
     }
     onSeg('locautoseg', function (v) {
