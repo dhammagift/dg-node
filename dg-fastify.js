@@ -4504,6 +4504,7 @@ app.get('/:slug', (req, res) => {
 const SEGMENT_FILE = /^\/(?:suttacentral\.net\/sc-data\/sc_bilara_data|assets\/texts\/(?:ru|en|en_other|ai))\/.*\/([^/_]+)_(?:(root)-pli-ms|translation-([a-z]{2,3})-([^/]+))\.json$/;
 // The AI translations (ai, gemini) stay hidden from users (owner: no AI for users anywhere): the editor gets them only
 // for a signed-in translator, the same Google sign-in and author list as saving (verifyLblToken), or with the /ai password.
+const AI_DRAFTS_DIR = path.resolve(process.env.DG_AI_DRAFTS_DIR || '/var/www/unl/ai');
 function hasRestrictedAuth(req) {
     const [, b64] = (req.headers.authorization || '').split(' ');
     const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
@@ -4521,6 +4522,14 @@ async function segmentFileFromDb(req) {
     // the AI draft lives in its own folder: answered there only, so the editor does not list it twice (ru/ and ai/)
     if (translator === 'ai' && !p.startsWith('/assets/texts/ai/')) return null;
     if ((translator === 'ai' || translator === 'gemini' || p.startsWith('/assets/texts/ai/')) && !(await mayReadAi(req))) return null;
+    // The AI drafts live in the private repository dhammagift/unl (ai/...), cloned on each host - not in the public
+    // offline-data nor in the public dg.db any more (owner 2026-11-07, after an outside review). Same paths under ai/.
+    if (p.startsWith('/assets/texts/ai/')) {
+        const file = path.resolve(AI_DRAFTS_DIR, '.' + p.slice('/assets/texts/ai'.length));
+        if (file.startsWith(AI_DRAFTS_DIR + path.sep)) {
+            try { return JSON.parse(fsSync.readFileSync(file, 'utf8')); } catch { /* not there: the database below, while it still has them */ }
+        }
+    }
     const rows = root
         ? searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(suttaId)
         : searchDb.prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator = ? ORDER BY ord").all(suttaId, lang, translator);

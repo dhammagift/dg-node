@@ -197,6 +197,7 @@ function fetchNamedTranslations(segmentIds, translatorKeys) {
     }
     const rows = [];
     for (const w of wanted) {
+        if (w.translator === 'ai') continue;   // the AI drafts are the editor's only, never an answer (outside review 2026-11-07)
         for (let i = 0; i < segmentIds.length; i += 800) {
             const chunk = segmentIds.slice(i, i + 800);
             const holes = chunk.map(() => '?').join(',');

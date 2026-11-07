@@ -24,7 +24,10 @@ const DATA_ROOT = process.env.DG_DATA_ROOT || path.join(__dirname, 'siteroot', '
 const SC_BILARA = path.join(DATA_ROOT, 'suttacentral.net', 'sc-data', 'sc_bilara_data');
 const SC_TRANS = path.join(SC_BILARA, 'translation');
 const DG_OFFLINE = path.join(DATA_ROOT, 'dhammagift');
-const DG_LANGS = ['ru', 'ru_other', 'en', 'en_other', 'ai', 'th'];
+// 'ai' (the AI drafts) is not built in any more: it moved to the private repository dhammagift/unl and the Translation
+// Editor reads it from there through the server (dg-fastify.js AI_DRAFTS_DIR) - the public dg.db.gz carried it (owner
+// 2026-11-07, after an outside review). gemini stays: the only Russian Pātimokkha until a person translates it.
+const DG_LANGS = ['ru', 'ru_other', 'en', 'en_other', 'th'];
 
 // Owner: AI translations are hidden content — stored so the reader can still show them, but
 // never fed to the FTS index, so search cannot surface them. Keyed by TRANSLATOR, not language:
