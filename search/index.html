@@ -2514,13 +2514,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <button class="btn btn-light forshellscript mb-1" type="button"><span>{{toolbar.wordsToggleShow}}</span></button>
 
-<button class="btn btn-light mb-1  toggle-dict-btn" type="button" title="{{toolbar.dictTitle}}" data-i18n-title="{{toolbar.dictTitle}}" aria-label="{{toolbar.dictTitle}}" data-i18n-aria-label="{{toolbar.dictTitle}}"><img class="" src="/assets/svg/comment.svg" alt=""></img></button>
-
-<!-- Multi-select — тот же переключатель, что в #reader-toolbar (id="toggle-multiselect"),
-     свой id (тот же дубль-id-паттерн, что и у toggle-mode-btn чуть ниже — обе кнопки
-     одновременно в DOM), общий класс .toggle-multiselect-btn — paliLookup.js делегирует
-     клик и обновляет иконку по классу, не по id. -->
-<button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
+<!-- The reader's order (#reader-toolbar): variants, lines/columns, dictionary, multi-select (owner 2026-11-07: «иконки
+     друг друга повторяли, а не в разброс») -->
+<!-- Variants: the reader's eye (#toggle-variants, megareader.js setupVariantVisibility) in the results, the same
+     localStorage.variantVisibility. Off (the default), the variant lines, the words met only in them and the matches found
+     only there leave the page, counts included - no new search (owner 2026-11-07, Trello YjPfhcp0). -->
+<button id="toggle-variants-results" class="btn btn-light mb-1" type="button" title="{{quick.variants}}" data-i18n-title="{{quick.variants}}" aria-label="{{quick.variants}}" data-i18n-aria-label="{{quick.variants}}">
+  <img src="/assets/svg/eye-slash.svg" alt="">
+</button>
+<script>try { if (localStorage.getItem('variantVisibility') === 'visible') document.querySelector('#toggle-variants-results img').src = '/assets/svg/eye.svg'; else document.body.classList.add('dg-novar'); } catch (e) {}</script>
 
 <!-- 1/2-column toggle для цитат выдачи — то же состояние (localStorage.viewMode), что и
      #toggle-mode в #reader-toolbar; свой id (не тот же — на странице одновременно есть оба
@@ -2531,13 +2533,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <img src="/assets/svg/align-right.svg" alt="1/2 columns">
 </button>
 
-<!-- Variants: the reader's eye (#toggle-variants, megareader.js setupVariantVisibility) in the results, the same
-     localStorage.variantVisibility. Off (the default), the variant lines, the words met only in them and the matches found
-     only there leave the page, counts included - no new search (owner 2026-11-07, Trello YjPfhcp0). -->
-<button id="toggle-variants-results" class="btn btn-light mb-1" type="button" title="{{quick.variants}}" data-i18n-title="{{quick.variants}}" aria-label="{{quick.variants}}" data-i18n-aria-label="{{quick.variants}}">
-  <img src="/assets/svg/eye-slash.svg" alt="">
-</button>
-<script>try { if (localStorage.getItem('variantVisibility') === 'visible') document.querySelector('#toggle-variants-results img').src = '/assets/svg/eye.svg'; else document.body.classList.add('dg-novar'); } catch (e) {}</script>
+
+<button class="btn btn-light mb-1  toggle-dict-btn" type="button" title="{{toolbar.dictTitle}}" data-i18n-title="{{toolbar.dictTitle}}" aria-label="{{toolbar.dictTitle}}" data-i18n-aria-label="{{toolbar.dictTitle}}"><img class="" src="/assets/svg/comment.svg" alt=""></img></button>
+
+<!-- Multi-select — тот же переключатель, что в #reader-toolbar (id="toggle-multiselect"),
+     свой id (тот же дубль-id-паттерн, что и у toggle-mode-btn чуть ниже — обе кнопки
+     одновременно в DOM), общий класс .toggle-multiselect-btn — paliLookup.js делегирует
+     клик и обновляет иконку по классу, не по id. -->
+<button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
+
 
 <!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
      (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной

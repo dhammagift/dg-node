@@ -4051,6 +4051,7 @@ body.dg-state-results #results-toolbar .btn[aria-pressed="true"] { background: v
 /* кнопки-значки: круглые, без заливки (reference .qs .ic) */
 body.dg-state-results #results-toolbar .toggle-dict-btn,
 body.dg-state-results #results-toolbar .toggle-multiselect-btn,
+body.dg-state-results #results-toolbar #toggle-variants-results,
 body.dg-state-results #results-toolbar .toggle-mode-btn,
 body.dg-state-results #results-toolbar #btn-read-marks,
 body.dg-state-results #results-toolbar #helpMessage {
@@ -4059,6 +4060,7 @@ body.dg-state-results #results-toolbar #helpMessage {
 }
 body.dg-state-results #results-toolbar .toggle-dict-btn:hover,
 body.dg-state-results #results-toolbar .toggle-multiselect-btn:hover,
+body.dg-state-results #results-toolbar #toggle-variants-results:hover,
 body.dg-state-results #results-toolbar .toggle-mode-btn:hover,
 body.dg-state-results #results-toolbar #btn-read-marks:hover,
 body.dg-state-results #results-toolbar #helpMessage:hover { background: var(--dg-surface-hover); border-color: transparent; color: var(--dg-text); }
