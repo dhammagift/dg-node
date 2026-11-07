@@ -164,7 +164,9 @@ window.addEventListener('suttaRenderedCentral', addIconsTo01);
 // and the menu should match what's on screen. Falls back to the old hardcoded ru/en pair only if
 // the config genuinely isn't loaded yet (defensive — buildSutta() awaits it before rendering).
 function getContextMenuLabels() {
-    const lang = (window.READER_MODE && window.READER_MODE.lang) || (localStorage.getItem('dhammaLanguage') || 'en');
+    // the interface's language, not the reading one: an English page reading Russian had a Russian menu, and it stayed in
+    // the old language after a switch until a reload (owner 2026-11-06, Trello wasTZRPJ)
+    const lang = (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || localStorage.getItem('dhammaLanguage') || 'en';
     const cm = (window.READER_LANG_CACHE && window.READER_LANG_CACHE[lang] && window.READER_LANG_CACHE[lang].contextMenu) || null;
     const isRu = lang === 'ru';
     return {
@@ -176,6 +178,7 @@ function getContextMenuLabels() {
         memo: (cm && cm.memo) || (isRu ? 'Запомнить' : 'Memorize'),
         meditate: (cm && cm.meditate) || (isRu ? 'Медитировать' : 'Meditate'),
         compare: (cm && cm.compare) || (isRu ? 'Сравнить' : 'Compare'),
+        lineCopied: (cm && cm.lineCopied) || (isRu ? 'Строка скопирована' : 'Line copied'),
         paragraphCopied: (cm && cm.paragraphCopied) || (isRu ? 'Абзац скопирован' : 'Paragraph copied'),
         linkCopied: (cm && cm.linkCopied) || (isRu ? 'Ссылка скопирована' : 'Link copied')
     };

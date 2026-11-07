@@ -674,7 +674,7 @@ function readerShareUrl(href) {
     if (stack.length && !special) {
         u.searchParams.set('translators', stack.join(','));
         if (stack.length > 1) { u.searchParams.set('mode', 'multi'); u.searchParams.set('langs', langs.join(',')); }
-    } else if (READER_MODE.lang) u.searchParams.set('lang', READER_MODE.lang);
+    } else if (READER_MODE.lang) u.searchParams.set('langs', READER_MODE.lang);   // never lang: the interface is the recipient's
     // a single view says so: without it the recipient's own saved mode (Memorize...) opened (Ultra's review 2026-11-01)
     if (!special && stack.length <= 1) u.searchParams.set('mode', 'single');
     const eds = getEditions();
@@ -1424,13 +1424,46 @@ function buildCleanSuttaUrl(slug, params) {
 }
 // s/lang/mode/langs carried over to the next/previous text, URL-encoded: a raw ?s=bhikkh\w+ came
 // back as "bhikkh\w " (+ is a space in a query) and a " in it broke out of the arrow's href.
+// Prev/next read on in the same view (owner 2026-11-06, Trello wasTZRPJ): the texts, editions and the view the address
+// holds (mode, editions, view, diff, cols...) - "Compare" stays until the person leaves it; their saved mode is not touched.
+// No lang: the address never carries it once the reader has applied it (dropLangFromAddress).
 function carriedReaderParams() {
     const from = new URLSearchParams(document.location.search);
     const out = new URLSearchParams();
-    ['s', 'mode', 'lang', 'langs', 'editions'].forEach(k => {
+    ['s', 'mode', 'langs', 'translators', 'editions', 'script', 'view', 'variants', 'pali', 'diff', 'cols'].forEach(k => {
         if (from.has(k)) out.set(k, k === 's' ? from.get(k).replace(/ṃ/g, 'ṁ') : from.get(k));
     });
-    return [out.toString()];
+    return [out.toString().replace(/%2C/gi, ',').replace(/%3A/gi, ':')];
+}
+
+// The languages a request asks for, with this reading language or without one (buildSutta's branches): a saved set in
+// multi names its own, multi without one puts the language first among the enabled ones, the rest read that one language.
+function requestedLangs(lang) {
+    lang = lang || readerUiLang();
+    if (READER_MODE.modeKey === 'multi') {
+        const stack = getStack();
+        if (stack.length) return [...new Set(stack.map(k => k.split('_')[0]))];
+        let langs = getLangOrder();
+        langs = langs.concat(getEnabledLangs().filter(l => !langs.includes(l)));
+        return [lang].concat(langs.filter(l => l !== lang));
+    }
+    return [lang];
+}
+// ?lang= is the choice of whoever opens the link (owner 2026-11-06, Trello wasTZRPJ): by now dhamma-i18n.js has saved it
+// as the interface language, and the address lets it go - a reload, the browser's own Share or the next text no longer
+// switch anyone's interface. Where lang alone chose the translations and they would change without it, langs= stays in
+// its place. The page's canonical and hreflang (server-made) are not touched.
+function dropLangFromAddress() {
+    const q = new URLSearchParams(location.search);
+    const lang = q.get('lang');
+    if (!lang) return;
+    q.delete('lang');
+    if (!q.has('langs') && !q.has('translators')) {
+        const mine = requestedLangs(lang);
+        if (mine.join(',') !== requestedLangs(null).join(',')) q.set('langs', mine.join(','));
+    }
+    const qs = q.toString().replace(/%2C/gi, ',').replace(/%3A/gi, ':');
+    history.replaceState(history.state, '', location.pathname + (qs ? '?' + qs : '') + location.hash);
 }
 
 // ==========================================
@@ -1689,7 +1722,7 @@ window.renderNavigation = async function(slug, suttaTitle, navPromise) {
     const canon = document.querySelector('link[rel="canonical"]');
     const canonUrl = canon ? new URL(canon.href) : null;
     const serverNamed = canonUrl && canonUrl.pathname === location.pathname.split(':')[0] &&
-        (canonUrl.searchParams.get('lang') || 'en') === (new URLSearchParams(location.search).get('lang') || 'en');
+        (canonUrl.searchParams.get('lang') || 'en') === readerUiLang();   // in the interface's language: lang leaves the address
     if (!serverNamed) {
         document.title = newTitle;
         let metaDesc = document.querySelector('meta[name="description"]');
@@ -1855,6 +1888,9 @@ window.buildSutta = async function(rawSlug, opts) {
         // which mode to be in: everywhere else below it is passed through as a per-language
         // narrowing (the server keeps its default translator for languages the key doesn't name).
         const drivenExplicitly = urlQuery.has('mode') || urlQuery.has('lang');
+        // An explicit ?mode= without ?lang= (initReader leaves both alone): the interface's language, not the server's bare
+        // fallback - the addresses no longer carry lang (dropLangFromAddress)
+        if (!READER_MODE.lang) READER_MODE.lang = readerUiLang();
         const trnQuery = explicitTranslators ? `&translators=${encodeURIComponent(explicitTranslators)}` : null;
         let langsQuery;
         if (!explicitLangs && explicitTranslators && !drivenExplicitly) {
@@ -2023,6 +2059,7 @@ window.buildSutta = async function(rawSlug, opts) {
         try { localStorage.setItem(LANG_ORDER_KEY, JSON.stringify(columns)); } catch (e) { /* приватный режим */ }
     }
     READER_MODE.lang = suttaData.lang || columns[0] || READER_MODE.lang; // сервер резолвил язык явно, см. dg-light.js
+    dropLangFromAddress();
     // t() (warning text below) reads this — must be ready before that, see the cache's comment.
     await ensureReaderLangConfig(readerUiLang());
     if (stale()) return false;

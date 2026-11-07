@@ -11,16 +11,14 @@
 //    line.
 
 // Функция для определения языка
+// The menu's own words, Line / Paragraph / Link (owner 2026-11-07), in the interface's language: siteLanguage is an old key
+// the site no longer writes, so the bubble kept whatever language it once had.
+function dgUiLanguage() {
+  return (window.DHAMMA_I18N && window.DHAMMA_I18N.language) || localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en';
+}
 function getNotificationText() {
-  const path = window.location.pathname;
-  const language = localStorage.getItem('siteLanguage') ||
-                  (path.includes('/r/') ? 'ru' :
-                   path.includes('/read/') ? 'en' : 'en');
-
-  return {
-    ru: "Цитата скопирована",
-    en: "Quote copied"
-  }[language] || "Quote copied";
+  if (typeof getContextMenuLabels === 'function') return getContextMenuLabels().lineCopied;
+  return dgUiLanguage() === 'ru' ? "Строка скопирована" : "Line copied";
 }
 
 // Extracted from copyToClipboard()'s body so reader/common.js's "Paragraph" context-menu item
@@ -262,8 +260,7 @@ function fallbackCopy(text) {
     }
 
     navigator.clipboard.writeText(finalUrl).then(() => {
-      const path = window.location.pathname;
-      const language = localStorage.getItem('siteLanguage') || (path.includes('/r/') ? 'ru' : 'en');
+      const language = dgUiLanguage();
       const notificationText = {
         ru: "Ссылка скопирована",
         en: "Link copied"
