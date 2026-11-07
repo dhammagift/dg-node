@@ -799,7 +799,8 @@ window.addEventListener('scroll', followHeader, { passive: true });   // placeCo
 // on a phone: it follows that scroll. Scroll events do not bubble, so one capturing listener for every render.
 document.addEventListener('scroll', e => {
     const a = e.target;
-    if (!a || a.tagName !== 'ARTICLE' || !a.parentElement || !a.parentElement.classList.contains('dg-grid')) return;
+    // the article, or a range text's section.range that holds its articles (uiextra.css)
+    if (!a || !(a.tagName === 'ARTICLE' || (a.tagName === 'SECTION' && a.classList.contains('range'))) || !a.parentElement || !a.parentElement.classList.contains('dg-grid')) return;
     const head = a.parentElement.querySelector(':scope > .dg-cols-head > .dg-cols-head-in');
     if (head) head.style.transform = `translateX(${-a.scrollLeft}px)`;
 }, true);
@@ -2768,12 +2769,12 @@ window.buildSutta = async function(rawSlug, opts) {
         `<div id="bottom-links-container" class="min-h-24"></div>`;
     // a redraw of the same text keeps the columns' sideways scroll (owner 2026-10-31: "−" threw the view back to the first
     // column); the browser clamps it when a column has gone, which lands on the new last one
-    const prevArticle = suttaArea.querySelector(':scope > article');
+    const prevArticle = suttaArea.querySelector(':scope > article, :scope > section.range');
     const keepLeft = prevArticle && suttaArea.dataset.slug === slug ? prevArticle.scrollLeft : 0;
     suttaArea.dataset.slug = slug;
     if (!keepServerText(suttaHtml)) suttaArea.innerHTML = suttaHtml;
     if (window.dgEditionsDiff()) runEditionDiffs();
-    if (keepLeft) { const a = suttaArea.querySelector(':scope > article'); if (a) a.scrollLeft = keepLeft; }
+    if (keepLeft) { const a = suttaArea.querySelector(':scope > article, :scope > section.range'); if (a) a.scrollLeft = keepLeft; }
     followHeader();   // the column header's place under the site header (placeColsHead)
     document.documentElement.classList.remove('dg-eds-loading');   // the editions are drawn (search/index.html)
     // DG app: the text came from its ru+en library at once; the mp3 line and the text's languages in the whole corpus

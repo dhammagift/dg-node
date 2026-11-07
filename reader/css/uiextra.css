@@ -456,13 +456,18 @@
     --dg-gridw: calc(var(--dg-ncols) * var(--dg-colw) + (var(--dg-ncols) - 1) * var(--dg-colgap));
   }
   /* the scroll box reaches 1.1em into the left margin: the first column's copy markers (left:-1em) are not cut off */
-  #sutta.column-view.dg-grid > article { overflow-x: auto; overscroll-behavior-x: contain; padding-left: 1.1em; margin-left: -1.1em; }
+  /* a range text (an1.11-20) holds its suttas in section.range > article: that section is the one scroll box, or the
+     page itself scrolled sideways with the site header (owner 2026-11-07, tablet, an1.11-20 in columns) */
+  #sutta.column-view.dg-grid > article,
+  #sutta.column-view.dg-grid > section.range { overflow-x: auto; overscroll-behavior-x: contain; padding-left: 1.1em; margin-left: -1.1em; }
   /* content-visibility:auto on the paragraphs (index.css) clips painting to their own box: the columns past the screen
      width stayed blank while scrolled to. The paragraph is made as wide as its grid instead, so it keeps skipping the
      layout of what is off the screen: switching it off for the whole text cost ~0.4 s per layout (Ultra 2026-11-01). */
   /* ...and a verse's, inside blockquote.gatha: its columns past the screen stayed blank (owner 2026-11-05, Trello BPYP00Xv) */
   #sutta.column-view.dg-grid > article > p,
-  #sutta.column-view.dg-grid > article > blockquote p { min-width: calc(var(--dg-gridw) + 2em); }   /* + its left padding (index.css), border-box */
+  #sutta.column-view.dg-grid > article > blockquote p,
+  #sutta.column-view.dg-grid > section.range > article > p,
+  #sutta.column-view.dg-grid > section.range > article > blockquote p { min-width: calc(var(--dg-gridw) + 2em); }   /* + its left padding (index.css), border-box */
   #sutta.column-view.dg-grid span[id],
   #sutta.column-view.dg-grid .dg-cols-head-in {
     display: grid;
