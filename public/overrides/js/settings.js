@@ -3732,6 +3732,10 @@ function applyHashHighlights() {
 
     // РАННИЙ ВЫХОД: только если хеша нет вовсе.
     if (!hash || hash.length < 2) return;
+    // Not in the Uposatha app: its tabs live in the hash, so every pull to refresh blinked a frame round the whole tab
+    // (owner 2026-11-05, Trello MsjErndH); the site's long page keeps the highlight of the section a link leads to.
+    const C = window.Capacitor;
+    if (C && C.isNativePlatform && C.isNativePlatform() && document.querySelector('link[href*="uposatha-calendar.css"]')) return;
 
     const ids = hash.substring(1).split(',');
 
