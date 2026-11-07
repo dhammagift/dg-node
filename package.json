@@ -22,6 +22,7 @@
     "test-uposatha-widget": "node test/uposatha-widget.js",
     "test-query-guard": "node test/query-guard.js",
     "test-word-forms": "node test/word-forms.js",
+    "test-letter-diff": "node test/letter-diff.js",
     "test-reader-smoke": "node test/reader-smoke.js",
     "home-tiles": "node scripts/home-tiles-snapshot.js"
   },

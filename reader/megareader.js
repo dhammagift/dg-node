@@ -366,9 +366,9 @@ window.dgKeepHeader = function (p) {
         done();
     }))));
 };
-// "Show differences" (owner 2026-10-31: «подсветить разницу… по большинству»): a word of an edition line that most of the
-// shown texts of that segment do not have is highlighted; with two texts every difference. One edition alone is
-// compared with the Mahāsaṅgīti. Case, punctuation, quotes and ṁ/ṃ are not differences (core/edition-diff.js foldWords).
+// "Show differences" (owner 2026-10-31: «подсветить разницу… по большинству»): a letter of an edition line that most of
+// the shown texts of that segment do not have is highlighted; with two texts every difference (diffMarks below).
+// Case, spaces, punctuation, quotes and ṁ/ṃ are not differences.
 window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDiff') === 'on'; } catch (e) { return false; } };
 // The marks are always in the text when two Pali texts are compared; the switch only shows them (#sutta.dg-diff-on),
 // so they fade in and out (owner 2026-10-31: «плавно появлялось, плавно исчезало») and no redraw is needed.
@@ -384,6 +384,9 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
         '#sutta.dg-diff-on mark.dg-ed-diff{background:var(--dg-mk);box-shadow:0 0 0 1px var(--dg-mk)}' +
         // single letters inside a word: no padding, the word keeps its shape
         '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-ch{border-radius:2px;box-shadow:none}' +
+        // a whole word missing at a line's edge: an empty mark, its bar drawn over the text (no width of its own)
+        'mark.dg-ed-edge{position:relative}mark.dg-ed-edge::before{content:"";position:absolute;top:0;bottom:0;left:-.15em;width:.3em;border-radius:2px;transition:background-color .45s ease}' +
+        '#sutta.dg-diff-on mark.dg-ed-edge{background:transparent;box-shadow:none}#sutta.dg-diff-on mark.dg-ed-edge::before{background:var(--dg-mk)}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
     document.head.appendChild(st);
 })();
@@ -395,18 +398,6 @@ window.dgSetEditionsDiff = function (on) {
     const b = document.getElementById('dg-diff-btn');
     if (b) b.setAttribute('aria-pressed', String(!!on));
 };
-const foldWord = w => w.normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[^\p{L}]+/gu, '');
-function lcsMatch(a, b) {   // for each item of a, the index of its partner in a longest common subsequence with b, or -1
-    const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
-    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
-    const match = new Array(n).fill(-1);
-    for (let i = 0, j = 0; i < n && j < m;) {
-        if (a[i] === b[j]) { match[i] = j; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
-    }
-    return match;
-}
-// A word's letters as [index in the word, folded letter]: punctuation and quotes are never a difference
-const foldChars = w => Array.from(w.normalize('NFC')).map((c, k) => [k, c.toLowerCase().replace(/[ṃŋ]/, 'ṁ')]).filter(([, c]) => /\p{L}/u.test(c));
 // The marks are a layer over the drawn text (owner 2026-11-01, via Ultra: the text first, the marks after it): not in the
 // render - the letter-level comparison of a long text held its loading for ~0.4 s - but only while Differences is on,
 // after the text is drawn, a few segments per idle slice, each line's text swapped for its marked copy as it is ready.
@@ -456,6 +447,14 @@ function paintMarks(el, ranges) {
     const mark = cls => { const m = document.createElement('mark'); m.className = cls; return m; };
     ranges.slice().sort((x, y) => y[0] - x[0] || y[1] - x[1]).forEach(([a, b, cls]) => {   // from the end
         let off = 0;
+        if (a === b) {   // a gap at a line's edge: an empty mark at that place
+            for (const n of textNodesOf(el)) {
+                const len = n.nodeValue.length;
+                if (a <= off + len) { n.parentNode.insertBefore(mark(cls), a === off ? n : a - off < len ? n.splitText(a - off) : n.nextSibling); return; }
+                off += len;
+            }
+            return;
+        }
         for (const n of textNodesOf(el)) {
             const len = n.nodeValue.length, s0 = Math.max(a - off, 0), e0 = Math.min(b - off, len);
             off += len;
@@ -469,98 +468,180 @@ function paintMarks(el, ranges) {
         }
     });
 }
-// texts: one line per text (undefined = no line). diffMarks: per text, the marks as [start, end, class] in it (the
-// reader paints them over the drawn lines, a search hit's <b> included); markEditionDiffs: the texts with the marks
-// in (a line with markup of its own left as it is).
-function diffMarks(texts) { return diffWords(texts, true); }
-function markEditionDiffs(texts) { return diffWords(texts, false); }
-function diffWords(texts, asRanges) {
-    const toks = texts.map(t => (typeof t === 'string' && (asRanges || !t.includes('<'))) ? t.trim().split(/\s+/) : null);
-    const keys = toks.map(ws => ws && ws.map(foldWord));
-    const n = texts.filter(t => typeof t === 'string' && t.trim()).length;
-    if (n < 2) return asRanges ? texts.map(() => null) : texts;
-    return texts.map((t, i) => {
-        if (!toks[i]) return asRanges ? null : t;
-        const support = keys[i].map(() => 1), matches = [];
-        keys.forEach((other, j) => {
-            if (j === i || !other) return;
-            const m = lcsMatch(keys[i], other);
-            matches.push([j, m]);
-            m.forEach((k, w) => { if (k >= 0) support[w]++; });
-        });
-        const minor = keys[i].map((k, x) => !!k && support[x] <= n / 2);
-        // Only the letters that differ (owner 2026-11-01: «разница только в некоторых буквах… сразу подчеркивать разницу»):
-        // a run of minority words is set against the words between the same agreeing neighbours in the text closest
-        // to it, letter by letter. A word with no differing letter (a join or a split: "ten' upasaṅkami", "sakkāyo'ti") is
-        // not marked; a word with nothing set against it (one the others do not have) is marked whole. Where the other
-        // text has letters this one lacks, the letter of ours standing in their place is marked: sāvatthi[ṃ] against
-        // sāvatthiyaṃ (owner 2026-11-01: marked whole in one edition and not at all in another; then «как понять, что
-        // недостающая буква… подсвечивай» - a thin bar for the missing letters said nothing).
-        const chars = new Array(toks[i].length).fill(null);
-        for (let s = 0; s < minor.length; s++) {
-            if (!minor[s]) continue;
-            let e = s; while (e + 1 < minor.length && minor[e + 1]) e++;
-            const mine = []; for (let x = s; x <= e; x++) foldChars(toks[i][x]).forEach(([k, c]) => mine.push([x, k, c]));
-            let best = null;
-            for (const [j, m] of matches) {
-                // only a text without these words: another edition sharing the minority reading matched it letter for
-                // letter and left nothing marked (Ultra's review, dn22 kammāsadammaṃ in BJT and SR)
-                let shares = false;
-                for (let x = s; x <= e; x++) if (m[x] >= 0) shares = true;
-                if (shares) continue;
-                let lo = 0, hi = keys[j].length;
-                for (let x = s - 1; x >= 0; x--) if (m[x] >= 0) { lo = m[x] + 1; break; }
-                for (let x = e + 1; x < m.length; x++) if (m[x] >= 0) { hi = m[x]; break; }
-                if (hi <= lo) continue;
-                const theirs = toks[j].slice(lo, hi).flatMap(w => foldChars(w).map(([, c]) => c));
-                const cm = lcsMatch(mine.map(c => c[2]), theirs), same = cm.filter(k => k >= 0).length;
-                const score = same / Math.max(mine.length, theirs.length);
-                if (score > .5 && (!best || score > best.score)) best = { score, cm, theirs: theirs.length };
-            }
-            if (best) {
-                for (let x = s; x <= e; x++) chars[x] = new Set();
-                best.cm.forEach((k, q) => { if (k < 0) chars[mine[q][0]].add(mine[q][1]); });
-                const taken = new Set(best.cm.filter(k => k >= 0));
-                for (let t = 0; t < best.theirs; t++) {   // a letter of theirs not here: the next letter of ours (the last one at the end)
-                    if (taken.has(t)) continue;
-                    let q = best.cm.findIndex(k => k > t);
-                    if (q < 0) q = mine.length;
-                    if (q > 0 && best.cm[q - 1] < 0) continue;   // right after a letter of ours marked: a changed letter, marked already
-                    const at = mine[Math.min(q, mine.length - 1)];
-                    if (at) chars[at[0]].add(at[1]);
-                }
-            }
-            s = e;
-        }
-        if (asRanges) {   // [start, end, class] in t; positions in code points mapped to the string's own
-            const out = [], re = /\S+/g;
-            let x = 0;
-            for (let mt; (mt = re.exec(t)); x++) {
-                if (!minor[x]) continue;
-                const w = mt[0], base = mt.index;
-                if (!chars[x]) { out.push([base, base + w.length, 'dg-ed-diff']); continue; }
-                const cs = Array.from(w), offs = [0];
-                cs.forEach(c => offs.push(offs[offs.length - 1] + c.length));
-                cs.forEach((c, k) => {
-                    if (chars[x].has(k)) out.push([base + offs[k], base + offs[k + 1], 'dg-ed-diff dg-ed-ch']);
-                });
-            }
-            return out.length ? out : null;
-        }
-        return toks[i].map((w, x) => {
-            if (!minor[x]) return w;
-            if (!chars[x]) return `<mark class="dg-ed-diff">${w}</mark>`;
-            if (!chars[x].size) return w;
-            let out = '', open = false;
-            Array.from(w.normalize('NFC')).forEach((c, k) => {
-                const on = chars[x].has(k);
-                if (on !== open) { out += on ? '<mark class="dg-ed-diff dg-ed-ch">' : '</mark>'; open = on; }
-                out += c;
-            });
-            return out + (open ? '</mark>' : '');
-        }).join(' ');
-    });
+// <letter-diff> - test/letter-diff.js runs this part of the file
+// texts: one line per text (undefined = no line). diffMarks: per text, the marks as [start, end, class] in it, which the
+// reader paints over the drawn lines (a search hit's <b> included), or null.
+// The majority is counted letter by letter over all the texts of the segment (owner 2026-11-07, via Ultra, Trello
+// qFyguxVl): words compared first and then letters against one "closest" text marked one reading in one edition and
+// not in another, marked the majority at a join or a split, and depended on the editions' order. Now:
+// - a line is its letters (diffUnits), nothing else: spaces, punctuation, quotes, apostrophes, hyphens and the Thai ฯ
+//   are no difference ("ca dāni" = "cadāni", "evam me" = "evamme"); a spelling convention is (m/ṃ, ṅ/ṃ, ñc/ṃc: owner);
+// - every two texts are matched letter by letter; a letter is marked when no more than half the texts have it there
+//   (so with two texts every difference, and a tie marks both readings);
+// - where at least half the texts have letters this one lacks, the letter of ours in their place is marked
+//   (sāvatthi[ṃ] against sāvatthiyaṃ), or for a whole missing word the space it is missing from (a bar at a line's edge);
+// - a word with more than half its letters marked is marked whole (a word the others do not have, words moved round).
+// The same texts give the same marks whatever the order of the editions: the pairs are matched in one order, by text.
+// A letter with its marks is one unit (ā, a Devanagari or Thai consonant with its vowel sign): folded as one letter.
+// Consonants joined by a virama are one unit too: the browser draws त्थि as one glyph, and a mark round its थि alone
+// showed nothing (Devanagari, Bengali, Sinhala, Myanmar, Khmer, Tai Tham)
+function diffUnits(t) {
+    const us = [], re = /(?:\p{L}\p{M}*?[\u094D\u09CD\u0DCA\u1039\u17D2\u1A60])*\p{L}\p{M}*|\p{M}+/gu;
+    let w = 0, last = 0;
+    for (let m; (m = re.exec(t));) {
+        if (m[0] === 'ฯ') continue;
+        if (us.length && /[\s-]/.test(t.slice(last, m.index))) w++;
+        us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w });
+        last = m.index + m[0].length;
+    }
+    return us;
 }
+function lcsMatch(a, b) {   // for each item of a, the index of its partner in a longest common subsequence with b, or -1
+    const n = a.length, m = b.length, L = Array.from({ length: n + 1 }, () => new Uint16Array(m + 1));
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = a[i] === b[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+    const match = new Array(n).fill(-1);
+    for (let i = 0, j = 0; i < n && j < m;) {
+        if (a[i] === b[j]) { match[i] = j; i++; j++; } else if (L[i + 1][j] >= L[i][j + 1]) i++; else j++;
+    }
+    return match;
+}
+// the same as lcsMatch for two sequences that mostly agree, in time and memory by the number of differences (Myers'
+// O(ND) diff): a table of every letter by every letter took ~100 ms a long segment of dn2 with six editions. null when
+// they differ in more than maxD places
+function myersMatch(a, b, maxD) {
+    const n = a.length, m = b.length, off = n + m + 1, V = new Int32Array(2 * off + 1), trace = [];
+    for (let d = 0; d <= Math.min(n + m, maxD); d++) {
+        trace.push(V.slice(off - d - 1, off + d + 2));   // the row as it was before step d, its diagonals -d-1..d+1
+        for (let k = -d; k <= d; k += 2) {
+            let x = k === -d || (k !== d && V[off + k - 1] < V[off + k + 1]) ? V[off + k + 1] : V[off + k - 1] + 1, y = x - k;
+            while (x < n && y < m && a[x] === b[y]) { x++; y++; }
+            V[off + k] = x;
+            if (x < n || y < m) continue;
+            const match = new Array(n).fill(-1);
+            for (let e = d; e >= 0; e--) {   // back along the path
+                const v = trace[e], at = q => v[q + e + 1], kk = x - y;
+                const pk = kk === -e || (kk !== e && at(kk - 1) < at(kk + 1)) ? kk + 1 : kk - 1, px = at(pk), py = px - pk;
+                while (x > px && y > py) { x--; y--; match[x] = y; }
+                if (e) { x = px; y = py; }
+            }
+            return match;
+        }
+    }
+    return null;
+}
+// a's units matched to b's letter by letter; two lines that hardly agree (more than 300 differences), first by the words
+// that agree (LCS over whole words), then letter by letter between them
+function alignUnits(a, b) {
+    const keys = us => us.map(u => u.k);
+    const fast = myersMatch(keys(a), keys(b), 300);
+    if (fast) return fast;
+    const words = us => { const ws = []; us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { k: '', x }; o.k += u.k; o.n = x - o.x + 1; }); return ws; };
+    const wa = words(a), wb = words(b), match = new Array(a.length).fill(-1);
+    let pa = 0, pb = 0;
+    const between = (ea, eb) => { if (ea > pa && eb > pb) lcsMatch(keys(a.slice(pa, ea)), keys(b.slice(pb, eb))).forEach((k, q) => { if (k >= 0) match[pa + q] = pb + k; }); };
+    lcsMatch(wa.map(o => o.k), wb.map(o => o.k)).forEach((k, x) => {
+        if (k < 0) return;
+        const A = wa[x], B = wb[k];
+        between(A.x, B.x);
+        for (let q = 0; q < A.n; q++) match[A.x + q] = B.x + q;
+        pa = A.x + A.n; pb = B.x + B.n;
+    });
+    between(a.length, b.length);
+    return match;
+}
+// A changed letter is a letter of one text against a letter of the other, at the same place. A longest common
+// subsequence may put them apart instead - evamme against evaṁme matched its first m, leaving ṁ "missing" before it
+// and the second m "extra" (both m marked): a run of matched letters between the two is moved by one to bring them
+// together, where the letters allow
+function tidyMatch(m, a, b) {
+    const n = m.length, same = (x, y) => a[x].k === b[y].k;
+    for (let x = 0; x < n; x++) {
+        if (m[x] < 0) continue;
+        let t = 1; while (x + t < n && m[x + t] === m[x] + t) t++;
+        const py = x ? m[x - 1] : -1, ny = x + t < n ? m[x + t] : b.length;
+        // o's letters missing before the run, ours extra after it: the run one letter on
+        if ((x === 0 || py >= 0) && m[x] > py + 1 && x + t < n && m[x + t] < 0) {
+            let ok = true; for (let q = 0; q < t && ok; q++) ok = same(x + q + 1, m[x] + q);
+            if (ok) { for (let q = t - 1; q >= 0; q--) m[x + q + 1] = m[x] + q; m[x] = -1; x += t; continue; }
+        }
+        // ours extra before the run, o's letters missing after it: the run one letter back
+        if (x && py < 0 && (x === 1 || m[x - 2] >= 0) && m[x] === (x > 1 ? m[x - 2] : -1) + 1 && ny > m[x] + t && (x + t === n || m[x + t] >= 0)) {
+            let ok = true; for (let q = 0; q < t && ok; q++) ok = same(x - 1 + q, m[x] + q);
+            if (ok) { const y0 = m[x]; for (let q = 0; q < t; q++) m[x - 1 + q] = y0 + q; m[x + t - 1] = -1; }
+        }
+        x += t - 1;
+    }
+    return m;
+}
+function diffMarks(texts) {
+    const lines = texts.map(t => typeof t === 'string' && t.trim() ? diffUnits(t) : null);
+    const n = lines.filter(Boolean).length;
+    if (n < 2) return texts.map(() => null);
+    // the same letters in the same words are one reading, counted as many times as it is shown; the readings in the
+    // order of their letters (not of the editions)
+    const byKey = new Map();
+    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
+    const rs = [...byKey.keys()].sort().map(k => byKey.get(k));
+    rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0 })); });
+    const count = (r, o, match) => {   // what reading o says of reading r's letters
+        const us = r.us, L = us.length, ous = o.us;
+        let px = -1, py = -1;
+        for (let x = 0; x <= L; x++) {
+            const y = x < L ? match[x] : ous.length;
+            if (y < 0) continue;
+            if (x < L) r.support[x] += o.c;
+            if (px === x - 1 && y > py + 1) {   // o has letters here that r has not (not a changed letter: r has none here)
+                const b0 = py + 1, b1 = y - 1;
+                const starts = b0 === 0 || ous[b0 - 1].w !== ous[b0].w, ends = b1 === ous.length - 1 || ous[b1 + 1].w !== ous[b1].w;
+                const edge = x === 0 || x === L || us[x - 1].w !== us[x].w;
+                const g = r.gap[x];
+                g.c += o.c;
+                if (edge && starts && ends) g.whole += o.c;
+                // an aspirate's missing h is the consonant's before it (kammāsa[d]ammaṁ against kammāsadhammaṁ)
+                if ((!edge || starts) && !(b0 === b1 && ous[b0].k === 'h' && !edge)) g.next += o.c;
+            }
+            px = x; py = y;
+        }
+    };
+    for (let p = 0; p < rs.length; p++) for (let q = p + 1; q < rs.length; q++) {
+        const m = tidyMatch(alignUnits(rs[p].us, rs[q].us), rs[p].us, rs[q].us), back = new Array(rs[q].us.length).fill(-1);
+        m.forEach((y, x) => { if (y >= 0) back[y] = x; });
+        count(rs[p], rs[q], m);
+        count(rs[q], rs[p], back);
+    }
+    const out = texts.map(() => null);
+    rs.forEach(r => {
+        const us = r.us, L = us.length, on = r.support.map(s => s <= n / 2), gaps = [];
+        r.gap.forEach((g, x) => {
+            if (g.c * 2 < n) return;
+            if (g.whole * 2 >= g.c || !L) gaps.push(x);
+            else on[Math.max(0, Math.min(L - 1, g.next * 2 >= g.c ? x : x - 1))] = true;
+        });
+        const ws = {};
+        us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { a: x, b: x, on: 0 }; o.b = x; o.on += on[x]; });
+        r.at.forEach(i => {
+            const t = texts[i], mine = lines[i], ranges = [];
+            Object.values(ws).forEach(o => {
+                if (o.on * 2 > o.b - o.a + 1) return ranges.push([mine[o.a].s, mine[o.b].e, 'dg-ed-diff']);
+                for (let x = o.a; x <= o.b; x++) {
+                    if (!on[x]) continue;
+                    const last = ranges[ranges.length - 1];
+                    if (on[x - 1] && x > o.a && last && last[1] === mine[x].s) last[1] = mine[x].e;
+                    else ranges.push([mine[x].s, mine[x].e, 'dg-ed-diff dg-ed-ch']);
+                }
+            });
+            gaps.forEach(x => {
+                if (x === 0 || x === L) return ranges.push(L ? x ? [mine[L - 1].e, mine[L - 1].e, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [mine[0].s, mine[0].s, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [0, 0, 'dg-ed-diff dg-ed-gap dg-ed-edge']);
+                const s = mine[x - 1].e, sp = t.slice(s, mine[x].s).search(/\s/);
+                const at = s + Math.max(sp, 0);
+                ranges.push([at, at + 1, 'dg-ed-diff dg-ed-gap']);
+            });
+            out[i] = ranges.length ? ranges : null;
+        });
+    });
+    return out;
+}
+// </letter-diff>
 // The column names are glued to the site header as one block (owner 2026-10-31: «монолит… как только хедер уходит, она
 // сразу так же плавно уходит»): pinned at the header's bottom (--dg-cols-top, measured while the header is in place),
 // and when the header hides they slide up by the same distance with the same transition (uiextra.css), a strip of
