@@ -373,6 +373,12 @@ async function handleWordLookup(word, event) {
         iframe.removeAttribute('srcdoc');
         iframe.src = url;
     }
+    // The online dictionary (dict.dhamma.gift) opens at its own 110% (ddg-ui home.js, the app-like base), and Chromium
+    // also carries this page's zoom (dgUiBase: 1.1 phone, 1.2 tablet) into the frame: the base twice, its text ~7% bigger
+    // than the reader's around it (owner 2026-11-06, Trello x3KvBWWL). Zoom on the frame element itself takes the extra
+    // 110% back; WebKit carries neither (index.html dgInheritedZoom), so there it changes nothing.
+    // ponytail: assumes the dictionary's untouched default; a size picked inside the frame is taken back by 10% too.
+    iframe.style.zoom = /^https:\/\/dict\.dhamma\.gift\/(ru\/)?\?/.test(dictUrl || '') ? String(1 / 1.1) : '';
 
     const wordForSearch = cleanedWord.replace(/'ti/, '');
     let dictSearchUrl;

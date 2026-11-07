@@ -937,6 +937,11 @@
             // buildApiTextResponse) most opens resolve well under this, so the common case is no
             // flash at all; only genuinely slow ones (first run, big sutta) show it.
             loadingTimer = setTimeout(function () {
+                // The page already shows its own spinner: in the search field / top of the screen while a
+                // search or a text opens (body.dg-busy, home.css .dg-shell-spinner / #dg-busy-indicator), under
+                // the header on a cold text load (html.dg-eds-loading). A second one in the corner was the
+                // owner's "two spinners" (2026-11-06, Trello hXzYMHvF).
+                if (document.body.classList.contains('dg-busy') || document.documentElement.classList.contains('dg-eds-loading')) return;
                 if (!loadingDot) {
                     loadingDot = document.createElement('div');
                     loadingDot.id = 'dgApiLoadingDot';
