@@ -6,9 +6,9 @@
    this one (owner 2026-11-06: it was left out there by mistake). */
 (function () {
   if (typeof document.startViewTransition !== 'function') return;
-  var C = window.Capacitor;
-  // the Uposatha app: the only app with the widget plugin (Dhamma.Gift's app opens the Uposatha page too, and animates it here)
-  if (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.DgWidget) return;
+  // the Uposatha app's bridge says it animates the switch itself (window.dgOwnThemeSwitch); Dhamma.Gift's app opens the Uposatha
+  // page too and animates it here. An older Uposatha build, whose bridge does not say so, takes no site files (its page's marker).
+  if (window.dgOwnThemeSwitch) return;
   var BUTTONS = '#app-theme, #dg-theme-seg button, .dg-theme-btn-home, #theme-button';
   var replaying = false, running = false;
   // in order: the logos, then the reader's contents button, which stands in the field where the logo is elsewhere
