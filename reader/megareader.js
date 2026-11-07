@@ -626,7 +626,8 @@ function alignUnits(a, b) {
 }
 // A letter or two matched out of the middle of one text's run of extra letters is no agreement: tatrāhaṁ "has" the a of
 // tatra, a long repeat in SR supplies the t of sukatadukkaṭānaṁ - and a 3:3 tie lost its marks (Ultra's QA of 8b49ba2).
-// Such a match (at most 2 letters, the same text's unmatched letters of the same word on both sides, 3 or more) is undone.
+// Such a match (at most 2 letters, the same text's unmatched letters of the same word on both sides, 3 or more; or 3 or
+// more on each side whatever the words: SR's repeat of the whole sentence) is undone.
 function dropIslands(m, a, b) {
     const n = m.length, back = new Array(b.length).fill(-1);
     m.forEach((y, x) => { if (y >= 0) back[y] = x; });
@@ -636,7 +637,10 @@ function dropIslands(m, a, b) {
         if (m[x] < 0) continue;
         let t = 1; while (x + t < n && m[x + t] === m[x] + t) t++;
         const e = x + t - 1, ab = loose(a, m, x, -1), aa = loose(a, m, e, 1), bb = loose(b, back, m[x], -1), ba = loose(b, back, m[e], 1);
-        if (t <= 2 && ((ab && aa && ab + aa >= 3) || (bb && ba && bb + ba >= 3))) for (let q = x; q <= e; q++) m[q] = -1;
+        let px = x - 1; while (px >= 0 && m[px] < 0) px--;
+        let nx = e + 1; while (nx < n && m[nx] < 0) nx++;
+        const far = Math.min(x - px - 1, nx - e - 1) >= 3 || Math.min(m[x] - (px >= 0 ? m[px] : -1) - 1, (nx < n ? m[nx] : b.length) - m[e] - 1) >= 3;
+        if (t <= 2 && (far || (ab && aa && ab + aa >= 3) || (bb && ba && bb + ba >= 3))) for (let q = x; q <= e; q++) m[q] = -1;
         x = e;
     }
     return m;
