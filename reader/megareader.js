@@ -498,11 +498,19 @@ function diffUnits(t) {
         if (m[0] === 'ฯ') continue;
         const gap = t.slice(last, m.index);
         if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(gap)) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
-        // before this letter: 1 apart (a space or a dash), 0 joined, null a hyphen, an apostrophe or a quote with no space
-        // (bhikkhavo”ti is not "apart" from bhikkhavoti: owner 2026-11-07) - either way, not counted
-        const sp = /[-’'‘`]/.test(gap) ? null : /[\s—–]/.test(gap) ? 1 : gap ? null : 0;
+        // before this letter: 1 apart (a space, a dash, a quote), 0 joined, null a hyphen or an apostrophe - PTS's own
+        // marks of a compound and of an elision (n' atthi, pan' eke: Bhagavatā'ti = Bhagavatā ti, owner), not counted
+        const sp = /[-’'`]/.test(gap) ? null : gap ? 1 : 0;
         us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w, sp });
         last = m.index + m[0].length;
+    }
+    // an enclitic apart or joined is each edition's convention, not a reading (ekam pi / ekampi, bhikkhavo'ti /
+    // bhikkhavoti: PTS's lines drowned in such marks - Ultra's QA, owner 2026-11-07): the place before it is not counted
+    for (let x = 1; x < us.length; x++) {
+        if (us[x].sp !== 1) continue;
+        let e = x, k = us[x].k;   // the letters up to the next place apart (an apostrophe parts here, bhikkhavo'ti)
+        while (e + 1 < us.length && us[e + 1].sp === 0) k += us[++e].k;
+        if (/^(n?ti|pi|ca|vā|va|eva|hi)$/.test(k)) us[x].sp = null;
     }
     return us;
 }
@@ -658,7 +666,7 @@ function diffMarks(texts) {
     // the same letters in the same words are one reading, counted as many times as it is shown; the readings in the
     // order of their letters (not of the editions)
     const byKey = new Map();
-    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + (x && u.sp === null ? '-' : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
+    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + (x && u.sp === null ? '-' : x && u.sp ? "'" : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
     const rs = [...byKey.keys()].sort().map(k => byKey.get(k));
     rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0, words: new Set() })); r.split = r.us.map(() => ({ v: 0, a: 0 })); });
     const count = (r, o, match) => {   // what reading o says of reading r's letters
@@ -668,9 +676,12 @@ function diffMarks(texts) {
             const y = x < L ? match[x] : ous.length;
             if (y < 0) continue;
             if (x < L) r.support[x] += o.c;
-            // apart or joined before this letter: o's say, where its letters face ours (the same, or changed ones as many
-            // as ours: Evam me against Evaṁ me) and neither has a hyphen or an apostrophe there
-            if (x && x < L && y && x - px === y - py && us[x].sp !== null && ous[y].sp !== null) { r.split[x].v += o.c; if (!us[x].sp === !ous[y].sp) r.split[x].a += o.c; }
+            // apart or joined before this letter: o's say, where both its letters on either side face ours - the same, or
+            // one changed letter just before (Evam me against Evaṁ me) - and neither has a hyphen or an apostrophe there.
+            // Next to a word o has and r has not, its letters faced r's space and voted (PTS kho[ ]bhante: kho me bhante)
+            const near = x < L && x >= 2 && y >= 2 && (x + 1 === L ? y + 1 === ous.length : match[x + 1] === y + 1) && match[x - 2] === y - 2
+                && (match[x - 1] === y - 1 || (px === x - 2 && py === y - 2));
+            if (near && us[x].sp !== null && ous[y].sp !== null) { r.split[x].v += o.c; if (!us[x].sp === !ous[y].sp) r.split[x].a += o.c; }
             if (px === x - 1 && y > py + 1) {   // o has letters here that r has not (not a changed letter: r has none here)
                 const b0 = py + 1, b1 = y - 1;
                 const starts = b0 === 0 || ous[b0 - 1].w !== ous[b0].w, ends = b1 === ous.length - 1 || ous[b1 + 1].w !== ous[b1].w;

@@ -49,8 +49,11 @@ eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasa�
 eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
 // words swapped round: the moved word whole, not a letter of it (mn88 9.4: [mayaṁ] [t]aṁ), and no gap where the others have it
 eq(['bhāsanti, mayaṁ taṁ sārato', 'bhāsanti, taṃ mayaṃ sārato'], ['bhāsanti, mayaṁ [taṁ] sārato', 'bhāsanti, [taṃ] mayaṃ sārato']);
-// a quote is no space: bhikkhavoti against “bhikkhavo”ti gets no mark; etad avoca against etadavoca does (dn22 1.4-1.5)
+// bhikkhavoti against “bhikkhavo”ti: an enclitic, no mark; etad avoca against etadavoca is marked (dn22 1.4-1.5)
 eq(['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.'], ['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.']);
+// an enclitic apart or joined is each edition's convention (PTS ekam pi), not marked; a quote parts like a space
+eq(['ekampi jātiṁ dvepi jātiyo', 'ekam pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo'], ['ekampi jātiṁ dvepi jātiyo', 'ekam pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo']);
+eq(['ānando”ti', 'ānandoti', 'Ānando ti', 'ānando’ti'], ['ānando”ti', 'ānandoti', 'Ānando ti', 'ānando’ti']);
 eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad[ ]avoca:']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
