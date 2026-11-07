@@ -441,23 +441,27 @@ function textNodesOf(el) {
     for (let n; (n = w.nextNode());) out.push(n);
     return out;
 }
-// ranges [start, end] in the line's joined text wrapped in marks, across the text nodes they
-// cross; the nodes read again for each range, as the splits change them (the joined text stays the same)
+// ranges [start, end] in the line's joined text wrapped in marks, across the text nodes they cross; [a, a] an empty mark
+// at a (a gap at the line's edge). The nodes read once: painted from the end, a split keeps each node's start where it
+// was (each range reading them all again took ~200 ms on a line of hundreds of marks: Ultra, dn22 with 4 editions)
 function paintMarks(el, ranges) {
     const mark = cls => { const m = document.createElement('mark'); m.className = cls; return m; };
-    ranges.slice().sort((x, y) => y[0] - x[0] || y[1] - x[1]).forEach(([a, b, cls]) => {   // from the end
-        let off = 0;
-        if (a === b) {   // a gap at a line's edge: an empty mark at that place
-            for (const n of textNodesOf(el)) {
-                const len = n.nodeValue.length;
-                if (a <= off + len) { n.parentNode.insertBefore(mark(cls), a === off ? n : a - off < len ? n.splitText(a - off) : n.nextSibling); return; }
-                off += len;
-            }
+    const nodes = [];
+    let off = 0, k;
+    for (const n of textNodesOf(el)) { nodes.push([n, off]); off += n.nodeValue.length; }
+    k = nodes.length - 1;
+    ranges.slice().sort((x, y) => y[0] - x[0] || y[1] - x[1]).forEach(([a, b, cls]) => {
+        while (k > 0 && nodes[k][1] >= (a === b ? a + 1 : b)) k--;
+        if (k < 0) return;
+        if (a === b) {
+            const [n, st] = nodes[k], s0 = a - st;
+            if (s0 >= 0 && s0 <= n.nodeValue.length) n.parentNode.insertBefore(mark(cls), s0 === 0 ? n : s0 < n.nodeValue.length ? n.splitText(s0) : n.nextSibling);
             return;
         }
-        for (const n of textNodesOf(el)) {
-            const len = n.nodeValue.length, s0 = Math.max(a - off, 0), e0 = Math.min(b - off, len);
-            off += len;
+        for (let j = k; j >= 0; j--) {
+            const [n, st] = nodes[j], len = n.nodeValue.length;
+            if (st + len <= a) break;
+            const s0 = Math.max(a - st, 0), e0 = Math.min(b - st, len);
             if (e0 <= s0) continue;
             let t = n;
             if (s0 > 0) t = t.splitText(s0);
@@ -557,7 +561,7 @@ function gapAlign(a, b, guide, w) {
         let p = 0, m = 0, x = 0, y = 0;   // p: the cell before (i-1, j-1 / i-1, j / i, j-1), when in the band
         if (i && j && j - 1 >= l1 && j - 1 <= h1 && (p = b1 + j - 1) >= 0) {   // a pair
             m = cM[p]; x = i > 1 && cX[p] < INF ? cX[p] + za[i - 2] : INF; y = j > 1 && cY[p] < INF ? cY[p] + zb[j - 2] : INF;
-            const c = ka[i - 1] === kb[j - 1] ? 0 : 1;
+            const c = ka[i - 1] === kb[j - 1] ? 0 : 1.5;
             if (m <= x && m <= y) { cM[h] = m + c; fM[h] = 0; } else if (x <= y) { cM[h] = x + c; fM[h] = 1; } else { cM[h] = y + c; fM[h] = 2; }
         }
         if (i && j >= l1 && j <= h1 && (p = b1 + j) >= 0) {   // a's letter alone

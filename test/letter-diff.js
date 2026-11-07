@@ -46,6 +46,8 @@ eq(['kiṁ nu kho', 'kiṃ nu kho', 'athakho kinnu kho'], ['kiṁ nu kho', 'ki�
 eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhisaṅkhalikaṃ', 'aṭṭhi-saṅkhalikaṃ'],
     ['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhi[s]aṅkhalikaṃ', 'aṭṭhi-[s]aṅkhalikaṃ']);
 eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
+// words swapped round: the moved word whole, not a letter of it (mn88 9.4: [mayaṁ] [t]aṁ)
+eq(['bhāsanti, mayaṁ taṁ sārato', 'bhāsanti, taṃ mayaṃ sārato'], ['bhāsanti,⟨ ⟩mayaṁ [taṁ] sārato', 'bhāsanti, [taṃ] mayaṃ⟨ ⟩sārato']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
 eq(['โส ภควา ฯ', 'โส ภควา', 'โส ภควโต'], ['โส ภควา ฯ', 'โส ภควา', 'โส ภคว[โต]']);
