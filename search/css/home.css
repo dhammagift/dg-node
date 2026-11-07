@@ -4066,7 +4066,8 @@ body.dg-state-results #results-toolbar #btn-compass-results:hover,
 body.dg-state-results #results-toolbar .toggle-mode-btn:hover,
 body.dg-state-results #results-toolbar #btn-read-marks:hover,
 body.dg-state-results #results-toolbar #helpMessage:hover { background: var(--dg-surface-hover); border-color: transparent; color: var(--dg-text); }
-body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-toolbar .btn svg { width: 14px; height: 14px; }
+/* the reader's size (.dg-reader-toolbar img 19px): the results' icons were 14px, visibly smaller than the reader's (owner 2026-11-07) */
+body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-toolbar .btn svg { width: 19px; height: 19px; }
 /* A narrow phone keeps the one row of the reader's icons (the compass made nine; 360px wrapped "?" to a second row) */
 @media (max-width: 380px) {
     body.dg-state-results #results-toolbar .btn { padding-left: 8px; padding-right: 8px; }
@@ -4074,6 +4075,7 @@ body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-
     body.dg-state-results #results-toolbar .toggle-dict-btn, body.dg-state-results #results-toolbar .toggle-multiselect-btn,
     body.dg-state-results #results-toolbar .toggle-mode-btn, body.dg-state-results #results-toolbar #btn-read-marks,
     body.dg-state-results #results-toolbar #helpMessage { width: 23px; height: 25px; padding: 0; }
+    body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-toolbar .btn svg { width: 18px; height: 18px; }
 }
 
 /* заголовок выдачи (reference .rhead) */

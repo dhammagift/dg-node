@@ -5677,7 +5677,7 @@
         ], active, applyTheme));
     }
 
-    /* issue #5: same localStorage.uiScale key and 70-250/step-10 range as /settings/'s own
+    /* issue #5: same localStorage.uiScale key and 20-250/step-10 range as /settings/'s own
        "Text size" row (settings/index.html #sizeMinus/#sizePlus) — a second, independent
        implementation because that page is a separate small vanilla-JS document, same as
        renderThemeSwitch() above duplicates themeswitch.js's own step logic rather than sharing
@@ -5690,7 +5690,7 @@
     var FONT_SCALE_KEY = 'uiScale';
     function currentFontScale() {
         var v = parseInt(localStorage.getItem(FONT_SCALE_KEY), 10);
-        return (v >= 70 && v <= 250) ? v : 100;
+        return (v >= 20 && v <= 250) ? v : 100;
     }
     /* issue #13 ("непредсказуемо увеличиваются шрифты"): раньше размер применялся как
        html { font-size: N% }. Это двигает ТОЛЬКО то, что задано в rem — а в этом файле 131
@@ -5707,7 +5707,7 @@
     // было). Фолбэк — прежний html{font-size}: двигает только rem, но это лучше пустой кнопки.
     var CAN_ZOOM = !!(window.CSS && CSS.supports && CSS.supports('zoom', '1.5'));
     // Owner (2026-09-29): on phones and in the app the old 110% is the new 100% — the base size
-    // there read too small. The control still shows 70–250%, relative to that base; the same rule
+    // there read too small. The control still shows 20–250%, relative to that base; the same rule
     // runs early in index.html <head> so the page does not jump from small to big on load.
     // ...and on any touch screen (pointer: coarse): an unfolded phone or a tablet is wider than 768 px and read too small
     // at 1.0 (owner 2026-10-31: «очень мелкий… мы это чинили»).
@@ -5761,7 +5761,7 @@
             inc.disabled = scale >= 250;
         }
         function set(v) {
-            scale = Math.min(250, Math.max(70, v));
+            scale = Math.min(250, Math.max(20, v));
             localStorage.setItem(FONT_SCALE_KEY, scale);
             applyUiScale(scale);
             paint();
@@ -5775,7 +5775,7 @@
     }
     // Alt+− / Alt+= (settings.js) step the same scale as the drawer's −/+ buttons.
     window.dgStepUiScale = function (delta) {
-        localStorage.setItem(FONT_SCALE_KEY, Math.min(250, Math.max(70, currentFontScale() + delta)));
+        localStorage.setItem(FONT_SCALE_KEY, Math.min(250, Math.max(20, currentFontScale() + delta)));
         renderFontSizeControl();
     };
 

@@ -114,7 +114,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // the app start from the old 110% as their 100%.
     try {
       var s = parseInt(localStorage.getItem('uiScale'), 10);
-      s = (s >= 70 && s <= 250) ? s : 100;
+      s = (s >= 20 && s <= 250) ? s : 100;
       // touch screens too, not only narrow ones: a foldable or a tablet is wider than 768 px and read too small at 1.0
       // (owner 2026-10-31: «очень мелкий… мы это чинили») - the same query as home.js BIG_BASE
       // A page inside a same-origin frame (the quote preview, .fdg-iframe): Chromium carries the parent's zoom into the
