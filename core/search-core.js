@@ -293,11 +293,16 @@ function finalizeWordReport(words) {
 // Одна ссылка на сутту в links (не на каждый сегмент), как в легаси-отчёте.
 function buildWordReport(searchResults) {
     const words = {}; // word -> { textIds: Set<suttaId>, matchCount, links: Map<suttaId, segmentId> }
+    const inText = new Set();
+    for (const suttaId in searchResults) {
+        const varWords = new Set(searchResults[suttaId].variant_words || []);
+        for (const w of searchResults[suttaId].unique_words || []) if (!varWords.has(w)) inText.add(w);
+    }
 
     for (const suttaId in searchResults) {
         const suttaRes = searchResults[suttaId];
         for (const seg of suttaRes.segments) {
-            const combinedText = `${seg.root_text || ''} ${seg.variant || ''}`;
+            const combinedText = `${wordFormsText(seg.root_text)} ${wordFormsText(seg.variant, true)}`;
             if (!combinedText.trim()) continue;
 
             for (const word of suttaRes.unique_words) {
@@ -321,7 +326,7 @@ function buildWordReport(searchResults) {
         }
     }
 
-    return finalizeWordReport(words);
+    return finalizeWordReport(words).map(w => (inText.has(w.word) ? w : Object.assign(w, { variant: true })));
 }
 
 // A keyword containing any of these is treated as a regular expression, the power-user search
@@ -843,6 +848,12 @@ async function buildMatchSkeleton(keyword, searchScope, exactMatch, targetLangs,
     }
 
     if (!anyMatch) return { searchResults: {}, empty: 'no-matches' };
+    // How many of a text's matches are in its variant lines only: the page hides those with the variants (the eye in the
+    // results, the same switch as the reader's; owner 2026-11-07, Trello YjPfhcp0), counts included.
+    for (const id in searchResults) {
+        searchResults[id].variant_segs = searchResults[id].segments
+            .filter(seg => !seg.root_text && !Object.keys(seg.translations).length).length;
+    }
     if (lb > 0 || la > 0) attachRootContext(searchResults, lb, la);
     return { searchResults };
 }
@@ -924,7 +935,8 @@ function sortSuttaResults(searchResults) {
 // кавычке ("“‘dukkhaṁ" вместо "dukkhaṁ") и попадало в отчёт отдельной "грязной" строкой вместо
 // того, чтобы схлопнуться со "чистым" вхождением того же слова. Явные \u-escape здесь намеренно —
 // чтобы больше не наступить на ту же ловушку визуально неотличимых символов.
-const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}';
+// Dashes too: "yadidaṁ—chandasampadā" is two words (MS writes them glued; owner 2026-11-07, Trello YjPfhcp0).
+const WORD_BOUNDARY_CHARS = '\\s,.:;!?"\'\\u201C\\u201D\\u2018\\u2019\\u00AB\\u00BB()\\[\\]{}\\u2013\\u2014';
 
 // A user's \b, as grep users type it to search from the start of a word ("\bnand": nanda, not ānanda). JavaScript's
 // \b knows only ASCII letters, so ā, ṁ, ñ… count as boundaries and "\bnand" found ānando (dg-node#27). Rewritten to
@@ -988,6 +1000,23 @@ function keywordMatchers(keyword) {
     };
 }
 
+// The Pali a Words column reads (owner 2026-11-07, Trello YjPfhcp0: "half-cut words, dashes"). A variant line is
+// "ms words → reading (editions); reading (editions) | …": only the readings count, without the edition labels, the
+// notes ("(pts note)", "(cck note)"), "pe → spelled out in full" or "+". PTS's hyphens are joined (chanda-rāgo is
+// chandarāgo, the form MS has); a stub left with a dash at its edge is skipped in forEachWordForm.
+function wordFormsText(text, isVariant) {
+    if (!text) return '';
+    let t = String(text);
+    if (isVariant) {
+        t = t.split(' | ').map(piece => {
+            if (/\([^)]*\bnote\)|spelled out in full/i.test(piece)) return '';
+            const at = piece.indexOf('→');
+            return (at === -1 ? piece : piece.slice(at + 1)).replace(/\([^)]*\)/g, ' ').replace(/^\s*\+\s*$/, '');
+        }).filter(x => x.trim()).join(' | ');
+    }
+    return t.replace(/([\p{L}\p{M}])-+(?=\p{L})/gu, '$1');
+}
+
 // Calls back with every whole word containing the keyword, sliced out of the ORIGINAL text —
 // offsets come from the folded copy, which foldText keeps the same length for exactly this.
 function forEachWordForm(text, m, onWord) {
@@ -1003,7 +1032,9 @@ function forEachWordForm(text, m, onWord) {
             // ponytail: a span this long is a passage, not a form (dukkh.*samud across the four truths
             // written out in mn10's variant: 4 KB); skipped in Words, the segment still matches.
             if (hit[0].length > 200) continue;
-            onWord(piece.slice(hit.index, hit.index + hit[0].length).toLowerCase());
+            const word = piece.slice(hit.index, hit.index + hit[0].length).toLowerCase();
+            if (/^[-–—…+]|[-–—…+]$/.test(word)) continue;   // a stub: "chanda-", "-chando", "rūpacchando--"
+            onWord(word);
         }
     }
 }
@@ -1018,8 +1049,10 @@ function buildWordReportFast(searchResults, keyword) {
     const m = keywordMatchers(keyword);
     const words = {};
 
-    const addWordsFromText = (text, suttaId, segmentId) => {
+    const inText = new Set();
+    const addWordsFromText = (text, suttaId, segmentId, isVariant) => {
         forEachWordForm(text, m, word => {
+            if (!isVariant) inText.add(word);
             if (!words[word]) words[word] = { textIds: new Set(), matchCount: 0, links: new Map() };
             words[word].textIds.add(suttaId);
             words[word].matchCount += 1;
@@ -1030,8 +1063,8 @@ function buildWordReportFast(searchResults, keyword) {
     for (const suttaId in searchResults) {
         const suttaRes = searchResults[suttaId];
         for (const seg of suttaRes.segments) {
-            addWordsFromText(seg.root_text, suttaId, seg.segment);
-            addWordsFromText(seg.variant, suttaId, seg.segment);
+            addWordsFromText(wordFormsText(seg.root_text), suttaId, seg.segment);
+            addWordsFromText(wordFormsText(seg.variant, true), suttaId, seg.segment, true);
 
             const byLang = {};
             for (const transKey of Object.keys(seg.translations)) {
@@ -1048,7 +1081,7 @@ function buildWordReportFast(searchResults, keyword) {
         }
     }
 
-    return finalizeWordReport(words);
+    return finalizeWordReport(words).map(w => (inText.has(w.word) ? w : Object.assign(w, { variant: true })));
 }
 
 // "Variants for {keyword}" (легаси new/words.sh, секция под отчётом по словам) — список
@@ -1302,9 +1335,10 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
             }
         }
 
-        const uniqueWords = new Set();
+        const uniqueWords = new Set(), textWords = new Set();
         let matchCount = 0;
-        const collect = (text, isVariant = false) => {
+        const collect = (text, kind) => {
+            const isVariant = kind === 'variant';
             if (!text) return;
             const haystack = prepare(text);
             const found = haystack.match(matchRegex);
@@ -1312,7 +1346,10 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
                 matchCount += found.length;
                 if (isVariant) globalHasVariants = true;
             }
-            forEachWordForm(text, m, word => uniqueWords.add(word));
+            forEachWordForm(kind === 'root' || isVariant ? wordFormsText(text, isVariant) : text, m, word => {
+                uniqueWords.add(word);
+                if (!isVariant) textWords.add(word);
+            });
         };
 
         for (const seg of suttaRes.segments) {
@@ -1333,7 +1370,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
         // translators that do not contain the keyword contribute nothing either way.
         for (const seg of suttaRes.segments) {
             for (const row of keywordRowsBySegment.get(seg.segment) || []) {
-                collect(row.txt, row.kind === 'variant');
+                collect(row.txt, row.kind);
             }
         }
 
@@ -1343,6 +1380,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
         // answer and this one. suttaRes.count keeps the finer occurrence count for its own column.
         globalTotalMatches += suttaRes.segments.length;
         suttaRes.unique_words = Array.from(uniqueWords);
+        suttaRes.variant_words = suttaRes.unique_words.filter(w => !textWords.has(w));   // hidden with the variants
     }
 
     return { globalTotalMatches, globalHasVariants };
@@ -1705,6 +1743,7 @@ module.exports = {
     buildTextDataFromBase,
     buildWordReport,
     buildWordReportFast,
+    wordFormsText,
     enrichResponse,
     enrichSuttaBatch,
     filterPreferredTranslators,

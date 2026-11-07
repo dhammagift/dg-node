@@ -45,6 +45,37 @@ window.DgSearchRender = (function () {
     var suttaTableApi = null;
     var wordTableApi = null;
 
+    // The variants off (the eye in the results, body.dg-novar; owner 2026-11-07, Trello YjPfhcp0): a text found only in its
+    // variant lines, and a word met only there, are not in the tables. redraw() applies a switch, no new search.
+    // The results' eye (search/index.html #toggle-variants-results): the same localStorage.variantVisibility as the
+    // reader's eye (megareader.js setupVariantVisibility, not loaded on this page); no new search, a redraw.
+    $(document).on('click', '#toggle-variants-results', function (e) {
+        e.preventDefault();
+        var next = (localStorage.getItem('variantVisibility') || 'hidden') === 'hidden' ? 'visible' : 'hidden';
+        try { localStorage.setItem('variantVisibility', next); } catch (err) { /* private mode: this page only */ }
+        document.body.classList.toggle('dg-novar', next === 'hidden');
+        $('#toggle-variants-results img, #toggle-variants img').attr('src', next === 'hidden' ? '/assets/svg/eye-slash.svg' : '/assets/svg/eye.svg');
+        $('#sutta .variant').toggleClass('hidden-variant', next === 'hidden');
+        redraw();
+        if (typeof window.dgRenderResultHeader === 'function') window.dgRenderResultHeader();
+        if (typeof showBubbleNotification === 'function') showBubbleNotification(next === 'hidden' ? 'Variants Off' : 'Variants On');
+    });
+
+    var varFilterOn = false;
+    function ensureVariantFilter() {
+        if (varFilterOn || !($.fn && $.fn.dataTable)) return;
+        varFilterOn = true;
+        $.fn.dataTable.ext.search.push(variantFilter);
+    }
+    function variantFilter(settings, data, idx, row) {
+        if (!document.body.classList.contains('dg-novar') || !row) return true;
+        if (suttaTableApi && settings.nTable === suttaTableApi.table().node()) {
+            return !(row.variant_segs && row.segments && row.variant_segs >= row.segments.length);
+        }
+        if (wordTableApi && settings.nTable === wordTableApi.table().node()) return !row.variant;
+        return true;
+    }
+
     // Порядок переводчиков одного языка в цитате (TODO.md поиск, баг 3: приоритетный "o"
     // должен идти ближе к Пали, даже если совпадение реально нашлось у другого переводчика —
     // тот тоже показывается, просто дальше). Тот же источник истины, что и на сервере
@@ -853,6 +884,7 @@ window.DgSearchRender = (function () {
     }
 
     function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
+        ensureVariantFilter();
         activeState.highlightWord = highlightWord;
         activeState.langsFromUrl = !!langsFromUrl;
         activeState.data = dataArray;   // availableTranslators() reads it
@@ -1026,8 +1058,12 @@ window.DgSearchRender = (function () {
                     data: 'unique_words',
                     render: function (data, type, row) {
                         if (data && data.length) {
-                            var wordsStr = data.join(' ');
-                            return '<span class="pli-lang inputscript-ISOPali text-muted">' + highlightText(wordsStr, activeState.highlightWord) + '</span>';
+                            // a word met only in the variant lines leaves with them (the eye, body.dg-novar)
+                            var varWords = row.variant_words || [];
+                            return '<span class="pli-lang inputscript-ISOPali text-muted">' + data.map(function (w) {
+                                var h = highlightText(w, activeState.highlightWord);
+                                return varWords.indexOf(w) === -1 ? h : '<span class="dg-var-word">' + h + '</span>';
+                            }).join(' ') + '</span>';
                         }
                         // Not enriched yet — the real unique_words are, at most, the searched
                         // word plus declension endings/prefixes (Pali is agglutinative), so the
@@ -1448,6 +1484,7 @@ window.DgSearchRender = (function () {
     }
 
     function buildWordDataTable(container, wordReport, highlightWord, scope) {
+        ensureVariantFilter();
         activeState.highlightWord = highlightWord;
         activeState.scope = scope;
         var data = wordReport || [];

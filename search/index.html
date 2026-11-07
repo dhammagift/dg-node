@@ -2531,6 +2531,14 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   <img src="/assets/svg/align-right.svg" alt="1/2 columns">
 </button>
 
+<!-- Variants: the reader's eye (#toggle-variants, megareader.js setupVariantVisibility) in the results, the same
+     localStorage.variantVisibility. Off (the default), the variant lines, the words met only in them and the matches found
+     only there leave the page, counts included - no new search (owner 2026-11-07, Trello YjPfhcp0). -->
+<button id="toggle-variants-results" class="btn btn-light mb-1" type="button" title="{{quick.variants}}" data-i18n-title="{{quick.variants}}" aria-label="{{quick.variants}}" data-i18n-aria-label="{{quick.variants}}">
+  <img src="/assets/svg/eye-slash.svg" alt="">
+</button>
+<script>try { if (localStorage.getItem('variantVisibility') === 'visible') document.querySelector('#toggle-variants-results img').src = '/assets/svg/eye.svg'; else document.body.classList.add('dg-novar'); } catch (e) {}</script>
+
 <!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
      (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
      выдаче, а не про «прочитанность» сутты вообще. Стоит сразу после словаря (просьба владельца).
@@ -4230,6 +4238,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         return { text: mode ? q.split(/\s&&?\s/).join(' ') : q, mode: mode };
     }
 
+    window.dgRenderResultHeader = function () { if (lastSearchJson) renderResultHeader(lastSearchJson); };
     function renderResultHeader(json) {
         let scope = buildScopeLabel(json.metadata.resolvedPrefixes);
 
@@ -4242,8 +4251,17 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         // results.textsForms/matchesForms in lang_*.json), and the search area moved entirely
         // into the star's tooltip (4 Nikāyas listed by name, KN books listed) instead of a
         // "4 Nikayas + 6 KN" stub in the sentence. The variants link joins the same line.
-        var stats = pluralCount(json.metadata.totalFiles, dgT('results.textsForms', ['text', 'texts'])) +
-            ' · ' + pluralCount(json.metadata.totalMatches, dgT('results.matchesForms', ['match', 'matches']));
+        // With the variants off (the eye, body.dg-novar) the matches found only in variant lines are not on the page, nor in
+        // the counts: variant_segs per text (core/search-core.js buildMatchSkeleton)
+        var nFiles = json.metadata.totalFiles, nMatches = json.metadata.totalMatches;
+        if (document.body.classList.contains('dg-novar') && json.data) Object.keys(json.data).forEach(function (id) {
+            var r = json.data[id], v = (r && r.variant_segs) || 0;
+            if (!v) return;
+            nMatches -= v;
+            if (r.segments && v >= r.segments.length) nFiles--;
+        });
+        var stats = pluralCount(nFiles, dgT('results.textsForms', ['text', 'texts'])) +
+            ' · ' + pluralCount(nMatches, dgT('results.matchesForms', ['match', 'matches']));
         var newTitle = qStr + ' · ' + stats;
 
         document.title = newTitle + " - Dhamma.gift";

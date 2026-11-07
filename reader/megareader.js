@@ -878,60 +878,56 @@ window.toggleThePali = function() {
 };
 
 window.setupVariantVisibility = function() {
-    const toggleButton = document.getElementById("toggle-variants");
-    if (!toggleButton) return; 
+    // Two eyes, one state (localStorage.variantVisibility): this one is the reader's; the results' eye
+    // (#toggle-variants-results, search-render.js - this file is not loaded on the results page) hides through
+    // body.dg-novar, so it is kept in step here too, with both icons (owner 2026-11-07, Trello YjPfhcp0).
+    const buttons = ["toggle-variants"].map(id => document.getElementById(id)).filter(Boolean);
+    if (!buttons.length) return;
 
-    let storedState = localStorage.getItem("variantVisibility") || "hidden";
     const eyeIcon = "/assets/svg/eye.svg";
     const eyeSlashIcon = "/assets/svg/eye-slash.svg";
 
     function applyState(state) {
-        const variantElements = document.querySelectorAll(".variant");
-        const currentBtn = document.getElementById("toggle-variants");
-        const iconImage = currentBtn ? currentBtn.querySelector("img") : null;
-
-        variantElements.forEach((el) => {
+        document.querySelectorAll(".variant").forEach((el) => {
             if (state === "hidden") el.classList.add("hidden-variant");
             else el.classList.remove("hidden-variant");
         });
-
-        if (iconImage) {
-            if (state === "hidden") {
-                iconImage.setAttribute("src", eyeSlashIcon);
-                iconImage.classList.remove("fa-eye");
-                iconImage.classList.add("fa-eye-slash");
-            } else {
-                iconImage.setAttribute("src", eyeIcon);
-                iconImage.classList.remove("fa-eye-slash");
-                iconImage.classList.add("fa-eye");
-            }
-        }
+        document.body.classList.toggle("dg-novar", state === "hidden");
+        ["toggle-variants", "toggle-variants-results"].forEach((id) => {
+            const iconImage = document.querySelector("#" + id + " img");
+            if (!iconImage) return;
+            iconImage.setAttribute("src", state === "hidden" ? eyeSlashIcon : eyeIcon);
+            iconImage.classList.toggle("fa-eye-slash", state === "hidden");
+            iconImage.classList.toggle("fa-eye", state !== "hidden");
+        });
     }
 
-    applyState(storedState);
+    applyState(localStorage.getItem("variantVisibility") || "hidden");
 
-    toggleButton.onclick = function(e) {
+    const toggle = function(e) {
         if (e) e.preventDefault();
-        storedState = storedState === "hidden" ? "visible" : "hidden";
-        localStorage.setItem("variantVisibility", storedState);
-        applyState(storedState);
+        const next = (localStorage.getItem("variantVisibility") || "hidden") === "hidden" ? "visible" : "hidden";
+        localStorage.setItem("variantVisibility", next);
+        applyState(next);
+        if (window.DgSearchRender && typeof window.DgSearchRender.redraw === "function") window.DgSearchRender.redraw();
+        if (typeof window.dgRenderResultHeader === "function") window.dgRenderResultHeader();
         if (typeof showBubbleNotification === "function") {
-            showBubbleNotification(storedState === "hidden" ? "Variants Off" : "Variants On");
+            showBubbleNotification(next === "hidden" ? "Variants Off" : "Variants On");
         }
         if (typeof window.refreshQuickSettings === "function") window.refreshQuickSettings();
     };
+    buttons.forEach((b) => { b.onclick = toggle; });
 
     if (!window._variantHotkeySetup) {
         document.addEventListener("keydown", (event) => {
             if (event.altKey && event.code === "KeyV") {
-                const currentBtn = document.getElementById("toggle-variants");
+                const currentBtn = buttons.find((b) => b.offsetParent) || buttons[0];
                 if (currentBtn) currentBtn.click();
             }
         });
         window._variantHotkeySetup = true;
     }
 };
-
 // dataObjects: произвольный список параллельных {segmentId: text} объектов, которые нужно
 // слить в лок-степе с htmlData (paliData, varData, плюс по одному на каждую языковую колонку) —
 // N-арная замена старой версии, где было ровно paliData/transData/varData/engTransData.

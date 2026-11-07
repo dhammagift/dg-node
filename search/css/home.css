@@ -4794,3 +4794,8 @@ body.dg-state-toc #dg-hero-band { z-index: 851; }
 #dg-quick .dg-group-title:first-child { margin-top: 0.2em; }
 #dg-quick .dg-toggle-row { padding: 6px 0; }
 #dg-quick .dg-sheet-body { padding-top: 4px; padding-bottom: 10px; }
+
+/* The variants off in the results (the eye, #toggle-variants-results; owner 2026-11-07, Trello YjPfhcp0): the variant
+   lines and the words met only in them. The texts found only there are filtered out of the table (search-render.js). */
+body.dg-novar #search-pane .variant,
+body.dg-novar #search-pane .dg-var-word { display: none !important; }
