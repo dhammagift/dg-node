@@ -29,6 +29,10 @@ function getNotificationText() {
 // copy have no click point, so they fall back to the first matching [lang] element instead.
 function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
   let textParts = [];
+  // Several Pali editions (megareader.js .dg-ed-line): one line each, named as on screen - "BJT: ..." (owner 2026-11-07,
+  // via Ultra: the lines came out glued, "...migadāye.evaṃ me sutaṃ..."); the translations then named too.
+  const edLines = parentSpan.querySelectorAll('.dg-ed-line').length > 1;
+  const named = el => edLines && el.dataset && el.dataset.tag ? el.dataset.tag + ': ' : '';
 
   // Ищем все блоки с lang="pi", чтобы захватить и мнемонику, и полный текст (для memorize.js)
   const piElements = parentSpan.querySelectorAll('[lang="pi"]');
@@ -52,10 +56,13 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
       .filter(Boolean);
     piClone.querySelectorAll('.variant').forEach(function (el) { el.remove(); });
 
-    let piText = piClone.textContent
-      .trim()
-      .replace(/ /g, '\n')
-      .replace(/\s\s+/g, '\n');
+    const lines = Array.from(piClone.querySelectorAll('.dg-ed-line:not(.is-gap):not(.is-empty)'));
+    let piText = lines.length > 1
+      ? lines.map(l => [l, l.textContent.trim()]).filter(([, t]) => t).map(([l, t]) => named(l) + t).join('\n')
+      : piClone.textContent
+        .trim()
+        .replace(/ /g, '\n')
+        .replace(/\s\s+/g, '\n');
 
     if (visibleVariants.length) {
       piText += (piText ? '\n' : '') + visibleVariants.map(function (v) { return '\t' + v; }).join('\n');
@@ -75,14 +82,14 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
     // joined with '\n\n' across a multi-segment paragraph — truthy check, same as otherTranslations
     // already does below.
     if (translationElement && translationElement.textContent.trim()) {
-      textParts.push(translationElement.textContent.trim());
+      textParts.push(named(translationElement) + translationElement.textContent.trim());
     }
 
     const otherTranslations = Array.from(
       parentSpan.querySelectorAll('[lang]:not([lang="pi"]):not([lang="' + clickedLang + '"])')
     )
       .filter(el => !el.closest('.hidden-variant'))
-      .map(el => el.textContent.trim())
+      .map(el => el.textContent.trim() && named(el) + el.textContent.trim())
       .filter(Boolean);
 
     if (otherTranslations.length > 0) {

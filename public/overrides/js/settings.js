@@ -4017,7 +4017,7 @@ document.addEventListener('click', function (e) {
                     variant = varEl.textContent.replace(/\s+/g, ' ').trim();
                     varEl.remove();
                 }
-                pali = paliClone.textContent.replace(/\s+/g, ' ').trim();
+                pali = dgPaliText(paliClone, '\n');
             }
             var trans = cleanText(transEl);
             if (!pali && !trans) return;
@@ -4092,6 +4092,18 @@ document.addEventListener('click', function (e) {
     }
 });
 
+// A segment's Pali (a clone, copy markers and variant taken out): several editions (megareader.js .dg-ed-line) one line
+// each, named as on screen - "BJT: ..." (owner 2026-11-07, via Ultra: the lines came out glued, "...migadāye.evaṃ me
+// sutaṃ..."); one text as it was, its spaces collapsed.
+function dgPaliText(paliClone, sep) {
+    var lines = Array.prototype.slice.call(paliClone.querySelectorAll('.dg-ed-line:not(.is-gap):not(.is-empty)'));
+    if (lines.length < 2) return paliClone.textContent.replace(/\s+/g, ' ').trim();
+    return lines.map(function (l) {
+        var t = l.textContent.replace(/\s+/g, ' ').trim();
+        return t && (l.dataset.tag ? l.dataset.tag + ': ' : '') + t;
+    }).filter(Boolean).join(sep);
+}
+
 // Markdown export of the open sutta - same DOM walk as the PDF above (span[id] in document order,
 // Pali + the first non-Pali translation of the current reader mode), emitted as Markdown so it
 // pastes into notes/docs. No external library needed. Headings become ##/###/####, segments plain
@@ -4151,7 +4163,7 @@ function dgSuttaText(plain) {
             paliClone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
             var varEl = paliClone.querySelector('.variant');
             if (varEl) { variant = varEl.textContent.replace(/\s+/g, ' ').trim(); varEl.remove(); }
-            pali = paliClone.textContent.replace(/\s+/g, ' ').trim();
+            pali = dgPaliText(paliClone, plain ? '\n' : '  \n');   // Markdown: a line break, not a new paragraph
         }
         var trans = cleanText(transEl);
         if (!pali && !trans) return;
