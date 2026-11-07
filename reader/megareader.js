@@ -1556,7 +1556,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
 
     externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral${eds('MS')}</a>`;
 
-    // TBW follows the explicit local mode. BB and AI are local-only links, never public fallbacks.
+    // TBW follows the explicit local mode. BB is a local-only link, never a public fallback.
     const isLocal = localStorage.getItem('forceLocal') === 'true';
     if (typeof tbwLinksData !== 'undefined') {
         const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
@@ -1569,9 +1569,7 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
             if (isLocal && !window.location.pathname.startsWith('/b/')) {
                 externalLinks += `<a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">BB &amp; Other Translations</a>`;
             }
-            if (isLocal) {
-                externalLinks += `<a target="_blank" class="sc-ext-link" title="AI" href="/ai/?q=${encodeURIComponent(slug)}${segSuffix}">AI</a>`;
-            }
+            // (no AI link: the AI drafts are the Translation Editor's only - owner 2026-11-07)
         }
     }
 
