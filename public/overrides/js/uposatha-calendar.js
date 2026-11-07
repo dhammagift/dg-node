@@ -72,7 +72,7 @@
       remNext: function (when, what) { return 'Next reminder: ' + when + ' — ' + what; }, remNone: 'No reminder is due in the coming weeks.',
       remAdvL: 'Remind in advance', remDayL: 'Remind on the Uposatha day', remToday: 'Uposatha today', remNx: function (when) { return 'next: ' + when; },
       remDenied: 'Notifications are blocked for this site — allow them in the browser settings.', remUnsupported: 'This browser cannot show notifications.',
-      remBody: function (when) { return 'begins ' + when; }, remTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
+      remBody: function (when) { return 'begins ' + when; }, remSince: function (when) { return 'from ' + when; }, remIn: function (h) { return h === 0 ? 'The Uposatha begins' : h === 24 ? 'Uposatha tomorrow' : h === 48 ? 'Uposatha in 2 days' : h === 1 ? 'Uposatha in an hour' : 'Uposatha in ' + h + ' hours'; }, remTwo: function (when) { return 'Two Uposatha days: the 14th and the 15th. The first begins ' + when; },
       full: 'Full moon', newm: 'New moon', fullL: 'full moon', newL: 'new moon', illum: 'illuminated', ld: 'lunar day', of15: 'of 15', until: 'until', qn: ['1st', '2nd'],
       phases: ['New moon', 'Waxing crescent', 'First quarter', 'Waxing gibbous', 'Full moon', 'Waning gibbous', 'Last quarter', 'Waning crescent'],
       tonight: 'The Uposatha begins this evening', tonightN: function (n) { return 'The ' + n + ' Uposatha begins this evening'; }, inL: 'in', next2: 'Next', inN: function (n) { return 'in ' + n + ' day' + (n > 1 ? 's' : ''); }, tomorrow: 'tomorrow', isToday: 'today',
@@ -128,7 +128,7 @@
       remNext: function (when, what) { return 'Ближайшее напоминание: ' + when + ' — ' + what; }, remNone: 'В ближайшие недели напоминаний нет.',
       remAdvL: 'Напомнить заранее', remDayL: 'Напомнить в день упосатхи', remToday: 'Сегодня упосатха', remNx: function (when) { return 'ближайшее: ' + when; },
       remDenied: 'Уведомления для сайта запрещены — разрешите их в настройках браузера.', remUnsupported: 'Этот браузер не умеет показывать уведомления.',
-      remBody: function (when) { return 'начинается ' + when; }, remTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
+      remBody: function (when) { return 'начинается ' + when; }, remSince: function (when) { return 'с ' + when; }, remIn: function (h) { return h === 0 ? 'Упосатха началась' : h === 24 ? 'Упосатха завтра' : h === 48 ? 'Упосатха через 2 дня' : h === 1 ? 'Упосатха через час' : 'Упосатха через ' + h + (h % 10 >= 2 && h % 10 <= 4 && (h < 12 || h > 14) ? ' часа' : ' часов'); }, remTwo: function (when) { return 'Две упосатхи: 14-й и 15-й дни. Первая начинается ' + when; },
       full: 'Полнолуние', newm: 'Новолуние', fullL: 'полнолуние', newL: 'новолуние', illum: 'освещено', ld: 'лунный день', of15: 'из 15', until: 'до', qn: ['1-я', '2-я'],
       phases: ['Новолуние', 'Растущий серп', 'Первая четверть', 'Растущая Луна', 'Полнолуние', 'Убывающая Луна', 'Последняя четверть', 'Убывающий серп'],
       tonight: 'Упосатха начинается сегодня вечером', tonightN: function (n) { return 'Упосатха (' + n + ') начинается сегодня вечером'; }, inL: 'через', next2: 'Следующая', inN: function (n) { var m = n % 10, h = n % 100; return 'через ' + n + ' ' + (m === 1 && h !== 11 ? 'день' : m >= 2 && m <= 4 && (h < 12 || h > 14) ? 'дня' : 'дней'); }, tomorrow: 'завтра', isToday: 'сегодня',
@@ -828,7 +828,9 @@
     rows.forEach(function (r) {
       if (!r.uposatha || !wantDay(r)) return;
       var key = r.ymd + (sutta() ? 's' : 'm');
-      if (state.rem.on && r.at.getTime() > now) out.push({ key: key, when: r.at.getTime() - lead, start: r.at, title: nameOf(r), two: twoUposathas(r, byYmd) });
+      // head: how far off it is, in the words of the chosen lead (owner 2026-11-07, Trello 4Qmzuy5H: a bare day name left one
+      // guessing whether it is now, tomorrow or in two days); the name moves into the text. A late one says the name (missedBody).
+      if (state.rem.on && r.at.getTime() > now) out.push({ key: key, when: r.at.getTime() - lead, start: r.at, title: nameOf(r), head: t.remIn(state.rem.lead), two: twoUposathas(r, byYmd) });
       if (state.rem.day) {
         var p = (sutta() ? ymdAdd(r.ymd, 1) : r.ymd).split('-').map(Number), when = zonedToUtc(p[0], p[1], p[2], +hm[1], state.tz).getTime() + hm[2] * 60000;
         if (when > now) out.push({ key: key + 'd', when: when, start: r.at, day: true, title: t.remToday, body: nameOf(r) });
@@ -877,13 +879,17 @@
     if (item.kind === 'part') return item.body;
     if (item.kind === 'beg') return state.meal.begLead === -1 ? t.mealBegSun(F.hm.format(item.start)) : state.meal.begLead ? t.mealBegBody(F.hm.format(item.start), state.meal.begLead) : t.mealBegZero(F.hm.format(item.start));
     if (item.day) return item.body; // 'Uposatha today': the day's name
-    return item.meal ? (state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start))) : (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start));
+    if (item.meal) return state.meal.lead ? t.mealRemBody(F.hm.format(item.start), state.meal.lead) : t.mealRemZero(F.hm.format(item.start));
+    var when = F.stamp.format(item.start);
+    if (item.two) return t.remTwo(when);   // it names the days itself
+    return item.head ? item.title + ' · ' + (state.rem.lead ? t.remBody : t.remSince)(when) : t.remBody(when);
   }
   // What a reminder that arrives late says: that the NOTIFICATION was missed, not the Uposatha (it is still ahead, or it would
   // not be here): the reminder's own title, then what it said. The food reminders say "in 30 min", which is no longer true when
   // it arrives late: they give the time instead.
   function missedBody(item, F) {
-    var what = item.kind === 'part' || !(item.meal || item.kind === 'beg') ? itemBody(item, F) : F.hm.format(item.start);
+    var what = item.head ? (item.two ? t.remTwo : t.remBody)(F.stamp.format(item.start))
+      : item.kind === 'part' || !(item.meal || item.kind === 'beg') ? itemBody(item, F) : F.hm.format(item.start);
     return item.title + ': ' + what;
   }
   // late: the page was opened after the reminder's time. It comes quietly and says it was missed, as in the app.
@@ -893,7 +899,7 @@
     var seen = []; try { seen = JSON.parse(store('dgUposathaNotified') || '[]'); } catch (e) { seen = []; }
     if (seen.indexOf(item.key) !== -1) return;
     seen.push(item.key); store('dgUposathaNotified', JSON.stringify(seen.slice(-40)));
-    showWeb(late ? t.missed : item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
+    showWeb(late ? t.missed : item.head || item.title, opts).catch(function () { /* the browser or the system refused: nothing more to do here */ });
     if (!late) playSound(soundOf(item));
   }
   // What has already been dealt with, by reminder key: the browser path writes a reminder here when it shows it (notify()
@@ -987,7 +993,7 @@
       Promise.all(sounds.map(function (k) { return channelFor(LN, k, k === state.rem.sound ? state.rem.ownChannel : ''); }).concat(anyMissed ? [channelFor(LN, 'none')] : [])).then(function (ch) {
         var items = due.map(function (item, i) {
           var late = missed(item);
-          return { id: NATIVE_ID_BASE + i, title: late ? t.missed : item.title, body: late ? missedBody(item, F) : itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
+          return { id: NATIVE_ID_BASE + i, title: late ? t.missed : item.head || item.title, body: late ? missedBody(item, F) : itemBody(item, F), channelId: late ? ch[sounds.length] : ch[sounds.indexOf(soundOf(item))],
             schedule: { at: new Date(Math.max(item.when, now + 3000)), allowWhileIdle: true }, extra: { url: '/uposatha-calendar', upo: !item.kind } }; // upo: iOS sets these first of its ~60
         });
         // Empty too (the reminders turned off) where the Uposatha app's bridge says it takes plans (dgPlans): it then clears the sound
