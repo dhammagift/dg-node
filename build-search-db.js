@@ -272,7 +272,10 @@ function collectSuttaMeta() {
         for (const segmentId of Object.keys(segments)) {
             if (/:0(?:\.\d+)?$/.test(segmentId)) {
                 const text = segments[segmentId];
-                if (typeof text === 'string' && text.trim()) meta.title = text;
+                // not a sentence: the first rule of a Vinaya section reads its recitation line last ("Ime kho
+                // panāyasmanto sekhiyā dhammā uddesaṁ āgacchanti."), Abhidhamma/KN books their homage - the rule's
+                // or book's own title stands before it (owner, Trello azFLgfXy: "Ime kho..." named sk1 in the TOC)
+                if (typeof text === 'string' && text.trim() && !/[.?!]\s*$|uddesaṁ āgacchanti/.test(text.trim())) meta.title = text;
             } else if (/:[1-9]/.test(segmentId)) break;
         }
     });

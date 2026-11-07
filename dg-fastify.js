@@ -3383,7 +3383,12 @@ function getBranchTitle(firstLeafId, slug, bookCode, idx, singleLeaf, trustSegme
     if (trustSegment) {
         // The colophon (see findColophonVaggaName) is the vagga's REAL name, straight from the
         // text — takes priority over the header-segment guess/humanized slug when it's there.
-        const colophonName = lastLeafId ? findColophonVaggaName(lastLeafId) : null;
+        let colophonName = lastLeafId ? findColophonVaggaName(lastLeafId) : null;
+        // ...unless the branch is a Vinaya kaṇḍa holding several vaggas: the colophon named its last one - Sekhiya was
+        // "Pādukavagga", Nissaggiya "Pattavagga", Pācittiya "Ratanavagga" (owner, Trello azFLgfXy). The first leaf's header
+        // names the kaṇḍa itself ("Sekhiyakaṇḍa"); the segment below takes it.
+        const firstData = colophonName && rootSegments(firstLeafId);
+        if (firstData && Object.keys(firstData).some(k => /:0\.\d+$/.test(k) && /kaṇḍa$/i.test(String(firstData[k]).trim()))) colophonName = null;
         if (colophonName) {
             title = colophonName;
         } else {
