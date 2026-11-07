@@ -385,10 +385,6 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
         // single letters inside a word: no padding, the word keeps its shape
         '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-ch{border-radius:2px;box-shadow:none}' +
         // a whole word missing at a line's edge: an empty mark, its bar drawn over the text (no width of its own)
-        // a word joined in one edition and written apart in the others (evamme / evaṃ me): a quiet thin line at the space,
-        // no fill, so it does not drown the letters (owner 2026-11-07, via Ultra)
-        'mark.dg-ed-sp{position:relative}mark.dg-ed-sp::before{content:"";position:absolute;top:.15em;bottom:.15em;left:calc(50% - 1px);width:2px;border-radius:1px;transition:background-color .45s ease}' +
-        '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-sp{background:transparent;box-shadow:none}#sutta.dg-diff-on mark.dg-ed-sp::before{background:color-mix(in srgb,#e3a008 80%,transparent)}' +
         'mark.dg-ed-edge{position:relative}mark.dg-ed-edge::before{content:"";position:absolute;top:0;bottom:0;left:-.15em;width:.3em;border-radius:2px;transition:background-color .45s ease}' +
         '#sutta.dg-diff-on mark.dg-ed-edge{background:transparent;box-shadow:none}#sutta.dg-diff-on mark.dg-ed-edge::before{background:var(--dg-mk)}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
@@ -484,8 +480,8 @@ function paintMarks(el, ranges) {
 // not in another, marked the majority at a join or a split, and depended on the editions' order. Now:
 // - a line is its letters (diffUnits): punctuation, quotes, apostrophes, hyphens and the Thai ฯ are no difference; a
 //   spelling convention is (m/ṃ, ṅ/ṃ, ñc/ṃc: owner); so is a space - a word joined in one edition and apart in most
-//   (evamme / evaṃ me, ariyasaccaṁ / ariya saccaṁ) gets a thin line at that place (owner 2026-11-07, via Ultra), a
-//   place an apostrophe or a hyphen stands in some edition is not counted (Bhagavatā ti / Bhagavatā'ti);
+//   (evamme / evaṃ me, ariyasaccaṁ / ariya saccaṁ), or the reverse, is marked at that place (owner 2026-11-07); a
+//   place an apostrophe, a quote or a hyphen stands in some edition is not counted (Bhagavatā ti / Bhagavatā'ti);
 // - every two texts are matched letter by letter; a letter is marked when no more than half the texts have it there
 //   (so with two texts every difference, and a tie marks both readings);
 // - where at least half the texts have letters this one lacks, the letter of ours in their place is marked
@@ -702,6 +698,14 @@ function diffMarks(texts) {
             if (g.whole * 2 >= g.c || !L) gaps.push(x);
             else on[Math.max(0, Math.min(L - 1, g.next * 2 >= g.c ? x : x - 1))] = true;
         });
+        // a word joined in one edition and apart in most (evamme / evaṃ me), or the reverse (owner 2026-11-07): the space
+        // this edition has and most have not is marked like a letter; where this edition joins and most have a space,
+        // the two letters on either side of it (eva[mm]e) - a thin line there "said nothing" (owner)
+        const joint = new Uint8Array(L), spaces = [];
+        r.split.forEach((v, x) => {
+            if (!v.v || (r.c + v.a) * 2 > r.c + v.v || gaps.includes(x)) return;
+            if (us[x].sp) spaces.push(x); else joint[x - 1] = joint[x] = 1;
+        });
         const ws = {};
         us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { a: x, b: x, on: 0, k: '' }; o.b = x; o.on += on[x]; o.k += u.k; });
         // words swapped round (mn88 9.4 "mayaṁ taṁ" / "taṃ mayaṃ"): the moved word is marked where it stands; the place the
@@ -717,17 +721,15 @@ function diffMarks(texts) {
             Object.values(ws).forEach(o => {
                 if (o.on * 2 > o.b - o.a + 1) return ranges.push([mine[o.a].s, mine[o.b].e, 'dg-ed-diff']);
                 for (let x = o.a; x <= o.b; x++) {
-                    if (!on[x]) continue;
+                    if (!on[x] && !joint[x]) continue;
                     const last = ranges[ranges.length - 1];
-                    if (on[x - 1] && x > o.a && last && last[1] === mine[x].s) last[1] = mine[x].e;
+                    if ((on[x - 1] || joint[x - 1]) && x > o.a && last && last[1] === mine[x].s) last[1] = mine[x].e;
                     else ranges.push([mine[x].s, mine[x].e, 'dg-ed-diff dg-ed-ch']);
                 }
             });
-            r.split.forEach((v, x) => {
-                if (!v.v || (r.c + v.a) * 2 > r.c + v.v || gaps.includes(x)) return;
-                if (!us[x].sp) return ranges.push([mine[x].s, mine[x].s, 'dg-ed-diff dg-ed-sp']);   // joined here, apart in most
+            spaces.forEach(x => {
                 const s = mine[x - 1].e, sp = t.slice(s, mine[x].s).search(/\s/), at = s + Math.max(sp, 0);
-                ranges.push([at, at + 1, 'dg-ed-diff dg-ed-sp']);
+                ranges.push([at, at + 1, 'dg-ed-diff dg-ed-ch']);
             });
             gaps.forEach(x => {
                 if (x === 0 || x === L) return ranges.push(L ? x ? [mine[L - 1].e, mine[L - 1].e, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [mine[0].s, mine[0].s, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [0, 0, 'dg-ed-diff dg-ed-gap dg-ed-edge']);

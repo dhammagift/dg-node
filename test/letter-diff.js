@@ -10,7 +10,7 @@ const show = texts => ctx.diffMarks(texts).map((r, i) => {
     let t = texts[i];
     if (t === undefined) return t;
     (r || []).slice().sort((a, b) => b[0] - a[0]).forEach(([a, b, c]) => {
-        t = c.includes('dg-ed-sp') ? t.slice(0, a) + '|' + t.slice(b) : a === b ? t.slice(0, a) + '∅' + t.slice(a) : c.includes('gap') ? t.slice(0, a) + '⟨' + t.slice(a, b) + '⟩' + t.slice(b) : t.slice(0, a) + '[' + t.slice(a, b) + ']' + t.slice(b);
+        t = a === b ? t.slice(0, a) + '∅' + t.slice(a) : c.includes('gap') ? t.slice(0, a) + '⟨' + t.slice(a, b) + '⟩' + t.slice(b) : t.slice(0, a) + '[' + t.slice(a, b) + ']' + t.slice(b);
     });
     return t;
 });
@@ -18,14 +18,14 @@ const eq = (texts, want) => { if (process.env.SHOW) { const got = show(texts); i
     assert.deepStrictEqual(show(texts), want);
     assert.deepStrictEqual(show(texts.slice().reverse()), want.slice().reverse());   // the editions' order changes nothing
 };
-// punctuation, quotes, case, ṁ/ṃ, an apostrophe: no difference; a word joined in one edition and apart in most: a thin line,
-// | (owner 2026-11-07, via Ultra; mn88 20.3, dn22 18.33)
+// punctuation, quotes, case, ṁ/ṃ, an apostrophe: no difference; a word apart in one edition and joined in most: its
+// space marked, the reverse: the two letters either side (owner 2026-11-07; mn88 20.3, dn22 18.33)
 eq(['“handa ca dāni mayaṁ, bhante', '‘handa cadāni mayaṃ bhante', 'handa cadāni mayaṃ bhante'],
-    ['“handa ca|dāni mayaṁ, bhante', '‘handa cadāni mayaṃ bhante', 'handa cadāni mayaṃ bhante']);
-eq(['Katamañca, bhikkhave, yampicchaṁ', 'katamañca bhikkhave yam p’ icchaṃ'], ['Katamañca, bhikkhave, yam|picchaṁ', 'katamañca bhikkhave yam|p’ icchaṃ']);
+    ['“handa ca[ ]dāni mayaṁ, bhante', '‘handa cadāni mayaṃ bhante', 'handa cadāni mayaṃ bhante']);
+eq(['Katamañca, bhikkhave, yampicchaṁ', 'katamañca bhikkhave yam p’ icchaṃ'], ['Katamañca, bhikkhave, ya[mp]icchaṁ', 'katamañca bhikkhave yam[ ]p’ icchaṃ']);
 // the minority's letter only, the same in every text that has it (dn22 1.1: evamme, Evam me against evaṁ me)
 eq(['Evaṁ me sutaṁ—', 'evaṃ me sutaṃ:', 'evamme sutaṃ', 'Evam me sutaṃ.', 'Evaṃ me sutaṃ'],
-    ['Evaṁ me sutaṁ—', 'evaṃ me sutaṃ:', 'eva[m]|me sutaṃ', 'Eva[m] me sutaṃ.', 'Evaṃ me sutaṃ']);
+    ['Evaṁ me sutaṁ—', 'evaṃ me sutaṃ:', 'eva[mm]e sutaṃ', 'Eva[m] me sutaṃ.', 'Evaṃ me sutaṃ']);
 // letters the majority has and this text lacks: the letter in their place (sāvatthi[ṃ]; an aspirate's h: its consonant)
 eq(['sāvatthiyaṁ piṇḍāya', 'sāvatthiṃ piṇḍāya', 'sāvatthiyaṃ piṇḍāya'], ['sāvatthiyaṁ piṇḍāya', 'sāvatthi[ṃ] piṇḍāya', 'sāvatthiyaṃ piṇḍāya']);
 eq(['kammāsadhammaṁ nāma', 'kammāsadammaṃ nāma', 'kammāsadhammaṃ nāma'], ['kammāsadhammaṁ nāma', 'kammāsa[d]ammaṃ nāma', 'kammāsadhammaṃ nāma']);
@@ -43,15 +43,15 @@ eq(['bhante āyasmā ānando', 'bhante āyasmā ānando', 'bhante ānando'], ['b
 eq(['taṃ tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṁ'], ['[taṃ] tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṁ']);
 eq(['daṇḍalakkhaṇaṁ satthalakkhaṇaṁ asilakkhaṇaṁ', 'daṇḍalakkhaṇaṃ asilakkhaṇaṃ', 'daṇḍalakkhaṇaṃ satthalakkhaṇaṃ asilakkhaṇaṃ'],
     ['daṇḍalakkhaṇaṁ satthalakkhaṇaṁ asilakkhaṇaṁ', 'daṇḍalakkhaṇaṃ⟨ ⟩asilakkhaṇaṃ', 'daṇḍalakkhaṇaṃ satthalakkhaṇaṃ asilakkhaṇaṃ']);
-eq(['kiṁ nu kho', 'kiṃ nu kho', 'athakho kinnu kho'], ['kiṁ nu kho', 'kiṃ nu kho', '[athakho] ki[n]|nu kho']);
+eq(['kiṁ nu kho', 'kiṃ nu kho', 'athakho kinnu kho'], ['kiṁ nu kho', 'kiṃ nu kho', '[athakho] ki[nn]u kho']);
 eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhisaṅkhalikaṃ', 'aṭṭhi-saṅkhalikaṃ'],
     ['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhi[s]aṅkhalikaṃ', 'aṭṭhi-[s]aṅkhalikaṃ']);
 eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
 // words swapped round: the moved word whole, not a letter of it (mn88 9.4: [mayaṁ] [t]aṁ), and no gap where the others have it
 eq(['bhāsanti, mayaṁ taṁ sārato', 'bhāsanti, taṃ mayaṃ sārato'], ['bhāsanti, mayaṁ [taṁ] sārato', 'bhāsanti, [taṃ] mayaṃ sārato']);
-// a quote is no space: bhikkhavoti against “bhikkhavo”ti gets no line; etad avoca against etadavoca does (dn22 1.4-1.5)
+// a quote is no space: bhikkhavoti against “bhikkhavo”ti gets no mark; etad avoca against etadavoca does (dn22 1.4-1.5)
 eq(['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.'], ['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.']);
-eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad|avoca:']);
+eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad[ ]avoca:']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
 eq(['โส ภควา ฯ', 'โส ภควา', 'โส ภควโต'], ['โส ภควา ฯ', 'โส ภควา', 'โส ภคว[โต]']);
