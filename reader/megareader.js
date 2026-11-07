@@ -498,19 +498,11 @@ function diffUnits(t) {
         if (m[0] === 'ฯ') continue;
         const gap = t.slice(last, m.index);
         if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(gap)) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
-        // before this letter: 1 apart (a space, a dash, a quote), 0 joined, null a hyphen or an apostrophe - PTS's own
-        // marks of a compound and of an elision (n' atthi, pan' eke: Bhagavatā'ti = Bhagavatā ti, owner), not counted
-        const sp = /[-’'`]/.test(gap) ? null : gap ? 1 : 0;
+        // before this letter: 1 apart (a space, a dash, a quote or an apostrophe: ānando”ti, Bhagavatā'ti = Bhagavatā ti -
+        // owner 2026-11-07), 0 joined, null a hyphen (PTS's compounds: not counted)
+        const sp = /-/.test(gap) ? null : gap ? 1 : 0;
         us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w, sp });
         last = m.index + m[0].length;
-    }
-    // an enclitic apart or joined is each edition's convention, not a reading (ekam pi / ekampi, bhikkhavo'ti /
-    // bhikkhavoti: PTS's lines drowned in such marks - Ultra's QA, owner 2026-11-07): the place before it is not counted
-    for (let x = 1; x < us.length; x++) {
-        if (us[x].sp !== 1) continue;
-        let e = x, k = us[x].k;   // the letters up to the next place apart (an apostrophe parts here, bhikkhavo'ti)
-        while (e + 1 < us.length && us[e + 1].sp === 0) k += us[++e].k;
-        if (/^(n?ti|pi|ca|vā|va|eva|hi)$/.test(k)) us[x].sp = null;
     }
     return us;
 }

@@ -22,7 +22,7 @@ const eq = (texts, want) => { if (process.env.SHOW) { const got = show(texts); i
 // space marked, the reverse: the two letters either side (owner 2026-11-07; mn88 20.3, dn22 18.33)
 eq(['“handa ca dāni mayaṁ, bhante', '‘handa cadāni mayaṃ bhante', 'handa cadāni mayaṃ bhante'],
     ['“handa ca[ ]dāni mayaṁ, bhante', '‘handa cadāni mayaṃ bhante', 'handa cadāni mayaṃ bhante']);
-eq(['Katamañca, bhikkhave, yampicchaṁ', 'katamañca bhikkhave yam p’ icchaṃ'], ['Katamañca, bhikkhave, ya[mp]icchaṁ', 'katamañca bhikkhave yam[ ]p’ icchaṃ']);
+eq(['Katamañca, bhikkhave, yampicchaṁ', 'katamañca bhikkhave yam p’ icchaṃ'], ['Katamañca, bhikkhave, ya[mpi]cchaṁ', 'katamañca bhikkhave yam[ ]p’[ ]icchaṃ']);
 // the minority's letter only, the same in every text that has it (dn22 1.1: evamme, Evam me against evaṁ me)
 eq(['Evaṁ me sutaṁ—', 'evaṃ me sutaṃ:', 'evamme sutaṃ', 'Evam me sutaṃ.', 'Evaṃ me sutaṃ'],
     ['Evaṁ me sutaṁ—', 'evaṃ me sutaṃ:', 'eva[mm]e sutaṃ', 'Eva[m] me sutaṃ.', 'Evaṃ me sutaṃ']);
@@ -49,11 +49,11 @@ eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasa�
 eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
 // words swapped round: the moved word whole, not a letter of it (mn88 9.4: [mayaṁ] [t]aṁ), and no gap where the others have it
 eq(['bhāsanti, mayaṁ taṁ sārato', 'bhāsanti, taṃ mayaṃ sārato'], ['bhāsanti, mayaṁ [taṁ] sārato', 'bhāsanti, [taṃ] mayaṃ sārato']);
-// bhikkhavoti against “bhikkhavo”ti: an enclitic, no mark; etad avoca against etadavoca is marked (dn22 1.4-1.5)
-eq(['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.'], ['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.']);
-// an enclitic apart or joined is each edition's convention (PTS ekam pi), not marked; a quote parts like a space
-eq(['ekampi jātiṁ dvepi jātiyo', 'ekam pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo'], ['ekampi jātiṁ dvepi jātiyo', 'ekam pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo']);
-eq(['ānando”ti', 'ānandoti', 'Ānando ti', 'ānando’ti'], ['ānando”ti', 'ānandoti', 'Ānando ti', 'ānando’ti']);
+// a quote or an apostrophe parts like a space: bhikkhav[ot]i against “bhikkhavo”ti; etad[ ]avoca against etadavoca (dn22 1.4-1.5)
+eq(['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.'], ['“bhikkhavo”ti.', 'bhikkhav[ot]i.', '‘bhikkhavo’ti.']);
+// an enclitic apart or joined is marked like any word (owner 2026-11-07: PTS ekam pi; Ānando ti is with the majority)
+eq(['ekampi jātiṁ dvepi jātiyo', 'ekam pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo'], ['ekampi jātiṁ dv[ep]i jātiyo', 'ekam[ ]pi jātiṃ dve pi jātiyo', 'ekampi jātiṃ dve’pi jātiyo']);
+eq(['ānando”ti', 'ānandoti', 'Ānando ti', 'ānando’ti'], ['ānando”ti', 'ānand[ot]i', 'Ānando ti', 'ānando’ti']);
 eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad[ ]avoca:']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
