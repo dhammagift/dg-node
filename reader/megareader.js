@@ -633,7 +633,7 @@ function diffMarks(texts) {
     const byKey = new Map();
     lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
     const rs = [...byKey.keys()].sort().map(k => byKey.get(k));
-    rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0 })); });
+    rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0, words: new Set() })); });
     const count = (r, o, match) => {   // what reading o says of reading r's letters
         const us = r.us, L = us.length, ous = o.us;
         let px = -1, py = -1;
@@ -647,7 +647,7 @@ function diffMarks(texts) {
                 const edge = x === 0 || x === L || us[x - 1].w !== us[x].w;
                 const g = r.gap[x];
                 g.c += o.c;
-                if (edge && starts && ends) g.whole += o.c;
+                if (edge && starts && ends) { g.whole += o.c; g.words.add(ous.slice(b0, b1 + 1).map(u => u.k).join('')); }
                 // an aspirate's missing h is the consonant's before it (kammāsa[d]ammaṁ against kammāsadhammaṁ)
                 if ((!edge || starts) && !(b0 === b1 && ous[b0].k === 'h' && !edge)) g.next += o.c;
             }
@@ -669,7 +669,15 @@ function diffMarks(texts) {
             else on[Math.max(0, Math.min(L - 1, g.next * 2 >= g.c ? x : x - 1))] = true;
         });
         const ws = {};
-        us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { a: x, b: x, on: 0 }; o.b = x; o.on += on[x]; });
+        us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { a: x, b: x, on: 0, k: '' }; o.b = x; o.on += on[x]; o.k += u.k; });
+        // words swapped round (mn88 9.4 "mayaṁ taṁ" / "taṃ mayaṃ"): the moved word is marked where it stands; the place the
+        // others have it gets no mark of its own - a marked space next to an unmarked word "showed a difference where
+        // there is none" (owner 2026-11-07)
+        const moved = new Set(Object.values(ws).filter(o => o.on * 2 > o.b - o.a + 1).map(o => o.k));
+        for (let q = gaps.length - 1; q >= 0; q--) {
+            const g = r.gap[gaps[q]];
+            if (g.words.size && [...g.words].every(k => moved.has(k))) gaps.splice(q, 1);
+        }
         r.at.forEach(i => {
             const t = texts[i], mine = lines[i], ranges = [];
             Object.values(ws).forEach(o => {
