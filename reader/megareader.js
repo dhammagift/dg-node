@@ -385,6 +385,10 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
         // single letters inside a word: no padding, the word keeps its shape
         '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-ch{border-radius:2px;box-shadow:none}' +
         // a whole word missing at a line's edge: an empty mark, its bar drawn over the text (no width of its own)
+        // a word joined in one edition and written apart in the others (evamme / evaṃ me): a quiet thin line at the space,
+        // no fill, so it does not drown the letters (owner 2026-11-07, via Ultra)
+        'mark.dg-ed-sp{position:relative}mark.dg-ed-sp::before{content:"";position:absolute;top:.15em;bottom:.15em;left:calc(50% - 1px);width:2px;border-radius:1px;transition:background-color .45s ease}' +
+        '#sutta.dg-diff-on mark.dg-ed-diff.dg-ed-sp{background:transparent;box-shadow:none}#sutta.dg-diff-on mark.dg-ed-sp::before{background:color-mix(in srgb,#e3a008 80%,transparent)}' +
         'mark.dg-ed-edge{position:relative}mark.dg-ed-edge::before{content:"";position:absolute;top:0;bottom:0;left:-.15em;width:.3em;border-radius:2px;transition:background-color .45s ease}' +
         '#sutta.dg-diff-on mark.dg-ed-edge{background:transparent;box-shadow:none}#sutta.dg-diff-on mark.dg-ed-edge::before{background:var(--dg-mk)}' +
         '@media (prefers-reduced-motion:reduce){mark.dg-ed-diff{transition:none}}';
@@ -478,8 +482,10 @@ function paintMarks(el, ranges) {
 // The majority is counted letter by letter over all the texts of the segment (owner 2026-11-07, via Ultra, Trello
 // qFyguxVl): words compared first and then letters against one "closest" text marked one reading in one edition and
 // not in another, marked the majority at a join or a split, and depended on the editions' order. Now:
-// - a line is its letters (diffUnits), nothing else: spaces, punctuation, quotes, apostrophes, hyphens and the Thai ฯ
-//   are no difference ("ca dāni" = "cadāni", "evam me" = "evamme"); a spelling convention is (m/ṃ, ṅ/ṃ, ñc/ṃc: owner);
+// - a line is its letters (diffUnits): punctuation, quotes, apostrophes, hyphens and the Thai ฯ are no difference; a
+//   spelling convention is (m/ṃ, ṅ/ṃ, ñc/ṃc: owner); so is a space - a word joined in one edition and apart in most
+//   (evamme / evaṃ me, ariyasaccaṁ / ariya saccaṁ) gets a thin line at that place (owner 2026-11-07, via Ultra), a
+//   place an apostrophe or a hyphen stands in some edition is not counted (Bhagavatā ti / Bhagavatā'ti);
 // - every two texts are matched letter by letter; a letter is marked when no more than half the texts have it there
 //   (so with two texts every difference, and a tie marks both readings);
 // - where at least half the texts have letters this one lacks, the letter of ours in their place is marked
@@ -494,8 +500,11 @@ function diffUnits(t) {
     let w = 0, last = 0;
     for (let m; (m = re.exec(t));) {
         if (m[0] === 'ฯ') continue;
-        if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(t.slice(last, m.index))) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
-        us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w });
+        const gap = t.slice(last, m.index);
+        if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(gap)) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
+        // before this letter: 1 apart, 0 joined, null a hyphen or an apostrophe (either way, not counted)
+        const sp = /[-’'‘`]/.test(gap) ? null : gap ? 1 : 0;
+        us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w, sp });
         last = m.index + m[0].length;
     }
     return us;
@@ -652,9 +661,9 @@ function diffMarks(texts) {
     // the same letters in the same words are one reading, counted as many times as it is shown; the readings in the
     // order of their letters (not of the editions)
     const byKey = new Map();
-    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
+    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + (x && u.sp === null ? '-' : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
     const rs = [...byKey.keys()].sort().map(k => byKey.get(k));
-    rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0, words: new Set() })); });
+    rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0, words: new Set() })); r.split = r.us.map(() => ({ v: 0, a: 0 })); });
     const count = (r, o, match) => {   // what reading o says of reading r's letters
         const us = r.us, L = us.length, ous = o.us;
         let px = -1, py = -1;
@@ -662,6 +671,9 @@ function diffMarks(texts) {
             const y = x < L ? match[x] : ous.length;
             if (y < 0) continue;
             if (x < L) r.support[x] += o.c;
+            // apart or joined before this letter: o's say, where its letters face ours (the same, or changed ones as many
+            // as ours: Evam me against Evaṁ me) and neither has a hyphen or an apostrophe there
+            if (x && x < L && y && x - px === y - py && us[x].sp !== null && ous[y].sp !== null) { r.split[x].v += o.c; if (!us[x].sp === !ous[y].sp) r.split[x].a += o.c; }
             if (px === x - 1 && y > py + 1) {   // o has letters here that r has not (not a changed letter: r has none here)
                 const b0 = py + 1, b1 = y - 1;
                 const starts = b0 === 0 || ous[b0 - 1].w !== ous[b0].w, ends = b1 === ous.length - 1 || ous[b1 + 1].w !== ous[b1].w;
@@ -709,6 +721,12 @@ function diffMarks(texts) {
                     if (on[x - 1] && x > o.a && last && last[1] === mine[x].s) last[1] = mine[x].e;
                     else ranges.push([mine[x].s, mine[x].e, 'dg-ed-diff dg-ed-ch']);
                 }
+            });
+            r.split.forEach((v, x) => {
+                if (!v.v || (r.c + v.a) * 2 > r.c + v.v || gaps.includes(x)) return;
+                if (!us[x].sp) return ranges.push([mine[x].s, mine[x].s, 'dg-ed-diff dg-ed-sp']);   // joined here, apart in most
+                const s = mine[x - 1].e, sp = t.slice(s, mine[x].s).search(/\s/), at = s + Math.max(sp, 0);
+                ranges.push([at, at + 1, 'dg-ed-diff dg-ed-sp']);
             });
             gaps.forEach(x => {
                 if (x === 0 || x === L) return ranges.push(L ? x ? [mine[L - 1].e, mine[L - 1].e, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [mine[0].s, mine[0].s, 'dg-ed-diff dg-ed-gap dg-ed-edge'] : [0, 0, 'dg-ed-diff dg-ed-gap dg-ed-edge']);
