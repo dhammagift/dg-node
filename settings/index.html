@@ -989,6 +989,14 @@ function inheritedZoom(){
 }
 // The parent re-zooms after a change made here (its 'storage' event) — this frame then sees a resize.
 addEventListener('resize', () => applyUiScale(parseInt(localStorage.getItem('uiScale')) || 100));
+// A size set elsewhere - the app page's pinch, which steps the page this sheet sits on - reaches this frame as a storage
+// event only: these settings themselves then kept the old size and figure (owner 2026-11-07: «сам текст настроек не меняется»).
+addEventListener('storage', (e) => {
+  if (e.key !== 'uiScale') return;
+  scale = parseInt(e.newValue) || 100;
+  applyUiScale(scale);
+  $('#sizeVal').textContent = scale + '%';
+});
 function setScale(v){
   scale = Math.min(250, Math.max(20, v));  // down to 20 % (owner 2026-11-07: 70 was three steps)
   applyUiScale(scale);

@@ -13,12 +13,17 @@
     // every page, build-assets.js injectPinchEverywhere) zooms itself: the same uiScale, 20-250 %, as a CSS zoom of <html>.
     function ownStep(delta) {
         var v = Math.min(250, Math.max(20, scale() + delta));
+        // Settings (page or the app's sheet): its own setter keeps its figure and the next +/- in step
+        if (typeof window.applyUiScale === 'function' && typeof window.setScale === 'function' && document.getElementById('sizeVal')) { window.setScale(v); return; }
         try { localStorage.setItem('uiScale', String(v)); } catch (e) { /* private mode: this page only */ }
-        if (typeof window.applyUiScale === 'function') window.applyUiScale(v);   // Settings opened as a page
+        if (typeof window.applyUiScale === 'function') window.applyUiScale(v);
         else document.documentElement.style.zoom = String(v / 100);
     }
     function stepper() {
         if (typeof window.dgStepUiScale === 'function') return window.dgStepUiScale;
+        // Settings step themselves; the app page under the sheet follows by its storage event. Stepping the page under it
+        // left the sheet at the old size - only its text sample changed (owner 2026-11-07).
+        if (typeof window.applyUiScale === 'function') return ownStep;
         try { if (window.parent !== window && typeof window.parent.dgStepUiScale === 'function') return window.parent.dgStepUiScale; } catch (e) { /* another origin */ }
         return ownStep;
     }
