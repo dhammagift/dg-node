@@ -36,6 +36,16 @@ eq(['ekaṁ samayaṁ bhagavā kurūsu', 'ekaṃ bhagavā kurūsu', 'ekaṃ sama
 eq(['Katamañca, bhikkhave, yampicchaṁ', 'yampicchaṃ', 'katamañca bhikkhave yampicchaṃ'],
     ['Katamañca, bhikkhave, yampicchaṁ', '∅yampicchaṃ', 'katamañca bhikkhave yampicchaṃ']);
 eq(['bhagavā etadavoca', 'bhagavā etadavoca', 'bhagavā kho etadavoca'], ['bhagavā etadavoca', 'bhagavā etadavoca', 'bhagavā [kho] etadavoca']);
+// a missing or extra word is a gap or a whole word, not letters of its neighbour (Ultra's QA 2026-11-07: mn88 4.5,
+// dn22 21.34, dn2 57.2); a changed letter one mark (pj1 2.1.12 ki[n]nu); a hyphen or a dash moves no mark (dn22 9.1, dn2 87.2)
+eq(['bhante āyasmā ānando', 'bhante āyasmā ānando', 'bhante ānando'], ['bhante āyasmā ānando', 'bhante āyasmā ānando', 'bhante⟨ ⟩ānando']);
+eq(['taṃ tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṁ'], ['[taṃ] tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṃ', 'tatiyaṃ jhānaṁ']);
+eq(['daṇḍalakkhaṇaṁ satthalakkhaṇaṁ asilakkhaṇaṁ', 'daṇḍalakkhaṇaṃ asilakkhaṇaṃ', 'daṇḍalakkhaṇaṃ satthalakkhaṇaṃ asilakkhaṇaṃ'],
+    ['daṇḍalakkhaṇaṁ satthalakkhaṇaṁ asilakkhaṇaṁ', 'daṇḍalakkhaṇaṃ⟨ ⟩asilakkhaṇaṃ', 'daṇḍalakkhaṇaṃ satthalakkhaṇaṃ asilakkhaṇaṃ']);
+eq(['kiṁ nu kho', 'kiṃ nu kho', 'athakho kinnu kho'], ['kiṁ nu kho', 'kiṃ nu kho', '[athakho] ki[n]nu kho']);
+eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhisaṅkhalikaṃ', 'aṭṭhi-saṅkhalikaṃ'],
+    ['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhi[s]aṅkhalikaṃ', 'aṭṭhi-[s]aṅkhalikaṃ']);
+eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
 eq(['โส ภควา ฯ', 'โส ภควา', 'โส ภควโต'], ['โส ภควา ฯ', 'โส ภควา', 'โส ภคว[โต]']);

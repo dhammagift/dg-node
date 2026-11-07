@@ -490,7 +490,7 @@ function diffUnits(t) {
     let w = 0, last = 0;
     for (let m; (m = re.exec(t));) {
         if (m[0] === 'ฯ') continue;
-        if (us.length && /[\s-]/.test(t.slice(last, m.index))) w++;
+        if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(t.slice(last, m.index))) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
         us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w });
         last = m.index + m[0].length;
     }
@@ -507,7 +507,7 @@ function lcsMatch(a, b) {   // for each item of a, the index of its partner in a
 }
 // the same as lcsMatch for two sequences that mostly agree, in time and memory by the number of differences (Myers'
 // O(ND) diff): a table of every letter by every letter took ~100 ms a long segment of dn2 with six editions. null when
-// they differ in more than maxD places
+// they differ in more than maxD places. Here it tells how far apart two lines are (gapAlign's band)
 function myersMatch(a, b, maxD) {
     const n = a.length, m = b.length, off = n + m + 1, V = new Int32Array(2 * off + 1), trace = [];
     for (let d = 0; d <= Math.min(n + m, maxD); d++) {
@@ -529,12 +529,83 @@ function myersMatch(a, b, maxD) {
     }
     return null;
 }
-// a's units matched to b's letter by letter; two lines that hardly agree (more than 300 differences), first by the words
-// that agree (LCS over whole words), then letter by letter between them
+// The letters of two texts matched (only the same letters count as matched), each difference put where a reader looks
+// for it: a changed letter against a changed letter, missing letters in one run rather than here and there, and that
+// run a whole word where it can be one (Ultra's QA 2026-11-07: a longest common subsequence alone gave "bhante
+// ā[n]ando" for a missing āyasmā, "ta[ṃ] t[at]iyaṃ" for an extra taṃ, evamme against evaṁme both m). Costs: a changed
+// letter 1, a missing letter 1, a run of them 1 more, half less where it begins a word and half where it ends one.
+// Searched only within w letters of the longest common subsequence's path (guide: a's matches in b), so a long line
+// costs its length times 2w - the whole table took 370 ms a segment of dn2 with six editions.
+function gapAlign(a, b, guide, w) {
+    const N = a.length, M = b.length, INF = 1e9, lo = new Int32Array(N + 1).fill(M), hi = new Int32Array(N + 1);
+    const add = (i, j) => { if (j < lo[i]) lo[i] = j; if (j > hi[i]) hi[i] = j; };
+    let pi = 0, pj = 0;
+    const span = (x, y) => { for (let i = pi; i <= x; i++) { add(i, pj); add(i, y); } };
+    guide.forEach((y, x) => { if (y < 0) return; span(x, y); pi = x + 1; pj = y + 1; });
+    span(N, M);
+    const base = new Int32Array(N + 2);
+    for (let i = 0; i <= N; i++) { lo[i] = Math.max(0, lo[i] - w); hi[i] = Math.min(M, hi[i] + w); base[i + 1] = base[i] + hi[i] - lo[i] + 1; }
+    const size = base[N + 1], at = (i, j) => j >= lo[i] && j <= hi[i] ? base[i] + j - lo[i] : -1;
+    const cM = new Float64Array(size).fill(INF), cX = new Float64Array(size).fill(INF), cY = new Float64Array(size).fill(INF);
+    const fM = new Uint8Array(size), fX = new Uint8Array(size), fY = new Uint8Array(size);   // came from: 0 a pair, 1 a's run, 2 b's run
+    // per letter: the cost of a run beginning at it (oa, ob), of a run ending at it (za, zb)
+    const opens = us => Float64Array.from(us, (u, x) => x === 0 || u.w !== us[x - 1].w ? 0.5 : 1);
+    const shuts = us => Float64Array.from(us, (u, x) => x === us.length - 1 || u.w !== us[x + 1].w ? 0 : 0.5);
+    const oa = opens(a), ob = opens(b), za = shuts(a), zb = shuts(b), ka = a.map(u => u.k), kb = b.map(u => u.k);
+    cM[at(0, 0)] = 0;
+    for (let i = 0; i <= N; i++) for (let j = lo[i], h = base[i], l1 = i ? lo[i - 1] : 0, h1 = i ? hi[i - 1] : -1, b1 = i ? base[i - 1] - l1 : 0; j <= hi[i]; j++, h++) {
+        let p = 0, m = 0, x = 0, y = 0;   // p: the cell before (i-1, j-1 / i-1, j / i, j-1), when in the band
+        if (i && j && j - 1 >= l1 && j - 1 <= h1 && (p = b1 + j - 1) >= 0) {   // a pair
+            m = cM[p]; x = i > 1 && cX[p] < INF ? cX[p] + za[i - 2] : INF; y = j > 1 && cY[p] < INF ? cY[p] + zb[j - 2] : INF;
+            const c = ka[i - 1] === kb[j - 1] ? 0 : 1;
+            if (m <= x && m <= y) { cM[h] = m + c; fM[h] = 0; } else if (x <= y) { cM[h] = x + c; fM[h] = 1; } else { cM[h] = y + c; fM[h] = 2; }
+        }
+        if (i && j >= l1 && j <= h1 && (p = b1 + j) >= 0) {   // a's letter alone
+            const o = oa[i - 1];
+            m = cM[p] + o; x = cX[p]; y = j && cY[p] < INF ? cY[p] + zb[j - 1] + o : INF;
+            if (m <= x && m <= y) { cX[h] = m + 1; fX[h] = 0; } else if (x <= y) { cX[h] = x + 1; fX[h] = 1; } else { cX[h] = y + 1; fX[h] = 2; }
+        }
+        if (j && j > lo[i] && (p = h - 1) >= 0) {   // b's letter alone
+            const o = ob[j - 1];
+            m = cM[p] + o; x = i && cX[p] < INF ? cX[p] + za[i - 1] + o : INF; y = cY[p];
+            if (m <= x && m <= y) { cY[h] = m + 1; fY[h] = 0; } else if (x <= y) { cY[h] = x + 1; fY[h] = 1; } else { cY[h] = y + 1; fY[h] = 2; }
+        }
+    }
+    const match = new Array(N).fill(-1);
+    let i = N, j = M, h = at(N, M), s = cM[h] <= cX[h] && cM[h] <= cY[h] ? 0 : cX[h] <= cY[h] ? 1 : 2;
+    while (i || j) {
+        h = at(i, j);
+        if (s === 0) { s = fM[h]; i--; j--; if (a[i].k === b[j].k) match[i] = j; }
+        else if (s === 1) { s = fX[h]; i--; }
+        else { s = fY[h]; j--; }
+    }
+    return match;
+}
+// a's units matched to b's letter by letter: the longest common subsequence first, then gapAlign round each place
+// where they differ - a stretch that agrees for more than 40 letters keeps its middle as it is, so a long line costs
+// its differences, not its length (the whole line through gapAlign took ~50 ms a segment of dn2 with six editions).
+// Two lines that hardly agree (more than 300 differences): first by the words that agree (LCS over whole words), then
+// letter by letter between them
 function alignUnits(a, b) {
     const keys = us => us.map(u => u.k);
     const fast = myersMatch(keys(a), keys(b), 300);
-    if (fast) return fast;
+    if (fast) {
+        const N = a.length, W = 20, match = fast.slice();
+        let x0 = 0, y0 = 0;
+        const redo = (x1, y1) => {   // a[x0..x1) against b[y0..y1), unless it agrees letter for letter
+            let same = x1 - x0 === y1 - y0;
+            for (let q = x0; q < x1 && same; q++) same = fast[q] === y0 + q - x0;
+            if (!same) gapAlign(a.slice(x0, x1), b.slice(y0, y1), fast.slice(x0, x1).map(y => y < 0 ? -1 : y - y0), 16).forEach((y, q) => { match[x0 + q] = y < 0 ? -1 : y + y0; });
+        };
+        for (let x = 0; x < N; x++) {
+            if (fast[x] < 0) continue;
+            let e = x; while (e + 1 < N && fast[e + 1] === fast[e] + 1) e++;
+            if (e - x + 1 > 2 * W) { redo(x + W, fast[x] + W); x0 = e + 1 - W; y0 = fast[e] + 1 - W; }
+            x = e;
+        }
+        redo(N, b.length);
+        return match;
+    }
     const words = us => { const ws = []; us.forEach((u, x) => { const o = ws[u.w] = ws[u.w] || { k: '', x }; o.k += u.k; o.n = x - o.x + 1; }); return ws; };
     const wa = words(a), wb = words(b), match = new Array(a.length).fill(-1);
     let pa = 0, pb = 0;
@@ -548,30 +619,6 @@ function alignUnits(a, b) {
     });
     between(a.length, b.length);
     return match;
-}
-// A changed letter is a letter of one text against a letter of the other, at the same place. A longest common
-// subsequence may put them apart instead - evamme against evaṁme matched its first m, leaving ṁ "missing" before it
-// and the second m "extra" (both m marked): a run of matched letters between the two is moved by one to bring them
-// together, where the letters allow
-function tidyMatch(m, a, b) {
-    const n = m.length, same = (x, y) => a[x].k === b[y].k;
-    for (let x = 0; x < n; x++) {
-        if (m[x] < 0) continue;
-        let t = 1; while (x + t < n && m[x + t] === m[x] + t) t++;
-        const py = x ? m[x - 1] : -1, ny = x + t < n ? m[x + t] : b.length;
-        // o's letters missing before the run, ours extra after it: the run one letter on
-        if ((x === 0 || py >= 0) && m[x] > py + 1 && x + t < n && m[x + t] < 0) {
-            let ok = true; for (let q = 0; q < t && ok; q++) ok = same(x + q + 1, m[x] + q);
-            if (ok) { for (let q = t - 1; q >= 0; q--) m[x + q + 1] = m[x] + q; m[x] = -1; x += t; continue; }
-        }
-        // ours extra before the run, o's letters missing after it: the run one letter back
-        if (x && py < 0 && (x === 1 || m[x - 2] >= 0) && m[x] === (x > 1 ? m[x - 2] : -1) + 1 && ny > m[x] + t && (x + t === n || m[x + t] >= 0)) {
-            let ok = true; for (let q = 0; q < t && ok; q++) ok = same(x - 1 + q, m[x] + q);
-            if (ok) { const y0 = m[x]; for (let q = 0; q < t; q++) m[x - 1 + q] = y0 + q; m[x + t - 1] = -1; }
-        }
-        x += t - 1;
-    }
-    return m;
 }
 function diffMarks(texts) {
     const lines = texts.map(t => typeof t === 'string' && t.trim() ? diffUnits(t) : null);
@@ -604,7 +651,7 @@ function diffMarks(texts) {
         }
     };
     for (let p = 0; p < rs.length; p++) for (let q = p + 1; q < rs.length; q++) {
-        const m = tidyMatch(alignUnits(rs[p].us, rs[q].us), rs[p].us, rs[q].us), back = new Array(rs[q].us.length).fill(-1);
+        const m = alignUnits(rs[p].us, rs[q].us), back = new Array(rs[q].us.length).fill(-1);
         m.forEach((y, x) => { if (y >= 0) back[y] = x; });
         count(rs[p], rs[q], m);
         count(rs[q], rs[p], back);
