@@ -2,11 +2,13 @@
    app (dg-apps uposatha-bridge.js animateThemeSwitch, dg-apps#55), for the site. The theme itself changes synchronously
    (themeswitch.js / the drawer's switch), so the same click is replayed inside a View Transition and the new page is revealed
    through a growing circle. No View Transitions (older browsers) or reduced motion: the plain instant switch, as before.
-   The native apps have their own (the Uposatha bridge); two of them would replay the same click twice. */
+   The Uposatha app has its own (its bridge): two of them would replay the same click twice. Dhamma.Gift's app has none and runs
+   this one (owner 2026-11-06: it was left out there by mistake). */
 (function () {
   if (typeof document.startViewTransition !== 'function') return;
   var C = window.Capacitor;
-  if (C && C.isNativePlatform && C.isNativePlatform()) return;
+  // the Uposatha app: the only app with the widget plugin (Dhamma.Gift's app opens the Uposatha page too, and animates it here)
+  if (C && C.isNativePlatform && C.isNativePlatform() && C.Plugins && C.Plugins.DgWidget) return;
   var BUTTONS = '#app-theme, #dg-theme-seg button, .dg-theme-btn-home, #theme-button';
   var replaying = false, running = false;
   // in order: the logos, then the reader's contents button, which stands in the field where the logo is elsewhere
