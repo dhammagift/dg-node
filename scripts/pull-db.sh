@@ -8,11 +8,12 @@
 #   --app      also the offline library the app/PWA downloads (siteroot/mobile-data), without AI rows. A new archive
 #              means every offline user is told to download ~200 MB again, so this goes out rarely —
 #              owner: every 2 weeks to a month, not on each translation change.
-#   --packs    with --app: also the packs the release carries (packs-manifest.json last). Off until the owner
-#              releases packs on prod (2026-10-29: "Бд частями в прод не выводим пока").
+#   --packs    the packs the release carries (packs-manifest.json last). Alone it touches nothing else in mobile-data:
+#              the common offline base (dg.db.gz, db-manifest.json) is frozen for the old apps (SERVER_OPS, 2026-11-04),
+#              and new apps and the PWA take only packs (Trello 6dmTyFU3). With --app: the common base as well.
 #   --force    install even if this build_id is already installed
 #
-# dg-node-test's dg.db is a symlink to prod's, so both sites get the new database. The previous one
+# Since 2026-11-01 dg-node-test has its own dg.db (it was a symlink to prod's). The previous one
 # stays next to it as dg.db.prev — to roll back, swap the two files back and restart.
 set -euo pipefail
 
@@ -47,7 +48,14 @@ if [ "$APP" = 1 ] && curl -fsSL -o "$TMP/app-db-manifest.json" "$URL/app-db-mani
 APP_NEW="$NEW"; [ "$APP_SPLIT" = 1 ] && APP_NEW="$(field "$TMP/app-db-manifest.json" build_id)"
 APP_DAYS="$(( ( $(date +%s) - $(stat -c %Y siteroot/mobile-data/db-manifest.json 2>/dev/null || date +%s) ) / 86400 ))"
 echo "app archive: build $APP_BUILD, published $APP_DAYS day(s) ago"
-if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD" = "$APP_NEW" ]; }; then
+# --packs: the release's packs list against the published one (same build_id = nothing to do for packs)
+PACKS_NEW=none; PACKS_CUR="$(field siteroot/mobile-data/packs-manifest.json build_id 2>/dev/null || echo none)"
+if [ "$WANT_PACKS" = 1 ] && curl -fsSL -o "$TMP/packs-manifest.json" "$URL/packs-manifest.json" 2>/dev/null; then
+    PACKS_NEW="$(field "$TMP/packs-manifest.json" build_id)"
+    echo "packs: release $PACKS_NEW, published $PACKS_CUR"
+fi
+if [ "$NEW" = "$CUR" ] && [ "$FORCE" = 0 ] && { [ "$APP" = 0 ] || [ "$APP_BUILD" = "$APP_NEW" ]; } \
+   && { [ "$WANT_PACKS" = 0 ] || [ "$PACKS_NEW" = "$PACKS_CUR" ]; }; then
     echo "already on build $CUR"
     exit 0
 fi
@@ -103,6 +111,40 @@ if [ "$NEW" != "$CUR" ] || [ "$FORCE" = 1 ]; then
     (sleep 60; node scripts/indexnow-ping.js) || echo "IndexNow ping failed (see above)" >&2
 fi
 
+# The packs: files first, packs-manifest.json last (it switches readers to them). Versioned names, so a URL never serves
+# two contents; a pack the new list drops goes a day after it left (build-search-db.js publishPacks, same rule).
+# Uses $TMP/packs-manifest.json fetched above; sets PACKS=1 when published.
+PACKS=0
+publish_packs() {
+    [ "$WANT_PACKS" = 1 ] && [ -f "$TMP/packs-manifest.json" ] || return 0
+    local MD=siteroot/mobile-data
+    mkdir -p "$MD/packs"
+    PACKS=1
+    python3 -c 'import json,os,sys
+for p in json.load(open(sys.argv[1]))["packs"]: print(p["id"], os.path.basename(p["url"]), p["sha256_gz"])' "$TMP/packs-manifest.json" |
+    while read -r id name sha; do
+        [ -f "$MD/packs/$name" ] && continue
+        curl -fsSL -o "$TMP/$name" "$URL/pack-$id.db.gz"
+        if [ "$(sha256sum "$TMP/$name" | cut -d' ' -f1)" != "$sha" ]; then
+            echo "packs: $id sha256 mismatch (release mid-upload?) — not published" >&2
+            exit 1
+        fi
+        mv -f "$TMP/$name" "$MD/packs/$name"
+    done || exit 1
+    BEFORE="$(python3 -c 'import json,os,sys
+print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$MD/packs-manifest.json" 2>/dev/null || true)"
+    KEEP="$(python3 -c 'import json,os,sys
+print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$TMP/packs-manifest.json")"
+    mv -f "$TMP/packs-manifest.json" "$MD/packs-manifest.json.tmp" && mv -f "$MD/packs-manifest.json.tmp" "$MD/packs-manifest.json"
+    for f in "$MD"/packs/*; do
+        [ -f "$f" ] || continue
+        b="$(basename "$f")"
+        case " $KEEP " in *" $b "*) continue ;; esac
+        case " $BEFORE " in *" $b "*) touch "$f"; continue ;; esac
+        find "$f" -mmin +1440 -delete
+    done
+}
+
 if [ "$APP" = 1 ] && [ "$APP_SPLIT" = 1 ]; then
     # The offline library: files first, manifests last (they announce the build), packs-manifest.json very last
     # (it switches readers to packs). Packs keep the versioned names their manifest gives, so a URL never serves
@@ -114,37 +156,9 @@ if [ "$APP" = 1 ] && [ "$APP_SPLIT" = 1 ]; then
         echo "app: sha256 mismatch — offline library not published" >&2
         exit 1
     fi
-    PACKS=0
-    if [ "$WANT_PACKS" = 1 ] && curl -fsSL -o "$TMP/packs-manifest.json" "$URL/packs-manifest.json" 2>/dev/null; then
-        PACKS=1
-        python3 -c 'import json,os,sys
-for p in json.load(open(sys.argv[1]))["packs"]: print(p["id"], os.path.basename(p["url"]), p["sha256_gz"])' "$TMP/packs-manifest.json" |
-        while read -r id name sha; do
-            [ -f "$MD/packs/$name" ] && continue
-            curl -fsSL -o "$TMP/$name" "$URL/pack-$id.db.gz"
-            if [ "$(sha256sum "$TMP/$name" | cut -d' ' -f1)" != "$sha" ]; then
-                echo "app: pack $id sha256 mismatch (release mid-upload?) — not published" >&2
-                exit 1
-            fi
-            mv -f "$TMP/$name" "$MD/packs/$name"
-        done
-    fi
     mv -f "$TMP/app-dg.db.gz" "$MD/dg.db.gz.tmp" && mv -f "$MD/dg.db.gz.tmp" "$MD/dg.db.gz"
     mv -f "$TMP/app-db-manifest.json" "$MD/db-manifest.json.tmp" && mv -f "$MD/db-manifest.json.tmp" "$MD/db-manifest.json"
-    if [ "$PACKS" = 1 ]; then
-        BEFORE="$(python3 -c 'import json,os,sys
-print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$MD/packs-manifest.json" 2>/dev/null || true)"
-        KEEP="$(python3 -c 'import json,os,sys
-print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$TMP/packs-manifest.json")"
-        mv -f "$TMP/packs-manifest.json" "$MD/packs-manifest.json.tmp" && mv -f "$MD/packs-manifest.json.tmp" "$MD/packs-manifest.json"
-        for f in "$MD"/packs/*; do
-            [ -f "$f" ] || continue
-            b="$(basename "$f")"
-            case " $KEEP " in *" $b "*) continue ;; esac
-            case " $BEFORE " in *" $b "*) touch "$f"; continue ;; esac
-            find "$f" -mmin +1440 -delete
-        done
-    fi
+    publish_packs
     echo "app: published offline build $APP_NEW$([ "$PACKS" = 1 ] && echo ' with packs') — offline users will be offered the new download"
 elif [ "$APP" = 1 ]; then
     # A release from before the split: its dg.db.gz serves both. Archive first, manifest last (it announces the build).
@@ -153,7 +167,9 @@ elif [ "$APP" = 1 ]; then
     mv "$TMP/db-manifest.json" siteroot/mobile-data/db-manifest.json.tmp && mv -f siteroot/mobile-data/db-manifest.json.tmp siteroot/mobile-data/db-manifest.json
     echo "app: published build $NEW — offline users will be offered the new download"
 else
-    echo "app archive left on build $APP_BUILD ($APP_DAYS day(s) old); publish with --app when it is time"
+    publish_packs
+    [ "$PACKS" = 1 ] && echo "packs: published $PACKS_NEW (the common offline base left on $APP_BUILD, frozen)"
+    echo "app archive left on build $APP_BUILD ($APP_DAYS day(s) old)"
 fi
 
 # sutta_words.txt is tracked in git — not overwritten here, only reported, so the checkout stays clean.
