@@ -49,6 +49,9 @@ eq(['aṭṭhikasaṅkhalikaṁ', 'aṭṭhikasaṅkhalikaṃ', 'aṭṭhikasa�
 eq(['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pathaviyāpi'], ['ākāse; paṭhaviyāpi', 'ākāse—paṭhaviyāpi', 'ākāse, pa[t]haviyāpi']);
 // words swapped round: the moved word whole, not a letter of it (mn88 9.4: [mayaṁ] [t]aṁ), and no gap where the others have it
 eq(['bhāsanti, mayaṁ taṁ sārato', 'bhāsanti, taṃ mayaṃ sārato'], ['bhāsanti, mayaṁ [taṁ] sārato', 'bhāsanti, [taṃ] mayaṃ sārato']);
+// a quote is no space: bhikkhavoti against “bhikkhavo”ti gets no line; etad avoca against etadavoca does (dn22 1.4-1.5)
+eq(['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.'], ['“bhikkhavo”ti.', 'bhikkhavoti.', '‘bhikkhavo’ti.']);
+eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad|avoca:']);
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
 eq(['โส ภควา ฯ', 'โส ภควา', 'โส ภควโต'], ['โส ภควา ฯ', 'โส ภควา', 'โส ภคว[โต]']);

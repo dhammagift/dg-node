@@ -502,8 +502,9 @@ function diffUnits(t) {
         if (m[0] === 'ฯ') continue;
         const gap = t.slice(last, m.index);
         if (us.length && /[^\p{L}\p{M}\-’'‘`]/u.test(gap)) w++;   // a hyphen or an apostrophe joins (aṭṭhi-saṅkhalikaṁ)
-        // before this letter: 1 apart, 0 joined, null a hyphen or an apostrophe (either way, not counted)
-        const sp = /[-’'‘`]/.test(gap) ? null : gap ? 1 : 0;
+        // before this letter: 1 apart (a space or a dash), 0 joined, null a hyphen, an apostrophe or a quote with no space
+        // (bhikkhavo”ti is not "apart" from bhikkhavoti: owner 2026-11-07) - either way, not counted
+        const sp = /[-’'‘`]/.test(gap) ? null : /[\s—–]/.test(gap) ? 1 : gap ? null : 0;
         us.push({ k: m[0].normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ'), s: m.index, e: m.index + m[0].length, w, sp });
         last = m.index + m[0].length;
     }
