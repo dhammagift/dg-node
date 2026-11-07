@@ -182,7 +182,16 @@ app.addHook('onRequest', (req, res, done) => {
 // here. Gate all three prefixes with HTTP Basic Auth, checked before any static mount below.
 let restrictedAuth = null;
 try { restrictedAuth = require('./configs/local/restricted-auth.json'); }
-catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw, /ai and /b are UNPROTECTED:', e.message); }
+catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw, /ai, /b and /reviews are LOCKED for everyone:', e.message); }
+// Fail closed (outside review 2026-11-07): a missing file, {} or an empty user/pass used to let everyone in.
+if (!(typeof restrictedAuth?.user === 'string' && restrictedAuth.user && typeof restrictedAuth?.pass === 'string' && restrictedAuth.pass)) restrictedAuth = null;
+function hasRestrictedAuth(req) {
+    if (!restrictedAuth) return false;
+    const [, b64] = (req.headers.authorization || '').split(' ');
+    const s = b64 ? Buffer.from(b64, 'base64').toString() : '';
+    const i = s.indexOf(':'); // the password may contain ':'
+    return i > 0 && s.slice(0, i) === restrictedAuth.user && s.slice(i + 1) === restrictedAuth.pass;
+}
 // decoded, like the router sees it: "/%61i/" must not slip past the check below as "not /ai"
 function decodedPath(url) {
     const raw = url.split('?')[0];
@@ -213,10 +222,7 @@ app.addHook('onRequest', (req, res, done) => {
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password
-    if (!restrictedAuth || !/^\/(bw|ai|b|reviews)(\/|$)/.test(p)) return done();
-    const [, b64] = (req.headers.authorization || '').split(' ');
-    const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
-    if (user === restrictedAuth.user && pass === restrictedAuth.pass) return done();
+    if (!/^\/(bw|ai|b|reviews)(\/|$)/.test(p) || hasRestrictedAuth(req)) return done();
     // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
     // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
     if (isBot(req)) return res.code(410).send('Gone');
@@ -2908,7 +2914,7 @@ app.get('/api/ai-search', async (req, res) => {
 // /mcp — dg-node's own data (search, get_text) exposed as MCP tools, symmetric to how
 // core/tipitaka-mcp-client.js calls the friend's server (see docs/AI_SEARCH_BRIEF.md). Stateless,
 // POST-only per the SDK's own stateless example; GET/DELETE answer the same 405 that example does.
-app.post('/mcp', mcpHandler);
+app.post('/mcp', { bodyLimit: 64 * 1024 }, mcpHandler); // a tool call is a few hundred bytes (outside review 2026-11-07)
 app.get('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 app.delete('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 
@@ -2991,7 +2997,8 @@ async function regexSearch(kind, keyword, params) {
     return { status: 500, error: 'Regex search failed.' };
 }
 
-// A non-regex job in the pool; null = run it in-process instead (worker unavailable or queue full).
+// A non-regex job in the pool. Busy or unavailable answers 429/503 like regexSearch, never an in-process run: that put the
+// whole search on the event loop exactly when the server was loaded (outside review 2026-11-07).
 // asJson: nothing will be changed in the answer here (no ?script= conversion), so the worker sends its
 // finished JSON text and this process passes it on as is: { json, zero } instead of { result }.
 async function searchJob(kind, keyword, params, asJson) {
@@ -3002,8 +3009,12 @@ async function searchJob(kind, keyword, params, asJson) {
         : { result: outcome.result };
     if (outcome.timedOut) return { status: 503, error: 'Search did not finish in time — narrow the query or the scope.' };
     if (outcome.badRequest) { const err = new Error(outcome.message); err.badRequest = true; throw err; }
-    if (outcome.unavailable) console.warn('[search] worker unavailable, running in-process:', outcome.message);
-    return null;
+    if (outcome.busy) return { status: 429, error: 'Too many searches are waiting, try again in a moment.' };
+    if (outcome.unavailable) {
+        console.warn('[search] worker unavailable:', outcome.message);
+        return { status: 503, error: 'Search is temporarily unavailable, try again in a moment.' };
+    }
+    return { status: 500, error: 'Search failed.' };
 }
 
 function sendJsonText(res, text) {
@@ -4505,11 +4516,6 @@ const SEGMENT_FILE = /^\/(?:suttacentral\.net\/sc-data\/sc_bilara_data|assets\/t
 // The AI translations (ai, gemini) stay hidden from users (owner: no AI for users anywhere): the editor gets them only
 // for a signed-in translator, the same Google sign-in and author list as saving (verifyLblToken), or with the /ai password.
 const AI_DRAFTS_DIR = path.resolve(process.env.DG_AI_DRAFTS_DIR || '/var/www/unl/ai');
-function hasRestrictedAuth(req) {
-    const [, b64] = (req.headers.authorization || '').split(' ');
-    const [user, pass] = b64 ? Buffer.from(b64, 'base64').toString().split(':') : [];
-    return !!restrictedAuth && user === restrictedAuth.user && pass === restrictedAuth.pass;
-}
 async function mayReadAi(req) {
     return hasRestrictedAuth(req) || (await verifyLblToken(req.headers.authorization)).ok;
 }

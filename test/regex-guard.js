@@ -46,6 +46,9 @@ function check(name, ok, detail) {
     check('prefilter duk.* -> duk', JSON.stringify(searchCore.regexPrefilterLiterals('duk.*')) === '["duk"]');
     check('prefilter dukkkha|kacchapa', JSON.stringify(searchCore.regexPrefilterLiterals('kacchapa|migala')) === '["kacchapa","migala"]');
     check('no prefilter for (duk)?x', searchCore.regexPrefilterLiterals('(duk)?x') === null);
+    // without a prefilter the pattern would scan every row, so it is refused (outside review 2026-11-07)
+    for (const bad of ['duk|z', '(duk)?x', '\\d{3}duk']) check(`refused, no prefilter: ${bad}`, !!searchCore.regexProblem(bad));
+    check('prefilter (kata|katha).*dukkha', JSON.stringify(searchCore.regexPrefilterLiterals('(kata|katha).*dukkha')) === '["kata","katha"]');
 
     // 3. A normal regex query is answered, through the worker, with the prefilter reported.
     const t0 = Date.now();

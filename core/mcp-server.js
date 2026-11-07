@@ -31,6 +31,10 @@
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
 const { z } = require('zod');
+// Size caps on every input (outside review 2026-11-07): without them one request could carry thousands of translator
+// keys or scope prefixes within the 10 MB body limit, each one more synchronous query. Generous for any real use.
+const zKey = () => z.string().max(100);
+const zList = (max) => z.array(z.string().max(60)).max(max);
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { buildFastResponse, enrichResponse, getSuttaBaseData, buildTextDataFromBase, isRegexKeyword } = require('./search-core');
@@ -358,14 +362,14 @@ function getServer() {
     server.registerTool('search', {
         description: 'Search the Pali Canon on dhamma.gift by keyword/substring or REGEX (min 3 letters, no semantic search). Patterns like "kata.*dukkha", "vucc.*dukkha", "katha.*dukkha" find the canon\'s own definitions and expositions of a term. Returns a CENSUS of every matching sutta — id, title, match count, metaphor count, reader link — Pali only, ordered so that suttas that DEFINE the term come first, then ones NAMED after it, then by how often it occurs. Set include_segments for the matched Pali lines, include_translations (+ langs) for translations. 40 suttas by default (25 by occurrence count, plus 15 for suttas named after the term and ones defining it); metadata.totalFiles reports the true count, and limit takes a number or "all".',
         inputSchema: {
-            query: z.string().describe('Keyword, phrase, or REGEX pattern to search for (Pali or a translation word). Patterns work and are the way to find definitions: "kata.*dukkha" (Katamañca … dukkhaṁ?), "vucc.*dukkha" (idaṁ vuccati dukkhaṁ), "katha.*dukkha" (Kathañca … hoti?).'),
-            scope: z.string().optional().describe('default|all|dhamma|vinaya|abhi|khudakka|or comma-separated nikaya codes (dn,mn,...). Default: default (4 nikayas + 6 KN books).'),
+            query: z.string().max(200).describe('Keyword, phrase, or REGEX pattern to search for (Pali or a translation word). Patterns work and are the way to find definitions: "kata.*dukkha" (Katamañca … dukkhaṁ?), "vucc.*dukkha" (idaṁ vuccati dukkhaṁ), "katha.*dukkha" (Kathañca … hoti?).'),
+            scope: z.string().max(200).optional().describe('default|all|dhamma|vinaya|abhi|khudakka|or comma-separated nikaya codes (dn,mn,...). Default: default (4 nikayas + 6 KN books).'),
             exact: z.boolean().optional().describe('Whole-word match only. Default: false.'),
-            langs: z.array(z.string()).optional().describe('Translation languages to include with include_translations, e.g. ["ru","en"]. Default: none (Pali only).'),
-            translators: z.array(z.string()).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato, or ["ru_sv"]. Needed only to override the default translator choice.'),
+            langs: zList(30).optional().describe('Translation languages to include with include_translations, e.g. ["ru","en"]. Default: none (Pali only).'),
+            translators: zList(30).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato, or ["ru_sv"]. Needed only to override the default translator choice.'),
             include_segments: z.boolean().optional().describe('Also return the matched Pali segments (segment id, text, reader link). Default: false — the census alone.'),
             include_translations: z.boolean().optional().describe('Also return translations of the matched segments (implies include_segments). Default: false.'),
-            limit: z.union([z.number().int().min(1), z.literal('all')]).optional().describe('How many suttas to list: a number, or "all" for every match. Default: 40, composed of 25 by occurrence count plus 15 for suttas named after the term and defining it. Strict — the cap means the cap. metadata.totalFiles always carries the true match count, so a truncated answer still tells you how much more there is. Suttas whose TITLE matches the query rank first within their collection.'),
+            limit: z.union([z.number().int().min(1).max(100000), z.literal('all')]).optional().describe('How many suttas to list: a number, or "all" for every match. Default: 40, composed of 25 by occurrence count plus 15 for suttas named after the term and defining it. Strict — the cap means the cap. metadata.totalFiles always carries the true match count, so a truncated answer still tells you how much more there is. Suttas whose TITLE matches the query rank first within their collection.'),
         },
     }, async ({ query, scope, langs, translators, include_segments, include_translations, exact, limit }) => {
         // Naming a translator is asking for his translation: without include_translations it was silently dropped.
@@ -431,10 +435,10 @@ function getServer() {
     server.registerTool('get_text', {
         description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali text (Mahāsaṅgīti) of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]), editions for the whole text of other Pali editions line by line (DN, MN, SN, AN). Same data as dhamma.gift/api/text.',
         inputSchema: {
-            editions: z.array(z.enum([...Object.keys(EDITIONS), 'all'])).optional().describe('Other Pali editions to add, each segment beside the Mahāsaṅgīti: bjt (Buddha Jayanti, Sri Lanka), my (Chaṭṭha Saṅgāyana, Myanmar), th (Siam Rath, Thailand), mso (Mahāsaṅgīti as printed, 2005), pts (Pali Text Society), or ["all"]. DN, MN, SN and AN only.'),
-            suttaId: z.string().describe('Sutta id, e.g. dn22, mn1, sn56.11.'),
-            langs: z.array(z.string()).optional().describe('Translation languages to include, e.g. ["ru","en"]. Default: none (Pali only).'),
-            translators: z.array(z.string()).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
+            editions: z.array(z.enum([...Object.keys(EDITIONS), 'all'])).max(10).optional().describe('Other Pali editions to add, each segment beside the Mahāsaṅgīti: bjt (Buddha Jayanti, Sri Lanka), my (Chaṭṭha Saṅgāyana, Myanmar), th (Siam Rath, Thailand), mso (Mahāsaṅgīti as printed, 2005), pts (Pali Text Society), or ["all"]. DN, MN, SN and AN only.'),
+            suttaId: zKey().describe('Sutta id, e.g. dn22, mn1, sn56.11.'),
+            langs: zList(30).optional().describe('Translation languages to include, e.g. ["ru","en"]. Default: none (Pali only).'),
+            translators: zList(30).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
         },
     }, async ({ suttaId, langs, translators, editions }) => {
         const id = suttaId.toLowerCase();
@@ -482,11 +486,11 @@ function getServer() {
     server.registerTool('compare_editions', {
         description: 'Compare the Pali Canon\'s editions line by line: the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN). Give a sutta ("sn56.11"), a line ("dn22:18.1") or a range ("sn56.11:5.1-5.4"). The answer starts with a summary per edition (name, license, lines present, missing, differing), then the lines where some edition reads differently, each with the differing words. Case, punctuation and ṁ/ṃ are not counted as differences.',
         inputSchema: {
-            id: z.string().describe('A sutta (sn56.11), a line (dn22:18.1) or a range of lines (sn56.11:5.1-5.4).'),
-            editions: z.array(z.enum(Object.keys(EDITIONS))).optional().describe('Editions to compare with the Mahāsaṅgīti. Default: all of bjt, my, th, mso, pts.'),
+            id: zKey().describe('A sutta (sn56.11), a line (dn22:18.1) or a range of lines (sn56.11:5.1-5.4).'),
+            editions: z.array(z.enum(Object.keys(EDITIONS))).max(10).optional().describe('Editions to compare with the Mahāsaṅgīti. Default: all of bjt, my, th, mso, pts.'),
             all: z.boolean().optional().describe('Every line, not only the lines where an edition differs. Default false.'),
             limit: z.number().int().min(1).max(500).optional().describe('Lines per answer (default 60); the answer gives next_from to continue.'),
-            from: z.string().optional().describe('Continue from this line (the next_from of a previous answer).'),
+            from: zKey().optional().describe('Continue from this line (the next_from of a previous answer).'),
         },
     }, async ({ id, editions, all, limit, from }) => {
         const t = parseEditionTarget(id);
@@ -553,9 +557,9 @@ function getServer() {
     server.registerTool('compare_translations', {
         description: 'One segment of the canon in the Pali root and every available translation side by side. Use a segment id from search/get_text, e.g. "mn129:21.3". Sujato (en_sujato) is excluded unless named in translators.',
         inputSchema: {
-            segmentId: z.string().describe('Segment id as returned by search, e.g. mn129:21.3 or dn22:1.1.'),
-            langs: z.array(z.string()).optional().describe('Limit to these languages, e.g. ["ru","en"]. Default: all.'),
-            translators: z.array(z.string()).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
+            segmentId: zKey().describe('Segment id as returned by search, e.g. mn129:21.3 or dn22:1.1.'),
+            langs: zList(30).optional().describe('Limit to these languages, e.g. ["ru","en"]. Default: all.'),
+            translators: zList(30).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
         },
     }, async ({ segmentId, langs, translators }) => {
         const seg = segmentId.trim().toLowerCase();
@@ -583,7 +587,7 @@ function getServer() {
     server.registerTool('list_structure', {
         description: 'What texts exist. Without arguments: collections (sutta/vinaya/abhidhamma/khuddaka), books by id prefix with sutta counts, and translation languages with translators. With prefix (e.g. "mn", "sn56", "an4"): the suttas under it with titles.',
         inputSchema: {
-            prefix: z.string().optional().describe('Sutta id prefix such as mn, sn56, an4, dhp. Max 200 suttas are listed.'),
+            prefix: zKey().optional().describe('Sutta id prefix such as mn, sn56, an4, dhp. Max 200 suttas are listed.'),
         },
     }, async ({ prefix }) => {
         if (prefix) {

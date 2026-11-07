@@ -50,8 +50,9 @@ function setSkeleton(skeleton) {
 // through FTS, and the whole job runs in a worker with a deadline (core/regex-runner.js).
 //
 // ponytail: the literal must sit at the START of its alternative to count as mandatory ("duk.*",
-// "dukkha|kacchapa"); anything else ("\\d{3}duk", "(duk)?x") skips the prefilter and is simply
-// scanned in the worker — safe, just slower. Teach it full regex analysis only if that shows up.
+// "dukkha|kacchapa", "(kata|katha).*dukkha"); anything else ("\\d{3}duk", "(duk)?x", "duk|z") is refused,
+// since without a prefilter it scanned all 1.31M rows for up to timeoutMs (outside review 2026-11-07).
+// Teach it full regex analysis only if real patterns need it.
 const REGEX_LIMIT_DEFAULTS = { enabled: true, minLiteralChars: 3, maxPatternLength: 128, timeoutMs: 2000, maxRows: 200000, prefilter: true };
 let regexLimits = { ...REGEX_LIMIT_DEFAULTS };
 
@@ -112,11 +113,32 @@ function regexPrefilterLiterals(pattern) {
     const out = [];
     for (const alt of alternatives) {
         const stripped = alt.replace(/^(?:\^|\\b)+/, '');
+        // a leading group that is not optional: its own alternatives' literals are mandatory ("(kata|katha).*dukkha")
+        const close = stripped[0] === '(' ? groupClose(stripped) : -1;
+        if (close > 0 && !/^[*?{]/.test(stripped.slice(close + 1))) {
+            const inner = regexPrefilterLiterals(stripped.slice(1, close).replace(/^\?:/, ''));
+            if (!inner) return null;
+            for (const l of inner) if (!out.includes(l)) out.push(l);
+            continue;
+        }
         const first = literalRuns(stripped)[0];
         if (!first || first.length < min || !LITERAL_SAFE.test(first) || !stripped.startsWith(first)) return null;
         if (!out.includes(first)) out.push(first);
     }
     return out;
+}
+
+// Index of the ")" closing the group that opens p, or -1.
+function groupClose(p) {
+    let depth = 0;
+    for (let i = 0; i < p.length; i++) {
+        const ch = p[i];
+        if (ch === '\\') { i++; continue; }
+        if (ch === '[') { const end = p.indexOf(']', i + 1); if (end === -1) return -1; i = end; continue; }
+        if (ch === '(') depth++;
+        else if (ch === ')' && --depth === 0) return i;
+    }
+    return -1;
 }
 
 // Non-null when the pattern cannot be run at all: disabled, too long, unparseable, or carrying no
@@ -132,6 +154,9 @@ function regexProblem(keyword) {
         new RegExp(q);
     } catch (e) {
         return e.message; // already reads "Invalid regular expression: ..."
+    }
+    if (regexLimits.prefilter && !regexPrefilterLiterals(q)) {
+        return `Each alternative of a regex search must start with at least ${regexLimits.minLiteralChars} ordinary letters (like "duk.*" or "kata.*dukkha|vucc.*dukkha").`;
     }
     return null;
 }
