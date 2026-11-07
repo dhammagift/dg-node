@@ -1737,5 +1737,10 @@ setTheme(localStorage.getItem('theme') || 'auto');
 applyLang();
 </script>
 <script src="/offline/offline-library-settings.js" defer></script>
+<!-- Pinch = Text size here too (owner 2026-11-07: everywhere there is text): in the app this page is the Settings sheet's
+     frame; the script steps the app page's size (its dgStepUiScale) and shows the label here. Same switch as search/index.html. -->
+<script>try { var dgPinchHost = window.parent !== window ? window.parent : window;
+  var dgPinchOn = sessionStorage.getItem('dgPinchDemo') === '1' || ((dgPinchHost.document.documentElement.classList.contains('dg-app')) && sessionStorage.getItem('dgPinchDemo') !== '0');
+  if (dgPinchOn) { var dgPs = document.createElement('script'); dgPs.src = '/assets/js/pinch-size-demo.js'; document.head.appendChild(dgPs); } } catch (e) {}</script>
 </body>
 </html>

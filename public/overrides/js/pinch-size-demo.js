@@ -7,6 +7,27 @@
     var start = null;          // { dist, steps } of the pinch in progress
     var label = null, hideTimer = null;
 
+    // The page's own size control, or the app page's when this is the Settings frame inside it (settings/index.html loads
+    // this too): the text size is one setting for the whole app.
+    // A page with no size control of its own (Memorize & Meditate, sign-in, the tools: the app build adds this script to
+    // every page, build-assets.js injectPinchEverywhere) zooms itself: the same uiScale, 20-250 %, as a CSS zoom of <html>.
+    function ownStep(delta) {
+        var v = Math.min(250, Math.max(20, scale() + delta));
+        try { localStorage.setItem('uiScale', String(v)); } catch (e) { /* private mode: this page only */ }
+        if (typeof window.applyUiScale === 'function') window.applyUiScale(v);   // Settings opened as a page
+        else document.documentElement.style.zoom = String(v / 100);
+    }
+    function stepper() {
+        if (typeof window.dgStepUiScale === 'function') return window.dgStepUiScale;
+        try { if (window.parent !== window && typeof window.parent.dgStepUiScale === 'function') return window.parent.dgStepUiScale; } catch (e) { /* another origin */ }
+        return ownStep;
+    }
+    // such a page opens at the size chosen elsewhere in the app
+    try {
+        var own = typeof window.dgStepUiScale !== 'function' && typeof window.applyUiScale !== 'function' &&
+            !(window.parent !== window && typeof window.parent.dgStepUiScale === 'function');
+        if (own && scale() !== 100) document.documentElement.style.zoom = String(scale() / 100);
+    } catch (e) { /* another origin above */ }
     function dist(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
     function scale() { var v = parseInt(localStorage.getItem('uiScale'), 10); return v >= 20 && v <= 250 ? v : 100; }
     function show(text) {
@@ -21,9 +42,9 @@
     }
 
     document.addEventListener('touchstart', function (e) {
-        if (e.touches.length !== 2 || typeof window.dgStepUiScale !== 'function') return;
-        // the results and the reader only (owner 2026-11-05): the home page, menus and sheets keep the plain gesture
-        if (!/\bdg-state-(reader|results)\b/.test(document.body.className + ' ' + document.documentElement.className)) return;
+        // everywhere there is text - the home page, the contents, Settings, menus (owner 2026-11-07: «везде, где есть текст,
+        // надо мочь увеличить»; it was the results and the reader only, 2026-11-05)
+        if (e.touches.length !== 2) return;
         start = { dist: dist(e.touches), steps: 0, anchor: window.captureReadingAnchor ? window.captureReadingAnchor() : null };
         // The non-passive touchmove only while two fingers are down: kept on the page all the time it made the app's WebView
         // keep every touch for the page, and the app's pull to refresh stopped working (owner 2026-11-05, build 588)
@@ -35,7 +56,7 @@
         var want = Math.round(Math.log(dist(e.touches) / start.dist) / Math.log(STEP));
         if (want === start.steps) return;
         var before = scale();
-        window.dgStepUiScale((want - start.steps) * 10);
+        stepper()((want - start.steps) * 10);
         start.steps = want;
         if (scale() !== before && start.anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(start.anchor);
         show(scale() + '%');
@@ -46,11 +67,10 @@
     // One step from a trackpad (a Mac): the same label, the reading place kept from the gesture's start.
     var padAnchor = null, padTimer = null;
     function padStep(delta) {
-        if (typeof window.dgStepUiScale !== 'function') return;
         if (!padAnchor) padAnchor = window.captureReadingAnchor ? window.captureReadingAnchor() : null;
         clearTimeout(padTimer); padTimer = setTimeout(function () { padAnchor = null; }, 600);
         var before = scale();
-        window.dgStepUiScale(delta);
+        stepper()(delta);
         if (scale() !== before && padAnchor && window.restoreReadingAnchor) window.restoreReadingAnchor(padAnchor);
         show(scale() + '%');
     }
