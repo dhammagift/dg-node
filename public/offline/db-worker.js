@@ -1119,19 +1119,22 @@ async function applyPacks(pool, packsBase, want, fileBase) {
 // Packs, not the whole database: a selection was passed, or packs are what this device holds — a reader on the default
 // packs who never opened the picker has no selection saved, and was offered (and given) the whole dg.db.gz beside them.
 async function packsMode(args) {
+    if (args && args.nativeSql) return !!args.packsOn;   // iOS: packs whenever the page takes them (the old dg.db is replaced)
     return !!(args && args.packs) || Object.keys(storedPacks(await getPool())).length > 0;
 }
 
 // "Is anything new?" for packs: the open ones whose build the manifest has moved on from, and their download size.
-async function checkPacks(packsBase, want) {
+async function checkPacks(packsBase, want, has) {
     const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
     if (!manifest || !Array.isArray(manifest.packs)) return { unknown: true };
     // ...and the packs the reader chose but this device does not hold: a first download that stopped half-way (one pack
     // gone from the server) was adopted as complete and the rest was never fetched (f3-ultra's review 2026-11-01)
     const open = new Set([...openPackIds, ...(Array.isArray(want) ? want : [])]);
-    const installed = Object.entries(storedPacks(await getPool()));
-    const changed = manifest.packs.filter(p => (p.main || open.has(p.id)) &&
-        !installed.some(([id, files]) => id === p.id && files.some(f => f.build === p.build_id)));
+    if (!has) {
+        const installed = Object.entries(storedPacks(await getPool()));
+        has = (id, build) => installed.some(([i, files]) => i === id && files.some(f => f.build === build));
+    }
+    const changed = manifest.packs.filter(p => (p.main || open.has(p.id)) && !has(p.id, p.build_id));
     return {
         current: changed.length === 0,
         packs: changed.map(p => p.id),
@@ -1364,6 +1367,98 @@ async function dropOpfsCopy() {
     }
 }
 
+// Packs on the iOS app (owner 2026-11-07: iOS takes the segments too, natively). The shell keeps each pack as a plain file
+// <id>.<build>.db beside the old single dg.db in its App Group container (DgSharedLibrary.swift); its downloader fetches and
+// unpacks them (DgDownloadPlugin.swift), and the endpoint opens main + ATTACH. Everything else - which packs, the TEMP VIEWs,
+// the per-pack fts rewrite - is the same code as OPFS's openPacks, on the native handle.
+//   /dg-sql/status   -> {present, single, packs: [file names]}
+//   /dg-sql/open     {main, attach: [{id, name}], views: [CREATE TEMP VIEW ...]}   /dg-sql/remove {keep: [names]}
+//   /dg-sql/manifest -> the saved manifest
+function nativePackFiles(status) {
+    return (status.packs || []).map(name => {
+        const rest = name.replace(/\.db$/, ''), dot = rest.lastIndexOf('.');
+        return { id: rest.slice(0, dot), build: rest.slice(dot + 1), name };
+    });
+}
+// The ids a download or an open wants: the main and required packs always, then `want`, else the published defaults.
+function wantedPacks(manifest, want) {
+    const main = manifest.packs.find(p => p.main);
+    if (!main) throw new Error('the packs manifest names no main pack');
+    return [main, ...manifest.packs.filter(p => p !== main && (p.required || (want ? want.includes(p.id) : p.default)))];
+}
+// What a device that still holds the old single library (iOS before packs) takes instead: what that library carried.
+const SINGLE_LIBRARY_PACKS = ['tr-ru', 'tr-en'];
+async function planNativePacks(endpoint, packsBase, args) {
+    const manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
+    if (!manifest || !Array.isArray(manifest.packs)) throw new Error('the offline packs are not published here');
+    if (manifest.db_schema_version && Number(manifest.db_schema_version) !== SCHEMA_VERSION) {
+        throw new Error(`published packs are schema ${manifest.db_schema_version}, this app reads ${SCHEMA_VERSION} — update the app`);
+    }
+    const status = nativeRequest(endpoint, 'status'), files = nativePackFiles(status);
+    const onDisk = [...new Set(files.map(f => f.id))];
+    const want = args.packs || (args.kind === 'update' ? (onDisk.length ? onDisk : status.single ? SINGLE_LIBRARY_PACKS : null) : args.firstPacks || null);
+    return wantedPacks(manifest, want).filter(p => !files.some(f => f.id === p.id && f.build === p.build_id));
+}
+// The packs on disk opened natively. `want` (ids) from a download or an update: those (with the main and required ones) are
+// opened and every other pack file, and the old single dg.db, removed once they open. No `want` (a start, the share sheet):
+// whatever is on disk, nothing removed. No packs at all: the single dg.db of an earlier build, as before.
+async function openNativePacks(endpoint, packsBase, want, allowDownload) {
+    const files = nativePackFiles(nativeRequest(endpoint, 'status'));
+    if (!files.length) return openNative(endpoint, allowDownload);
+    let manifest = null;
+    try { manifest = nativeRequest(endpoint, 'manifest'); } catch (_) { manifest = null; }
+    if (!manifest || !Array.isArray(manifest.packs)) manifest = await fetchManifest(packsBase, PACKS_MANIFEST);
+    const listed = manifest && Array.isArray(manifest.packs) ? manifest.packs : [];
+    // one file per id: the manifest's build when it is on disk (an update that stopped half-way leaves two)
+    const byId = {};
+    for (const f of files) {
+        const m = listed.find(p => p.id === f.id);
+        if (!byId[f.id] || (m && m.build_id === f.build)) byId[f.id] = f;
+    }
+    const mainId = (listed.find(p => p.main) || { id: 'root-ms' }).id;
+    if (!byId[mainId]) {
+        if (allowDownload) throw new Error('the offline library was not downloaded');
+        return { suttas: 0, build_id: null, downloaded: false, present: false };
+    }
+    const ids = want ? [...new Set([mainId, ...listed.filter(p => p.required).map(p => p.id), ...want])] : Object.keys(byId);
+    const packs = [byId[mainId], ...ids.filter(id => id !== mainId && byId[id]).map(id => byId[id])];
+    if (db) { try { db.close(); } catch (_) {} db = null; }
+    nativeRequest(endpoint, 'open', { main: packs[0].name, attach: packs.slice(1).map(p => ({ id: p.id, name: p.name })) });
+    const handle = nativeDb(endpoint);
+    const all = ['main', ...packs.slice(1).map(p => p.id)];
+    for (const [i, p] of packs.entries()) {
+        const row = handle.selectObject(`SELECT value FROM "${all[i]}".meta WHERE key = 'build_id'`);
+        if (!row || row.value !== p.build) throw new Error(`the offline pack ${p.id} is incomplete`);
+    }
+    const schemasWith = (table) => all.filter(s =>
+        handle.selectObject(`SELECT 1 AS x FROM "${s}".sqlite_master WHERE type = 'table' AND name = ?`, [table]));
+    // The TEMP VIEWs go to the shell with the packs, opened again with them: the shell closes its connection on every status
+    // and reopens the same set for the next query, and a TEMP VIEW lives only as long as its connection.
+    const views = [];
+    const from = schemasWith('texts');
+    if (from.length > 1) views.push(`CREATE TEMP VIEW texts AS ${from.map(s => `SELECT * FROM "${s}".texts`).join(' UNION ALL ')}`);
+    const eds = schemasWith('editions');
+    if (eds.length && !(eds.length === 1 && eds[0] === 'main')) {
+        views.push(`CREATE TEMP VIEW editions AS ${eds.map(s => `SELECT * FROM "${s}".editions`).join(' UNION ALL ')}`);
+    }
+    if (views.length) nativeRequest(endpoint, 'open', { main: packs[0].name, attach: packs.slice(1).map(p => ({ id: p.id, name: p.name })), views });
+    const meta = {};
+    for (const row of handle.selectObjects('SELECT key, value FROM main.meta')) meta[row.key] = row.value;
+    if (meta.schema_version && Number(meta.schema_version) !== SCHEMA_VERSION) throw new Error(`schema ${meta.schema_version} != ${SCHEMA_VERSION}`);
+    const suttas = adopt({ handle, meta }, from);
+    openPackNames = new Set(packs.map(p => p.name));
+    openPackIds = new Set(packs.slice(1).map(p => p.id));
+    if (want) nativeRequest(endpoint, 'remove', { keep: packs.map(p => p.name) });
+    dropOpfsCopy();
+    if (allowDownload) post({ type: 'progress', loaded: 1, total: 1, phase: 'download', done: true });
+    return { suttas, build_id: meta.build_id, built_at: meta.built_at || null, packs: packs.map(p => p.id), downloaded: allowDownload, present: true };
+}
+// Which of the open (or chosen) packs the manifest has moved on from, for checkPacks on the native files.
+function nativeHas(endpoint) {
+    const files = nativePackFiles(nativeRequest(endpoint, 'status'));
+    return (id, build) => files.some(f => f.id === id && f.build === build);
+}
+
 // One operation per endpoint the shim intercepts. Each is the few lines dg-fastify.js's route
 // does around the core — parameter defaults and nothing else. Response building stays in the
 // core, which is the point.
@@ -1559,7 +1654,12 @@ self.onmessage = async (event) => {
     if (op === 'check') {
         try {
             if (!db) throw new Error('database not opened');
-            if (await packsMode(args)) { post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase, args.packs) }); return; }
+            if (await packsMode(args)) {
+                // the old single library on iOS: the update brings what it carried (planNativePacks), and says so in its size
+                const single = args.nativeSql && !args.packs && openPackIds.size === 0 && !!nativeRequest(args.nativeSql, 'status').single;
+                post({ id, ok: true, result: await checkPacks(args.packsBase || args.distBase, single ? SINGLE_LIBRARY_PACKS : args.packs, args.nativeSql ? nativeHas(args.nativeSql) : null) });
+                return;
+            }
             const local = db.selectObject("SELECT value FROM meta WHERE key = 'build_id'");
             const manifest = await fetchManifest(args.distBase);
             post({ id, ok: true, result: manifest ? {
@@ -1577,6 +1677,11 @@ self.onmessage = async (event) => {
     // the same choice as 'open' (a selection, else the defaults) and 'update' (a selection, else the packs on disk).
     if (op === 'packs-plan') {
         try {
+            if (args.nativeSql) {
+                const missing = await planNativePacks(args.nativeSql, args.packsBase || args.distBase, args);
+                post({ id, ok: true, result: missing.map(p => ({ id: p.id, path: p.url || p.file, bytes: p.bytes_gz || 0, sha256: p.sha256_gz || '' })) });
+                return;
+            }
             const pool = await getPool();
             const want = args.packs || (args.kind === 'update' ? Object.keys(storedPacks(pool)) : args.firstPacks || null);
             const { missing } = await planPacks(pool, args.packsBase || args.distBase, want);
@@ -1588,8 +1693,10 @@ self.onmessage = async (event) => {
     if (op === 'update') {
         try {
             if (args && args.nativeSql) {
-                // The native downloader has already replaced the file; this is the reopen.
-                ready = openNative(args.nativeSql, true);
+                // The native downloader has already replaced the file(s); this is the reopen.
+                ready = args.packsOn
+                    ? openNativePacks(args.nativeSql, args.packsBase || args.distBase, args.packs || nativePackFiles(nativeRequest(args.nativeSql, 'status')).map(f => f.id), true)
+                    : openNative(args.nativeSql, true);
                 post({ id, ok: true, result: await ready });
                 return;
             }
@@ -1606,7 +1713,9 @@ self.onmessage = async (event) => {
 
     if (op === 'open') {
         const distBase = args && args.distBase;
-        const opener = allow => (args && args.nativeSql ? openNative(args.nativeSql, allow) : open(distBase, allow, args || {}));
+        const opener = allow => (args && args.nativeSql
+            ? (args.packsOn ? openNativePacks(args.nativeSql, args.packsBase || distBase, allow ? (args.packs || args.firstPacks || null) : null, allow) : openNative(args.nativeSql, allow))
+            : open(distBase, allow, args || {}));
         // `download: false` (the site's startup probe) must never be memoised when it comes back
         // empty: the reader may press Download a second later, and that call needs a real attempt,
         // not this empty answer replayed from `ready`.

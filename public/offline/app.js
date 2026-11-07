@@ -58,10 +58,11 @@
     var IN_APP = /^(https?|capacitor):\/\/localhost$/.test(location.origin) && !!window.Capacitor;
     var PACKS_KEY = 'dg.offline.packs';
     var PACKS_BASE = window.DG_PACKS_BASE || null;
-    // Not on iOS's native SQL path (DgSharedLibrary): it opens the one library the shell downloads, no packs (a test build with
-    // DG_PACKS_BASE skipped that download and was left with nothing).
+    // iOS's native SQL path (DgSharedLibrary) takes packs only where its shell says it can (DG_NATIVE_PACKS: it downloads
+    // and opens them natively, owner 2026-11-07); an older iOS shell opens the one library it downloads, no packs (a test build
+    // with DG_PACKS_BASE skipped that download and was left with nothing).
     // DG_OFFLINE_PACKS = false: the single library even where packs are published (the apps' parity check on it).
-    var PACKS_ON = !NATIVE_SQL && window.DG_OFFLINE_PACKS !== false && (window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP);
+    var PACKS_ON = (!NATIVE_SQL || !!window.DG_NATIVE_PACKS) && window.DG_OFFLINE_PACKS !== false && (window.DG_OFFLINE_PACKS === true || !!PACKS_BASE || !IN_APP);
     // A first download nobody picked packs for (the app's first-run sheet, the page's announcement): the Mahāsaṅgīti and the
     // translation in the interface language - the Pali alone left the reader without any translation offline (2026-11-01).
     // An update never takes these: with no selection it keeps the packs on disk.

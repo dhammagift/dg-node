@@ -203,10 +203,13 @@
     // On the site, off in the apps for now — the same switch as app.js (PACKS_ON). The settings sheet is a frame of the
     // app's page, which may be where window.Capacitor lives.
     var inApp = /^(https?|capacitor):\/\/localhost$/.test(location.origin) && !!(window.Capacitor || (window.parent && window.parent.Capacitor));
-    // Not where iOS opens its library natively (DG_NATIVE_SQL): packs are off there (app.js PACKS_ON), and the picker's sizes
-    // promised packs while Download took the whole library (f3-ultra's review 2026-11-01).
-    var nativeSql = window.DG_NATIVE_SQL || (window.parent && window.parent !== window && (function () { try { return window.parent.DG_NATIVE_SQL; } catch (e) { return null; } })());
-    if (secure && !nativeSql && window.DG_OFFLINE_PACKS !== false && (window.DG_OFFLINE_PACKS === true || window.DG_PACKS_BASE || !inApp)) {
+    // Not where iOS opens its library natively (DG_NATIVE_SQL) and its shell cannot take packs (DG_NATIVE_PACKS): packs are off
+    // there (app.js PACKS_ON), and the picker's sizes promised packs while Download took the whole library (f3-ultra's review
+    // 2026-11-01).
+    var fromParent = function (k) { return window.parent && window.parent !== window && (function () { try { return window.parent[k]; } catch (e) { return null; } })(); };
+    var nativeSql = window.DG_NATIVE_SQL || fromParent('DG_NATIVE_SQL');
+    var nativePacks = window.DG_NATIVE_PACKS || fromParent('DG_NATIVE_PACKS');
+    if (secure && (!nativeSql || nativePacks) && window.DG_OFFLINE_PACKS !== false && (window.DG_OFFLINE_PACKS === true || window.DG_PACKS_BASE || !inApp)) {
         fetch(String(packsBase).replace(/\/$/, '') + '/packs-manifest.json', { cache: 'no-store' })
             .then(function (r) { return r.ok ? r.json() : null; })
             .then(function (m) { if (m && Array.isArray(m.packs) && m.packs.some(function (p) { return p.main; })) setUpPacks(m); })
