@@ -624,6 +624,23 @@ function alignUnits(a, b) {
     between(a.length, b.length);
     return match;
 }
+// A letter or two matched out of the middle of one text's run of extra letters is no agreement: tatrāhaṁ "has" the a of
+// tatra, a long repeat in SR supplies the t of sukatadukkaṭānaṁ - and a 3:3 tie lost its marks (Ultra's QA of 8b49ba2).
+// Such a match (at most 2 letters, the same text's unmatched letters of the same word on both sides, 3 or more) is undone.
+function dropIslands(m, a, b) {
+    const n = m.length, back = new Array(b.length).fill(-1);
+    m.forEach((y, x) => { if (y >= 0) back[y] = x; });
+    // unmatched letters of us's word next to us[x], going by step (-1 or 1)
+    const loose = (us, mt, x, step) => { let c = 0; for (let z = x + step; z >= 0 && z < us.length && mt[z] < 0 && us[z].w === us[x].w; z += step) c++; return c; };
+    for (let x = 0; x < n; x++) {
+        if (m[x] < 0) continue;
+        let t = 1; while (x + t < n && m[x + t] === m[x] + t) t++;
+        const e = x + t - 1, ab = loose(a, m, x, -1), aa = loose(a, m, e, 1), bb = loose(b, back, m[x], -1), ba = loose(b, back, m[e], 1);
+        if (t <= 2 && ((ab && aa && ab + aa >= 3) || (bb && ba && bb + ba >= 3))) for (let q = x; q <= e; q++) m[q] = -1;
+        x = e;
+    }
+    return m;
+}
 function diffMarks(texts) {
     const lines = texts.map(t => typeof t === 'string' && t.trim() ? diffUnits(t) : null);
     const n = lines.filter(Boolean).length;
@@ -655,7 +672,7 @@ function diffMarks(texts) {
         }
     };
     for (let p = 0; p < rs.length; p++) for (let q = p + 1; q < rs.length; q++) {
-        const m = alignUnits(rs[p].us, rs[q].us), back = new Array(rs[q].us.length).fill(-1);
+        const m = dropIslands(alignUnits(rs[p].us, rs[q].us), rs[p].us, rs[q].us), back = new Array(rs[q].us.length).fill(-1);
         m.forEach((y, x) => { if (y >= 0) back[y] = x; });
         count(rs[p], rs[q], m);
         count(rs[q], rs[p], back);
