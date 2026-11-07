@@ -1644,7 +1644,7 @@
     var tstMin = 0; setSeg('tst-min', 0); onSeg('tst-min', function (v) { tstMin = +v; setSeg('tst-min', v); });
     $('tst-go').onclick = function () { // a test reminder in 1-2 minutes, through the same channels and sounds as the real ones
       var kind = $('tst-kind').value, at = new Date(Date.now() + tstMin * 60000), F = formats(), msg = $('tst-msg'), title = t.tstTitle(kind), LN = nativePlugin();
-      function shown() { msg.textContent = tstMin ? t.tstSet(F.hm.format(at)) : t.tstNow; }
+      function shown() { msg.textContent = tstMin ? t.tstSet(at.toLocaleTimeString(t.locale, { hour: '2-digit', minute: '2-digit' })) : t.tstNow; }   // the phone's own clock: a test comes "in 1 min" by it, not by the calendar place's zone (owner 2026-11-07: 19:05 shown at 19:34)
       if (kind === 'parts') { testParts(LN, at, msg, shown); return; }
       if (LN) {
         var snd = kind === 'upo' ? [state.rem.sound, state.rem.ownChannel] : kind === 'beg' ? [state.meal.begSnd] : [state.meal.snd];
