@@ -101,7 +101,7 @@ async function main() {
             await cdp.send('DOM.enable');
             await cdp.send('CSS.enable');
             await cdp.send('CSS.startRuleUsageTracking');
-            const resp = await page.goto(o.base + url, { waitUntil: 'load' });
+            const resp = await page.goto(o.base + url, { waitUntil: 'load', timeout: 120000 }); // rule tracking slows a long text's load past the default 30 s
             // the sources are the stylesheets the served <head> links (plain or preload-as-style, ?v= included):
             // what scripts add later (jquery-ui, datatables, the reader's CSS prefetched on home) loads then as now,
             // and a header listing them never matched the head the server compares it with (f3-ultra)
