@@ -57,16 +57,28 @@ function t(path, fallback) {
         cols: ['dgColOrder', v => /^(?:(?:ed|tr):[\w.+-]+,?)+$/.test(v) ? JSON.stringify(v.split(',').filter(Boolean)) : null],
     };
     let over = {};
-    try {
-        over = JSON.parse(sessionStorage.getItem('dgShareView') || '{}') || {};
+    // Read on every text the reader opens (initReader), not only at the page's start: in the app a shared link opens by the
+    // router (dgNavigateInternal, the deep link's _nativeRoute) on a page already up, and its view was lost (CI run 699)
+    const read = () => {
         const q = new URLSearchParams(location.search);
         let any = false;
         for (const p in map) if (q.has(p)) { const v = map[p][1](q.get(p)); if (v !== null) { over[map[p][0]] = v; any = true; } }
         if (any) sessionStorage.setItem('dgShareView', JSON.stringify(over));
+    };
+    try {
+        over = JSON.parse(sessionStorage.getItem('dgShareView') || '{}') || {};
+        read();
     } catch (e) { return; }   // no storage: the saved settings as always
+    window.dgReadShareView = () => { try { read(); } catch (e) { /* ignore */ } };
     const keys = Object.values(map).map(m => m[0]);
     const S = Storage.prototype, get = S.getItem, set = S.setItem, rem = S.removeItem;
-    const drop = k => { if (k in over) { delete over[k]; try { set.call(sessionStorage, 'dgShareView', JSON.stringify(over)); } catch (e) { /* ignore */ } } };
+    // the reader's own choice drops the link's override, and its parameter leaves the address, so the next text (which carries
+    // the address's view parameters, carriedReaderParams) does not bring the link's view back
+    const drop = k => {
+        if (k in over) { delete over[k]; try { set.call(sessionStorage, 'dgShareView', JSON.stringify(over)); } catch (e) { /* ignore */ } }
+        const p = Object.keys(map).find(n => map[n][0] === k), u = new URL(location.href);
+        if (p && u.searchParams.has(p)) { u.searchParams.delete(p); history.replaceState(history.state, '', u.pathname + u.search.replace(/%2C/gi, ',').replace(/%3A/gi, ':') + u.hash); }
+    };
     // Multi (where "Compare" opens) keeps its own lines/columns (owner 2026-11-01: «колонки по умолчанию, но если в мульти
     // настроено в строку - в строку»): viewMode there is viewModeMulti, else the one chosen before, else columns.
     const multi = k => k === 'viewMode' && window.READER_MODE && window.READER_MODE.modeKey === 'multi';
@@ -2870,6 +2882,7 @@ window.addEventListener('popstate', (e) => {
 // ИНИЦИАЛИЗАЦИЯ И МАРШРУТИЗАЦИЯ (SPA Routing)
 // ==========================================
 async function initReader() {
+    if (window.dgReadShareView) window.dgReadShareView();   // a shared link's view, opened by the router too (top of this file)
     await window.modeTableReady;
 
     // Дефолт при заходе без явного ?mode=: тип — всегда 'single' (язык режим больше не кодирует,
