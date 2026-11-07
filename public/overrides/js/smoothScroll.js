@@ -19,11 +19,16 @@ window.dgScrollToElement = function (el, offset, instant, done) {
         return Math.max(0, window.pageYOffset + r.top - (offset === 'center' ? (window.innerHeight - r.height) / 2 : offset));
     };
     const go = behavior => window.scrollTo({ top: targetY(), behavior });
-    let tries = 0;
+    let tries = 0, held = 0;
     const settle = () => {
         if (token !== dgScrollToken) return;
-        if (Math.abs(targetY() - window.pageYOffset) > 40 && tries++ < 5) { go('instant'); setTimeout(settle, 350); }
-        else finish();
+        // Corrected until it holds: a long text keeps laying out while it is drawn (content-visibility estimates), and on a
+        // slow phone 5 tries (1.75 s) gave up 18-25 thousand px short (QA 2026-11-07, /dn2:57.2 at 4x CPU). Up to ~8 s, and
+        // done only once the place has held for two checks in a row.
+        const off = Math.abs(targetY() - window.pageYOffset) > 40;
+        if (off) { held = 0; if (tries++ < 24) { go('instant'); setTimeout(settle, 350); return; } }
+        else if (++held < 2 && tries++ < 24) { setTimeout(settle, 350); return; }
+        finish();
     };
     // The reader takes over: any manual scroll input cancels the pending corrections.
     const cancel = () => { if (token === dgScrollToken) dgScrollToken++; if (window.dgScrollingTo === token) window.dgScrollingTo = 0; };

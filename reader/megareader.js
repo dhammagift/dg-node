@@ -2959,7 +2959,9 @@ async function initReader() {
                 // A #hash target is scrolled to by smoothScroll.js (ScrollManager.scrollToHash) — two
                 // scrollers racing on the same page was why the landing spot was different every time.
                 if (window.location.hash && typeof ScrollManager !== 'undefined') { /* smoothScroll.js owns it */ }
-                else if (window.dgScrollToElement) window.dgScrollToElement(target, 'center', instant);
+                // the found word, not the whole segment: with several editions a segment is taller than a phone's screen,
+                // and centring it left the word ~450 px above the top (QA 2026-11-07, /dn2:57.2?s=kacchap, 6 editions)
+                else if (window.dgScrollToElement) window.dgScrollToElement(target.querySelector('b.match.finder') || target, 'center', instant);
                 else target.scrollIntoView({ block: 'center', behavior: instant ? 'instant' : 'smooth' });
                 // Same fallback pattern as smoothScroll.js's highlightById/highlightAllById —
                 // this initial-load scroll used to jump to the segment without ever marking it
