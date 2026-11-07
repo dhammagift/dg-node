@@ -1547,7 +1547,7 @@ if (event.altKey && event.code === "KeyJ") {
   ) {
     event.preventDefault();
 
-    const currentValue = localStorage.getItem("removePunct") === "true";
+    const currentValue = window.dgPunctOff ? window.dgPunctOff() : localStorage.getItem("removePunct") === "true";   // what is on screen, the modes' default included
     localStorage.setItem("removePunct", currentValue ? "false" : "true");
 
     // Live re-apply instead of reload — same path the quick-settings toggle and the Apply

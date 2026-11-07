@@ -1283,8 +1283,17 @@ function finderHighlighter(finder) {
     return fn;
 }
 
+// Punctuation off: the reader's own choice, or - nothing chosen yet - Memorize and Devanagari by default. That default is
+// the mode's only: it used to be SAVED the first time one of them opened, and every text in every mode then showed " | "
+// for its full stops (owner 2026-11-07, his tablet, after Memorize on an10.69).
+window.dgPunctOff = function () {
+    const v = localStorage.getItem('removePunct');
+    if (v !== null) return v === 'true';
+    const k = window.READER_MODE && READER_MODE.modeKey;
+    return !!k && (isMnemonicMode(k) || isDualScriptMode(k));
+};
 window.applyRemovePunct = function(dataObj, segment) {
-    if (localStorage.getItem("removePunct") === "true" && dataObj && dataObj[segment] !== undefined) {
+    if (window.dgPunctOff() && dataObj && dataObj[segment] !== undefined) {
         dataObj[segment] = dataObj[segment].replace(/[-—–]/g, ' ')
                                            .replace(/[:;“”‘’,"']/g, '')
                                            .replace(/[.?!]/g, ' | ');
@@ -1805,9 +1814,7 @@ window.switchReaderMode = function(modeKey, event) {
     // removed. A DEFAULT, not a lock: only sets it the first time (localStorage key never
     // touched before) — once the user has an explicit preference either way, that wins. Same
     // check runs on a cold ?mode=memorize/devanagari load too, see buildSutta() below.
-    if ((isMnemonicMode(modeKey) || isDualScriptMode(modeKey)) && localStorage.getItem('removePunct') === null) {
-        localStorage.setItem('removePunct', 'true');
-    }
+    // (their punctuation-off default is read by dgPunctOff, not saved)
 
     // Owner: mode TYPE and language are fully orthogonal now — switching type (single, memorize,
     // devanagari, ...) never touches ?lang=. Whatever language the URL already had stays as-is;
@@ -2430,9 +2437,6 @@ window.buildSutta = async function(rawSlug, opts) {
     document.body.classList.toggle('dg-mode-dev', isDevModeRender);
     // Same "default, not a lock" as switchReaderMode() — covers a cold load straight into
     // ?mode=memorize/devanagari (bookmark, shared link), which never goes through that function.
-    if ((isMemModeRender || isDevModeRender) && localStorage.getItem('removePunct') === null) {
-        localStorage.setItem('removePunct', 'true');
-    }
 
     // The Pali texts this render shows: the chosen editions this text has, in the chosen order. An edition without the
     // text (they cover DN MN SN AN) is left out and named in a quiet note; nothing left = MS as always.
