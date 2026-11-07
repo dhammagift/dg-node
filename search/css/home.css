@@ -4052,6 +4052,7 @@ body.dg-state-results #results-toolbar .btn[aria-pressed="true"] { background: v
 body.dg-state-results #results-toolbar .toggle-dict-btn,
 body.dg-state-results #results-toolbar .toggle-multiselect-btn,
 body.dg-state-results #results-toolbar #toggle-variants-results,
+body.dg-state-results #results-toolbar #btn-compass-results,
 body.dg-state-results #results-toolbar .toggle-mode-btn,
 body.dg-state-results #results-toolbar #btn-read-marks,
 body.dg-state-results #results-toolbar #helpMessage {
@@ -4061,10 +4062,19 @@ body.dg-state-results #results-toolbar #helpMessage {
 body.dg-state-results #results-toolbar .toggle-dict-btn:hover,
 body.dg-state-results #results-toolbar .toggle-multiselect-btn:hover,
 body.dg-state-results #results-toolbar #toggle-variants-results:hover,
+body.dg-state-results #results-toolbar #btn-compass-results:hover,
 body.dg-state-results #results-toolbar .toggle-mode-btn:hover,
 body.dg-state-results #results-toolbar #btn-read-marks:hover,
 body.dg-state-results #results-toolbar #helpMessage:hover { background: var(--dg-surface-hover); border-color: transparent; color: var(--dg-text); }
 body.dg-state-results #results-toolbar .btn img, body.dg-state-results #results-toolbar .btn svg { width: 14px; height: 14px; }
+/* A narrow phone keeps the one row of the reader's icons (the compass made nine; 360px wrapped "?" to a second row) */
+@media (max-width: 380px) {
+    body.dg-state-results #results-toolbar .btn { padding-left: 8px; padding-right: 8px; }
+    body.dg-state-results #results-toolbar #toggle-variants-results, body.dg-state-results #results-toolbar #btn-compass-results,
+    body.dg-state-results #results-toolbar .toggle-dict-btn, body.dg-state-results #results-toolbar .toggle-multiselect-btn,
+    body.dg-state-results #results-toolbar .toggle-mode-btn, body.dg-state-results #results-toolbar #btn-read-marks,
+    body.dg-state-results #results-toolbar #helpMessage { width: 23px; height: 25px; padding: 0; }
+}
 
 /* заголовок выдачи (reference .rhead) */
 body.dg-state-results .resultheader { max-width: 880px; margin: 0 auto; padding: 24px 0 18px; column-gap: 10px; }

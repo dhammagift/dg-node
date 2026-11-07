@@ -2542,6 +2542,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      клик и обновляет иконку по классу, не по id. -->
 <button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
 
+<!-- The compass (quick settings), as in the reader's row after multi-select (owner 2026-11-07: «компас добавим ... без
+     разброса») -->
+<button id="btn-compass-results" class="btn btn-light mb-1" type="button" title="Compass" aria-label="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();"><img src="/assets/svg/compass.svg" alt=""></button>
+
 
 <!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
      (search-render.js, readMarksKey = запрос + область) — колонка про проход по конкретной
