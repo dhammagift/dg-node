@@ -30,8 +30,8 @@ function hashFile(file, gunzip) {
 
 async function checkPacks(dir, { manifest, fix = false } = {}) {
     const mf = manifest || path.join(dir, 'packs-manifest.json');
-    let m;
-    try { m = JSON.parse(fs.readFileSync(mf, 'utf8')); } catch { return { checked: 0, problems: [], fixed: [] }; }
+    let m, seen;
+    try { seen = fs.statSync(mf); m = JSON.parse(fs.readFileSync(mf, 'utf8')); } catch { return { checked: 0, problems: [], fixed: [] }; }
     const problems = [], fixed = [];
     for (const p of m.packs || []) {
         const name = path.basename(p.url || p.file || '');
@@ -46,6 +46,13 @@ async function checkPacks(dir, { manifest, fix = false } = {}) {
         try { raw = await hashFile(f, true); } catch (e) { problems.push(`${what} - not a gzip (${e.message})`); continue; }
         Object.assign(p, { bytes_gz: size, sha256_gz: gz.sha, bytes: raw.n, sha256: raw.sha });
         fixed.push(what);
+    }
+    // The hashing takes a while: pull-db.sh may have swapped in a new list meanwhile (it restarts the server before it
+    // publishes the packs) - writing this one back would put the old list over it (Ultra's review 2026-11-08).
+    const now = (() => { try { return fs.statSync(mf); } catch { return null; } })();
+    if (fixed.length && (!now || now.ino !== seen.ino || now.mtimeMs !== seen.mtimeMs || now.size !== seen.size)) {
+        problems.push('the manifest changed meanwhile - left as is, the next check sees the new one');
+        fixed.length = 0;
     }
     if (fixed.length) {
         const tmp = `${mf}.${process.pid}.tmp`;

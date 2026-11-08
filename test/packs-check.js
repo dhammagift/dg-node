@@ -36,6 +36,15 @@ const read = () => JSON.parse(fs.readFileSync(path.join(dir, 'packs-manifest.jso
     r = await checkPacks(dir, { fix: true });
     assert.deepStrictEqual(r.problems, ['c.3.db.gz: no file'], 'a missing file cannot be fixed');
 
+    // a list swapped in while the check hashes stays: the old one is not written back over it
+    write([entry('b', 'b.2.db.gz', rebuilt, rows)]);
+    const pending = checkPacks(dir, { fix: true });
+    fs.writeFileSync(path.join(dir, 'packs-manifest.json.new'), JSON.stringify({ build_id: 'y', packs: [] }));
+    fs.renameSync(path.join(dir, 'packs-manifest.json.new'), path.join(dir, 'packs-manifest.json'));
+    r = await pending;
+    assert.strictEqual(JSON.parse(fs.readFileSync(path.join(dir, 'packs-manifest.json'), 'utf8')).build_id, 'y', 'the new list stays');
+    assert.deepStrictEqual([r.fixed.length, r.problems.length], [0, 1]);
+
     const other = path.join(dir, 'new-manifest.json');
     fs.writeFileSync(other, JSON.stringify({ packs: [entry('b', 'b.2.db.gz', rebuilt, rows)] }));
     r = await checkPacks(dir, { manifest: other, fix: true });
