@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dukkha — Dhamma.gift</title>
+<meta name="description" content="Dukkha и domanassa по определениям Сутт (DN 22, MN 141, MN 44): подберите русское слово — оно встанет во все места перевода.">
+<link rel="icon" type="image/png" href="/assets/img/favico-noglass.png">
+<script>
+// The site's theme choice (localStorage 'theme': dark | light | auto), before the first paint.
+(function () { try { var t = localStorage.getItem('theme') || 'auto';
+  if (t === 'dark' || (t === 'auto' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark'; } catch (e) {} })();
+</script>
+<style>
+@font-face{font-family:"Lato";font-weight:400;font-display:swap;src:url("/assets/fonts/lato-400-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+FB00-FB06,U+FEFF,U+FFFD}
+@font-face{font-family:"Lato";font-weight:400;font-display:swap;src:url("/assets/fonts/lato-400-pali.woff2") format("woff2");unicode-range:U+0100-017F,U+0300-036F,U+1E00-1EFF}
+@font-face{font-family:"Lato";font-weight:400;font-display:swap;src:url("/assets/fonts/lato-400-cyrillic.woff2") format("woff2");unicode-range:U+0400-04FF,U+2116}
+@font-face{font-family:"Lato";font-style:italic;font-weight:400;font-display:swap;src:url("/assets/fonts/lato-400-italic-pali.woff2") format("woff2");unicode-range:U+0100-017F,U+0300-036F,U+1E00-1EFF}
+@font-face{font-family:"Lato";font-style:italic;font-weight:400;font-display:swap;src:url("/assets/fonts/lato-400-italic-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+2000-206F}
+@font-face{font-family:"Lato";font-weight:600;font-display:swap;src:url("/assets/fonts/lato-600-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+2000-206F,U+20AC,U+2122,U+2190-2199,U+2212,U+FB00-FB06,U+FEFF,U+FFFD}
+@font-face{font-family:"Lato";font-weight:600;font-display:swap;src:url("/assets/fonts/lato-600-pali.woff2") format("woff2");unicode-range:U+0100-017F,U+0300-036F,U+1E00-1EFF}
+@font-face{font-family:"Lato";font-weight:600;font-display:swap;src:url("/assets/fonts/lato-600-cyrillic.woff2") format("woff2");unicode-range:U+0400-04FF,U+2116}
+/* The design system's tokens (Dhamma.gift minimal skin), light and dark. */
+:root{--dg-page:#fff;--dg-surface:#fff;--dg-surface-hover:#f5f4f1;--dg-border:#e7e5de;--dg-border-strong:#d7d4c9;--dg-text:#1b1d19;--dg-text-2:#5c6058;--dg-text-muted:#6e716a;--dg-accent-ink:#0f7c63;--dg-accent-dark:#0f7c63;--dg-accent-bg:#dff3ec;--dg-on-accent-bg:#0c6a55;--dg-match:#a8341c;--dg-tblue:#3434be;--dg-font:"Lato",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;--dg-ease:cubic-bezier(.22,.68,0,1)}
+[data-theme=dark]{--dg-page:#111;--dg-surface:#191919;--dg-surface-hover:#202020;--dg-border:#2c2c2c;--dg-border-strong:#3b3b3b;--dg-text:#ddd;--dg-text-2:#a8a8a8;--dg-text-muted:#7c7c7c;--dg-accent-ink:#09967a;--dg-accent-dark:#025242;--dg-accent-bg:#12241f;--dg-on-accent-bg:#16b394;--dg-match:#ff6b45;--dg-tblue:#8f8fe8;color-scheme:dark}
+
+*{box-sizing:border-box}
+html{width:100%}
+body{display:block!important;width:100%;margin:0;background:var(--dg-page);color:var(--dg-text);font-family:var(--dg-font);-webkit-font-smoothing:antialiased;font-size:15px}
+a{color:var(--dg-accent-ink);text-decoration:none}a:hover{color:var(--dg-accent-ink);text-decoration:underline;text-underline-offset:3px}
+.gi{display:inline-block;width:1em;height:1em;background:currentColor;-webkit-mask:var(--u) center/contain no-repeat;mask:var(--u) center/contain no-repeat;vertical-align:-.12em;flex:none}
+.wrap{max-width:1040px;margin:0 auto;padding:0 24px}
+/* шапка как на присланной странице: иконки слева (ракушка, вид, пали, тема, словарь), затем dn22 mn141 mn44 */
+.bar{position:sticky;top:0;z-index:30;background:var(--dg-page);height:52px;display:flex;align-items:center;padding:0 20px}
+.bar .in{max-width:1040px;margin:0 auto;width:100%;display:flex;align-items:center;gap:2px}
+.ib{width:34px;height:34px;border:0;border-radius:8px;background:transparent;color:var(--dg-text-muted);display:grid;place-items:center;cursor:pointer;font-size:20px;padding:0;transition:color .15s var(--dg-ease),background .15s}
+.ib:hover{color:var(--dg-text);background:var(--dg-surface-hover);text-decoration:none}
+.ib[aria-pressed=true]{color:var(--dg-accent-ink)}
+.bar .refs{display:flex;gap:8px;margin-left:24px;font-size:16px}
+.bar .refs a{color:var(--dg-text-muted)}
+.bar .refs a:hover{color:var(--dg-accent-ink);text-decoration:none}
+body.stack .g{grid-template-columns:minmax(0,1fr) 92px;gap:4px 28px}
+body.stack .g .lang-2nd{grid-column:1}
+body.stack .g .sref{grid-column:2;grid-row:1}
+body.nopali .pli-lang{display:none}
+body.nopali .g{grid-template-columns:minmax(0,1fr) 92px}
+/* словарь — панель справа: текст остаётся виден, можно сверять слово */
+.dict{position:fixed;top:52px;right:0;bottom:0;width:min(440px,100vw);z-index:25;background:var(--dg-surface);border-left:1px solid var(--dg-border);box-shadow:-10px 0 30px rgba(27,29,25,.10);display:flex;flex-direction:column;transform:translateX(calc(100% + 40px));visibility:hidden;transition:transform .28s var(--dg-ease),visibility 0s .28s}
+body.dict-on .dict{transform:none;visibility:visible;transition:transform .28s var(--dg-ease)}
+.dict .dh{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--dg-border);color:var(--dg-text-muted)}
+.dict form{flex:1;min-width:0}
+.dict input{width:100%;border:1px solid var(--dg-border-strong);background:var(--dg-page);color:var(--dg-text);border-radius:999px;font:inherit;font-size:14px;padding:7px 14px;outline:0}
+.dict input:focus{border-color:var(--dg-accent-dark)}
+.dict .dh a,.dict .dh button{width:32px;height:32px;display:grid;place-items:center;border:0;border-radius:8px;background:none;color:var(--dg-text-2);cursor:pointer}
+.dict .dh a:hover,.dict .dh button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.dict iframe{flex:1;width:100%;border:0;background:var(--dg-page)}
+@media(min-width:1180px){body.dict-on .wrap{margin-right:460px;max-width:none}}
+/* ── примерочная ─────────────────────────────────────────────
+   Слово — главный предмет страницы: крупно, само является полем ввода.
+   Листается стрелками, колесом, клавишами; свой вариант — просто печатать поверх. */
+.fit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin:30px 0 0}
+.wheel{position:relative;background:var(--dg-surface);border:1px solid var(--dg-border);border-radius:18px;padding:20px 22px 16px;transition:border-color .2s var(--dg-ease),box-shadow .2s var(--dg-ease)}
+.wheel:focus-within{border-color:var(--dg-border-strong);box-shadow:0 8px 30px rgba(27,29,25,.08)}
+.wheel .pl{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.wheel .pl b{font-size:15px;font-weight:600;color:var(--dg-match);font-style:italic}
+.wheel .pl span{font-size:12px;color:var(--dg-text-muted);font-variant-numeric:tabular-nums}
+.stage{display:flex;align-items:center;gap:6px;margin:14px 0 4px}
+.arr{flex:none;width:40px;height:40px;border-radius:50%;border:0;background:var(--dg-surface-hover);color:var(--dg-text-2);cursor:pointer;font-size:18px;line-height:1;display:grid;place-items:center;transition:transform .12s var(--dg-ease),background .15s}
+.arr:hover{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+.arr:active{transform:scale(.9)}
+.word{flex:1;min-width:0;width:100%;text-align:center;border:0;background:none;outline:0;font:inherit;font-size:clamp(26px,3.4vw,38px);font-weight:600;letter-spacing:-.02em;color:var(--dg-text);padding:6px 0;border-bottom:2px solid transparent;transition:border-color .2s}
+.word::placeholder{color:var(--dg-text-muted);font-weight:400}
+.word:hover{border-bottom-color:var(--dg-border)}
+.word:focus{border-bottom-color:var(--dg-accent-dark)}
+.word.roll{animation:roll .28s var(--dg-ease)}
+.word.roll.back{animation-name:rollb}
+@keyframes roll{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+@keyframes rollb{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
+.hint{text-align:center;font-size:12px;color:var(--dg-text-muted);min-height:18px}
+.opts{display:flex;flex-wrap:wrap;justify-content:center;gap:2px 4px;margin:10px 0 0;padding-top:12px;border-top:1px solid var(--dg-border)}
+.opts button{white-space:nowrap;border:0;background:none;font:inherit;font-size:13.5px;color:var(--dg-text-2);padding:5px 9px;border-radius:7px;cursor:pointer}
+.opts button:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.opts button[aria-pressed=true]{color:var(--dg-text);font-weight:600}
+.opts button.own{color:var(--dg-text-muted);font-style:italic}
+.fitbar{display:flex;justify-content:space-between;align-items:center;gap:14px;flex-wrap:wrap;margin:14px 2px 0;font-size:12.5px;color:var(--dg-text-muted)}
+.fitbar .acts{display:flex;gap:16px}
+.fitbar button{border:0;background:none;font:inherit;color:var(--dg-tblue);cursor:pointer;padding:0;white-space:nowrap}
+.fitbar button:hover{text-decoration:underline;text-underline-offset:3px}
+kbd{font:inherit;font-size:11px;background:var(--dg-surface);box-shadow:none;border:1px solid var(--dg-border-strong);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--dg-text-2)}
+/* ── текст: пали слева, перевод справа — читается как обычный перевод, без подсветки ── */
+.txt{margin:44px 0 0}
+.blk{padding:26px 0 8px;border-top:1px solid var(--dg-border)}
+.blk h6{margin:0 0 16px;font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--dg-text-muted)}
+.blk h6 a{color:var(--dg-text-muted)}.blk h6 a:hover{color:var(--dg-accent-ink)}
+.g{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 92px;gap:28px;margin:0 0 18px;align-items:baseline}
+.pli-lang{margin:0;font-size:15.5px;line-height:1.62;color:var(--dg-text-2)}
+.pw{cursor:pointer;border-radius:3px;transition:background .12s}
+.pw:hover{background:var(--dg-surface-hover);color:var(--dg-text)}
+.pw.m{color:var(--dg-match)}
+.lang-2nd{margin:0;font-size:17px;line-height:1.6;color:var(--dg-text);text-wrap:pretty}
+/* слово в переводе ничем не отмечено — только мягко проявляется при смене */
+.slot.in{animation:slotin .45s var(--dg-ease)}
+@keyframes slotin{from{opacity:.15;filter:blur(3px)}to{opacity:1;filter:none}}
+.sref{display:flex;flex-direction:column;gap:2px;font-size:11.5px;font-variant-numeric:tabular-nums;text-align:right}
+.sref a{color:var(--dg-text-muted)}.sref a:hover{color:var(--dg-accent-ink)}
+.pw.on{background:var(--dg-accent-bg);color:var(--dg-on-accent-bg)}
+.foot{margin:30px 0 0;padding:18px 0 50px;border-top:1px solid var(--dg-border);font-size:12.5px;color:var(--dg-text-muted)}
+@media(prefers-reduced-motion:reduce){.word.roll,.slot.in{animation:none}}
+@media(max-width:760px){.fit{grid-template-columns:1fr}.g{grid-template-columns:1fr;gap:4px}.sref{flex-direction:row;gap:10px;text-align:left}.lang-2nd{font-size:16px}.bar .refs{margin-left:10px;font-size:15px}.kb{display:none}}
+.hint .g-btn{border:0;background:none;font:inherit;font-size:12px;color:var(--dg-tblue);cursor:pointer;padding:0 2px}
+.hint .g-btn:hover{text-decoration:underline;text-underline-offset:3px}
+.agr.in{animation:slotin .45s var(--dg-ease)}
+@media(prefers-reduced-motion:reduce){.agr.in{animation:none}}
+</style>
+</head>
+<body>
+<header class="bar"><div class="in">
+<a class="ib" href="/?lang=ru" title="Dhamma.gift — главная"><i class="gi" style="--u:url(/assets/svg/logo-grey.svg)"></i></a>
+<button class="ib" type="button" title="Пали и перевод: в две колонки / друг под другом" onclick="toggleLayout(this)"><i class="gi" style="--u:url(/assets/svg/table-columns.svg)"></i></button>
+<button class="ib" type="button" title="Скрыть / показать пали" onclick="togglePali(this)"><i class="gi" style="--u:url(/assets/svg/comment.svg)"></i></button>
+<button class="ib" type="button" title="Светлая / тёмная тема" onclick="toggleTheme()"><i class="gi" style="--u:url(/assets/svg/moon.svg)"></i></button>
+<button class="ib dbtn" type="button" title="Словарь" onclick="document.body.classList.contains('dict-on')?dictClose():dictOpen()"><i class="gi" style="--u:url(/assets/svg/compass.svg)"></i></button>
+<nav class="refs" id="toprefs"></nav>
+</div></header>
+<div class="wrap">
+<div class="fit" id="fit"></div>
+<div class="fitbar"><span class="kb">Листайте стрелками или <kbd>←</kbd> <kbd>→</kbd>, своё слово — просто печатайте. Клик по пали — словарь.</span><span class="acts"><button type="button" onclick="copyLink(this)">Ссылка на этот вариант</button><button type="button" onclick="resetV()">Сбросить</button></span></div>
+<main class="txt" id="text"></main>
+<div class="foot">Пали и перевод — <a href="/?lang=ru">dhamma.gift</a></div>
+</div>
+<aside class="dict" id="dict" aria-hidden="true"><div class="dh"><i class="gi" style="--u:url(/assets/svg/compass.svg)"></i><form onsubmit="dictGo(this.q.value);return false"><input name="q" id="dq" type="text" spellcheck="false" placeholder="слово пали"></form><a id="dext" href="https://dict.dhamma.gift/ru/" target="_blank" rel="noopener" title="Открыть в новой вкладке"><i class="gi" style="--u:url(/assets/svg/open-link.svg)"></i></a><button type="button" title="Закрыть" onclick="dictClose()"><i class="gi" style="--u:url(/assets/svg/xmark.svg)"></i></button></div><iframe id="dframe" title="Словарь Dhamma.gift" src="about:blank"></iframe></aside>
+<script>
+// Словарь DG; если адрес поиска на проде другой — поменять только здесь
+const DICT='https://dict.dhamma.gift/ru/search_html?q=';
+const DG=(ref,s)=>'/'+ref+'?s='+s+'&lang=ru';
+const SLOTS={
+  x:{pali:'dukkha',opts:['боль','дискомфорт','страдание','неудовлетворённость','неудовлетворительность','стресс','не-лёгкость','тягость','несчастье'],def:'боль'},
+  y:{pali:'domanassa',opts:['горе','расстройство','уныние','депрессия','подавленность','недовольство','«страдание»'],def:'«страдание»'}
+};
+// Agreement: a word that agrees with slot k is written [k:feminine|masculine|neuter] and follows the gender of the
+// word picked for k. "Yaṁ … kāyikaṁ dukkhaṁ" - yaṁ and kāyikaṁ agree with dukkhaṁ, so here they follow {x}.
+const BLOCKS=[
+ {refs:[['DN 22','dn22:18.18'],['MN 141','mn141:16.1']],s:'dukkha',segs:[
+  ['Katamañca bhikkhave **dukkhaṁ**',['dn22:18.18','mn141:16.1'],'И что такое, монахи, {x}?'],
+  ['Yaṁ kho bhikkhave kāyikaṁ **dukkhaṁ** kāyikaṁ asātaṁ kāyasamphassajaṁ **dukkhaṁ** asātaṁ vedayitaṁ',['dn22:18.19','mn141:16.2'],'[x:Та которая|Тот который|То которое], монахи, [x:телесная|телесный|телесное] {x}, телесный дискомфорт, тела-соприкосновением-[x:рожденная|рожденный|рожденное] {x}, дискомфорт почувствованный,'],
+  ['idaṁ vuccati bhikkhave **dukkhaṁ**',['dn22:18.20','mn141:16.3'],'это называется, монахи, {x}.']]},
+ {refs:[['DN 22','dn22:18.21'],['MN 141','mn141:17.1']],s:'domanass',segs:[
+  ['Katamañca bhikkhave **domanassaṁ**',['dn22:18.21','mn141:17.1'],'И что такое, монахи, {y}?'],
+  ['Yaṁ kho bhikkhave cetasikaṁ **dukkhaṁ** cetasikaṁ asātaṁ manosamphassajaṁ **dukkhaṁ** asātaṁ vedayitaṁ',['dn22:18.22','mn141:17.2'],'[x:Та которая|Тот который|То которое], монахи, [x:умственная-когнитивная|умственный-когнитивный|умственное-когнитивное] {x}, умственный дискомфорт, умо-соприкосновением-[x:рожденная|рожденный|рожденное] {x}, дискомфорт почувствованный,'],
+  ['idaṁ vuccati bhikkhave **domanassaṁ**',['dn22:18.23','mn141:17.3'],'это называется, монахи, {y}.']]},
+ {refs:[['MN 44','mn44:23.4']],s:'dukkha',segs:[
+  ['Yaṁ kho āvuso visākha kāyikaṁ vā cetasikaṁ vā **dukkhaṁ** asātaṁ vedayitaṁ',['mn44:23.4'],'То, друг Висакха, что почувствовано телесно или умственно как {x}, как дискомфорт, —'],
+  ['ayaṁ **dukkhā** vedanā',['mn44:23.5'],'это чувство: {x}.']]}
+];
+const GN={f:'ж. р.',m:'м. р.',n:'ср. р.'},GI={f:0,m:1,n:2};
+// Gender by the ending of the last word: -о/-е/-ё neuter (горе, страдание, несчастье), -а/-я/-ь feminine (боль, тягость,
+// депрессия), else masculine (стресс, дискомфорт). Right for every listed word; an own word can be switched by hand.
+function guessG(w){w=String(w).replace(/[«»"'()]/g,'').trim().toLowerCase().split(/\s+/).pop()||'';
+  return /[оеё]$/.test(w)?'n':/[аяь]$/.test(w)?'f':'m'}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const count=k=>BLOCKS.reduce((n,b)=>n+b.segs.reduce((m,s)=>m+(s[2].split('{'+k+'}').length-1),0),0);
+// адрес важнее localStorage — присланная ссылка открывается с выбором отправителя
+const qs=new URLSearchParams(location.search);
+let saved={};try{saved=JSON.parse(localStorage.getItem('dg-dukkha-pick')||'{}')}catch(e){}
+const val={x:qs.get('x')??saved.x??SLOTS.x.def,y:qs.get('y')??saved.y??SLOTS.y.def};
+// an own word's gender set by hand (xg / yg); a listed word always takes its own
+const gset={x:qs.get('xg')??saved.xg??'',y:qs.get('yg')??saved.yg??''};
+// старые варианты из прошлого списка (и тестовые слова) не тянем из памяти браузера
+['x','y'].forEach(k=>{if(!qs.get(k)&&!SLOTS[k].opts.includes(val[k])){val[k]=SLOTS[k].def;gset[k]=''}});
+const gender=k=>(!SLOTS[k].opts.includes(val[k])&&GI[gset[k]]!=null)?gset[k]:guessG(val[k]);
+let lastFocus='x';
+function persist(){const own=k=>!SLOTS[k].opts.includes(val[k])&&gset[k]?gset[k]:'';
+  try{localStorage.setItem('dg-dukkha-pick',JSON.stringify({x:val.x,y:val.y,xg:own('x'),yg:own('y')}))}catch(e){}
+  const u=new URL(location.href);u.searchParams.set('x',val.x);u.searchParams.set('y',val.y);
+  ['x','y'].forEach(k=>own(k)?u.searchParams.set(k+'g',own(k)):u.searchParams.delete(k+'g'));history.replaceState(null,'',u)}
+function renderFit(){
+  document.getElementById('fit').innerHTML=Object.entries(SLOTS).map(([k,s])=>
+   '<section class="wheel" data-k="'+k+'"><div class="pl"><b>'+s.pali+'</b><span>в тексте ×'+count(k)+'</span></div>'
+   +'<div class="stage"><button class="arr" type="button" title="Предыдущее" onclick="step(\''+k+'\',-1)">‹</button>'
+   +'<input class="word" type="text" spellcheck="false" placeholder="своё слово" aria-label="Слово для '+s.pali+'" oninput="typed(\''+k+'\',this.value)" onfocus="lastFocus=\''+k+'\';this.select()">'
+   +'<button class="arr" type="button" title="Следующее" onclick="step(\''+k+'\',1)">›</button></div>'
+   +'<div class="hint"></div><div class="opts"></div></section>').join('');
+  syncFit('x');syncFit('y')}
+function syncFit(k,dir){const w=document.querySelector('.wheel[data-k='+k+']'),inp=w.querySelector('.word'),s=SLOTS[k];
+  if(document.activeElement!==inp||dir){inp.value=val[k]}
+  if(dir){inp.classList.remove('roll','back');void inp.offsetWidth;inp.classList.add('roll');if(dir<0)inp.classList.add('back')}
+  const i=s.opts.indexOf(val[k]),own=i<0&&val[k];
+  // a listed word shows its gender; an own word gets a button that switches it (ж → м → ср)
+  w.querySelector('.hint').innerHTML=own?'своё слово · <button type="button" class="g-btn" title="Род слова: от него зависят согласованные слова в тексте" onclick="cycleG(\''+k+'\')">'+GN[gender(k)]+'</button>'
+   :(i>=0?(i+1)+' из '+s.opts.length+' · '+GN[gender(k)]:'');
+  w.querySelector('.opts').innerHTML=s.opts.map(o=>'<button type="button" aria-pressed="'+(o===val[k])+'" onclick="pick(\''+k+'\',this.textContent)">'+esc(o)+'</button>').join('')
+   +(own?'<button type="button" class="own" aria-pressed="true">'+esc(val[k])+'</button>':'')}
+function cycleG(k){gset[k]='fmn'[(GI[gender(k)]+1)%3];persist();syncFit(k);fill(k)}
+function pick(k,v){const s=SLOTS[k],a=s.opts.indexOf(val[k]),b=s.opts.indexOf(v);val[k]=v;persist();syncFit(k,b<a?-1:1);fill(k)}
+function step(k,d){const o=SLOTS[k].opts,i=o.indexOf(val[k]);val[k]=o[((i<0?(d>0?-1:0):i)+d+o.length)%o.length];persist();syncFit(k,d);fill(k)}
+function typed(k,v){val[k]=v.trim();gset[k]='';persist();syncFit(k);fill(k)}
+function resetV(){val.x=SLOTS.x.def;val.y=SLOTS.y.def;gset.x=gset.y='';persist();syncFit('x',-1);syncFit('y',-1);fill('x');fill('y')}
+function copyLink(b){navigator.clipboard?.writeText(location.href);const t=b.textContent;b.textContent='Скопировано';setTimeout(()=>b.textContent=t,1400)}
+function show(el,v){if(el.textContent===v)return;el.textContent=v;el.classList.remove('in');void el.offsetWidth;el.classList.add('in')}
+function fill(k){document.querySelectorAll('.slot[data-k='+k+']').forEach(el=>show(el,val[k]||'…'));
+  const g=GI[gender(k)];document.querySelectorAll('.agr[data-k='+k+']').forEach(el=>show(el,el.dataset.f.split('|')[g]))}
+function pali(t){return t.split(/(\s+)/).map(w=>{if(!w.trim())return w;
+  const m=/^\*\*.*\*\*$/.test(w),c=w.replace(/\*\*/g,'');
+  return '<span class="pw'+(m?' m':'')+'" data-w="'+esc(c)+'">'+esc(c)+'</span>'}).join('')}
+function renderText(){
+  document.getElementById('toprefs').innerHTML=[['DN 22','dn22:18.18'],['MN 141','mn141:16.1'],['MN 44','mn44:23.1']].map(r=>'<a href="'+DG(r[1],'dukkha')+'">'+r[0].replace(' ','').toLowerCase()+'</a>').join('');
+  document.getElementById('text').innerHTML=BLOCKS.map(b=>'<section class="blk"><h6>'+b.refs.map(r=>'<a href="'+DG(r[1],b.s)+'">'+r[0]+'</a>').join(' · ')+'</h6>'
+   +b.segs.map(s=>'<div class="g"><p class="pli-lang">'+pali(s[0])+'</p><p class="lang-2nd">'
+     +esc(s[2]).replace(/\{([xy])\}/g,'<span class="slot" data-k="$1"></span>').replace(/\[([xy]):([^\]]*)\]/g,'<span class="agr" data-k="$1" data-f="$2"></span>')
+     +'</p><span class="sref">'+s[1].map(r=>'<a href="'+DG(r,b.s)+'">'+r+'</a>').join('')+'</span></div>').join('')+'</section>').join('');
+  ['x','y'].forEach(k=>{const g=GI[gender(k)];document.querySelectorAll('.slot[data-k='+k+']').forEach(el=>el.textContent=val[k]||'…');
+    document.querySelectorAll('.agr[data-k='+k+']').forEach(el=>el.textContent=el.dataset.f.split('|')[g])})}
+// ←/→ листают последнее тронутое слово, если курсор не в поле
+document.addEventListener('keydown',e=>{if(e.target.matches('input'))return;
+  if(e.key==='ArrowRight'||e.key==='ArrowLeft'){e.preventDefault();step(lastFocus,e.key==='ArrowRight'?1:-1)}});
+// колесо над карточкой — тоже листание, как барабан
+document.addEventListener('wheel',e=>{const w=e.target.closest('.stage');if(!w)return;e.preventDefault();
+  const k=w.closest('.wheel').dataset.k;lastFocus=k;if(Math.abs(e.deltaY)>4)step(k,e.deltaY>0?1:-1)},{passive:false});
+function toggleLayout(b){b.ariaPressed=String(document.body.classList.toggle('stack'))}
+function togglePali(b){b.ariaPressed=String(document.body.classList.toggle('nopali'))}
+function dictOpen(){document.body.classList.add('dict-on');document.querySelector('.dbtn').ariaPressed='true';document.getElementById('dict').ariaHidden='false';
+  if(document.getElementById('dframe').src==='about:blank')dictGo('dukkha')}
+function dictClose(){document.body.classList.remove('dict-on');document.querySelector('.dbtn').ariaPressed='false';document.getElementById('dict').ariaHidden='true';
+  document.querySelectorAll('.pw.on').forEach(x=>x.classList.remove('on'))}
+function dictGo(q){q=q.trim();if(!q)return;const u=DICT+encodeURIComponent(q);
+  document.getElementById('dq').value=q;document.getElementById('dframe').src=u;document.getElementById('dext').href=u}
+document.addEventListener('click',e=>{const w=e.target.closest('.pw');if(!w)return;
+  document.querySelectorAll('.pw.on').forEach(x=>x.classList.remove('on'));w.classList.add('on');
+  dictOpen();dictGo(w.dataset.w.replace(/[^\p{L}]/gu,''))});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')dictClose()});
+// the same key the site uses, so the choice carries over both ways
+function toggleTheme(){const h=document.documentElement,t=h.dataset.theme==='dark'?'light':'dark';h.dataset.theme=t;try{localStorage.setItem('theme',t)}catch(e){}}
+renderFit();renderText();
+</script>
+</body>
+</html>
