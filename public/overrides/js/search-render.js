@@ -56,6 +56,7 @@ window.DgSearchRender = (function () {
         document.body.classList.toggle('dg-novar', next === 'hidden');
         $('#toggle-variants-results img, #toggle-variants img').attr('src', next === 'hidden' ? '/assets/svg/eye-slash.svg' : '/assets/svg/eye.svg');
         $('#sutta .variant').toggleClass('hidden-variant', next === 'hidden');
+        if (suttaTableApi) suttaTableApi.rows().invalidate('data'); // the Count column depends on the eye
         redraw();
         if (typeof window.dgRenderResultHeader === 'function') window.dgRenderResultHeader();
         if (typeof showBubbleNotification === 'function') showBubbleNotification(next === 'hidden' ? 'Variants Off' : 'Variants On');
@@ -1081,7 +1082,15 @@ window.DgSearchRender = (function () {
                     }
                 },
                 // 4: Ct
-                { title: headerTitles[4], data: 'count' },
+                // With the variants off (the eye) the matches in variant lines are not on the page, nor in this number:
+                // variant_count once enriched (core/search-core.js), variant_segs before that (the count is per segment then).
+                {
+                    title: headerTitles[4], data: 'count',
+                    render: function (data, type, row) {
+                        if (!document.body.classList.contains('dg-novar')) return data;
+                        return data - ((row.__enriched === false ? row.variant_segs : row.variant_count) || 0);
+                    }
+                },
                 // 5: Mr
                 { title: headerTitles[5], data: 'mr' },
                 // 6: Links

@@ -1361,7 +1361,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
         }
 
         const uniqueWords = new Set(), textWords = new Set();
-        let matchCount = 0;
+        let matchCount = 0, variantCount = 0;
         const collect = (text, kind) => {
             const isVariant = kind === 'variant';
             if (!text) return;
@@ -1369,7 +1369,7 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
             const found = haystack.match(matchRegex);
             if (found) {
                 matchCount += found.length;
-                if (isVariant) globalHasVariants = true;
+                if (isVariant) { globalHasVariants = true; variantCount += found.length; }
             }
             forEachWordForm(kind === 'root' || isVariant ? wordFormsText(text, isVariant) : text, m, word => {
                 uniqueWords.add(word);
@@ -1400,6 +1400,9 @@ async function enrichSuttaBatch(searchResults, suttaIds, targetLangs, keyword, s
         }
 
         suttaRes.count = matchCount;
+        // the part of it in the variant lines: with the variants off the page shows count - variant_count (owner
+        // 2026-11-08: \bjātipi - one in the text, the column said 2 or 3)
+        suttaRes.variant_count = variantCount;
         // totalMatches counts SEGMENTS, not occurrences, so the header ("N texts, M matches")
         // agrees with what a reader can count in the table and does not jump between the ?fast=1
         // answer and this one. suttaRes.count keeps the finer occurrence count for its own column.
