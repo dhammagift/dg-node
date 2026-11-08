@@ -4584,6 +4584,13 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     // the start instead of inside the first search, which waited ~6 s for it.
     // ponytail: still blocks the loop once per start; a table built with dg.db if restarts ever hurt
     setTimeout(() => { const t = Date.now(); searchCore.suttaTitleIndex(); console.log(`titles index: ${Date.now() - t} ms`); }, 500);
+    // The packs list against the files on disk (streamed hashes, ~1 s for 320 MB): a file that disagrees keeps its bytes and
+    // the manifest takes its numbers, so a hand edit or a half-done publish never serves "the pack has the wrong size".
+    setTimeout(() => require('./scripts/packs-check.js').checkPacks(path.join(SITEROOT, 'mobile-data'), { fix: true }).then((r) => {
+        for (const x of r.fixed) console.warn(`packs: ${x} - kept the file, the manifest takes its numbers`);
+        for (const x of r.problems) console.error(`packs: ${x}`);
+        if (r.checked) console.log(`packs: ${r.checked} checked, ${r.fixed.length} fixed, ${r.problems.length} wrong`);
+    }, (e) => console.error(`packs check failed: ${e.message}`)), 3000);
     console.log(`\n=== Dhamma.gift Server (dg-fastify.js) ===\n`);
     console.log(`SPA (new): http://localhost:${PORT}/spa/`);
     // /search — JSON API, ?q= здесь ОБЯЗАТЕЛЕН (не легаси) — это не HTML-страница с чистым

@@ -124,12 +124,8 @@ publish_packs() {
 for p in json.load(open(sys.argv[1]))["packs"]: print(p["id"], os.path.basename(p["url"]), p["sha256_gz"])' "$TMP/packs-manifest.json" |
     while read -r id name sha; do
         # A name is the rows' hash (build_id), but each CI build gzips its own bytes (meta built_at): a name already
-        # published keeps its file - one URL, one content - and the manifest takes that file's numbers (below).
-        # The skip alone left the new numbers on the old file: "the downloaded pack has the wrong size" (Sippa 2026-11-07).
-        if [ -f "$MD/packs/$name" ]; then
-            [ "$(sha256sum "$MD/packs/$name" | cut -d' ' -f1)" = "$sha" ] || echo "$name" >> "$TMP/packs-kept"
-            continue
-        fi
+        # published keeps its file - one URL, one content - and the manifest takes that file's numbers (packs-check below).
+        [ -f "$MD/packs/$name" ] && continue
         curl -fsSL -o "$TMP/$name" "$URL/pack-$id.db.gz"
         if [ "$(sha256sum "$TMP/$name" | cut -d' ' -f1)" != "$sha" ]; then
             echo "packs: $id sha256 mismatch (release mid-upload?) — not published" >&2
@@ -137,22 +133,9 @@ for p in json.load(open(sys.argv[1]))["packs"]: print(p["id"], os.path.basename(
         fi
         mv -f "$TMP/$name" "$MD/packs/$name"
     done || exit 1
-    if [ -s "$TMP/packs-kept" ]; then
-        python3 -c 'import gzip,hashlib,json,os,sys
-m, d, kept = sys.argv[1], sys.argv[2], open(sys.argv[3]).read().split()
-j = json.load(open(m))
-for p in j["packs"]:
-    n = os.path.basename(p["url"])
-    if n not in kept: continue
-    f, hz, h, size = os.path.join(d, n), hashlib.sha256(), hashlib.sha256(), 0
-    with open(f, "rb") as r:
-        for b in iter(lambda: r.read(1 << 20), b""): hz.update(b)
-    with gzip.open(f, "rb") as r:
-        for b in iter(lambda: r.read(1 << 20), b""): h.update(b); size += len(b)
-    p.update(bytes_gz=os.path.getsize(f), sha256_gz=hz.hexdigest(), bytes=size, sha256=h.hexdigest())
-    print("packs: " + n + " kept, the manifest takes its numbers")
-json.dump(j, open(m, "w"), ensure_ascii=False, indent=2)' "$TMP/packs-manifest.json" "$MD/packs" "$TMP/packs-kept" || exit 1
-    fi
+    # The new list against every file it names, before it goes live: a kept file's numbers go into it, a missing one
+    # stops the publish. The skip alone left new numbers on old files: "the downloaded pack has the wrong size" (2026-11-07).
+    node scripts/packs-check.js "$MD" --manifest="$TMP/packs-manifest.json" --fix || exit 1
     BEFORE="$(python3 -c 'import json,os,sys
 print(" ".join(os.path.basename(p["url"]) for p in json.load(open(sys.argv[1]))["packs"]))' "$MD/packs-manifest.json" 2>/dev/null || true)"
     KEEP="$(python3 -c 'import json,os,sys

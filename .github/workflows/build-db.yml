@@ -109,6 +109,8 @@ jobs:
         run: |
           # The offline library: whole copy and packs, without the rows that stay on the server.
           node build-search-db.js --publish --no-build --packs --out=dist/app
+          # Every pack the manifest names is there with its size and sum, or no release (the app drops a pack that disagrees).
+          node scripts/packs-check.js dist/app
           # The sites' own database as built, AI rows included: what scripts/pull-db.sh installs as dg.db.
           gzip -6 -n -c dg.db > dist/dg.db.gz
           node -e '
