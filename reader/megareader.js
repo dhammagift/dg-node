@@ -375,7 +375,10 @@ window.dgEditionOnDevice = function (id) {
 window.dgKeepHeader = function (p) {
     const was = document.body.classList.contains('dg-header-hidden');
     return Promise.resolve(p).then(() => new Promise(done => requestAnimationFrame(() => requestAnimationFrame(() => {
-        document.body.classList.toggle('dg-header-hidden', was);
+        // but not hidden at the top of the page: a text opened from a scrolled one began its redraw with the header hidden and
+        // ended at y 0 - an empty band where the header was, Differences out of reach (dg-apps ReleaseChecksTest 08b, 2026-11-08)
+        const band = document.getElementById('dg-hero-band');
+        document.body.classList.toggle('dg-header-hidden', was && window.scrollY >= (band ? band.getBoundingClientRect().height : 0));
         followHeader();   // the column names follow the header to where it is now
         done();
     }))));
