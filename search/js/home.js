@@ -2844,6 +2844,9 @@
                 localStorage.setItem('dhammaSearchContextBefore', v);
                 localStorage.setItem('dhammaSearchContextAfter', v);
                 notifySaved();
+                // On the results it applies at once - the same query again; it used to wait for the next search and
+                // looked broken (owner 2026-11-08: «не работает строка до после»).
+                if (state === 'results' && typeof window.dgRerunSearch === 'function') window.dgRerunSearch();
             }));
             /* Пояснение обязательно: «+1 строка» само по себе не говорит, куда эта строка —
                сверху, снизу или в обе стороны. А берутся они с ОБЕИХ сторон: обработчик выше

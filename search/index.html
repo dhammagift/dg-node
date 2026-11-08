@@ -4796,6 +4796,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         runSearchFromUrl();
     };
     window.handleFetchError = function (slug) { window.executeGlobalSearch(slug); };
+    window.dgRerunSearch = runSearchFromUrl; // a results setting changed (home.js quick settings: context lines)
 
     /* Точка входа для "перейти по этому внутреннему пути через SPA, без перезагрузки" — нужна
        СНАРУЖИ этого <script> (autopali.js, отдельный файл, не имеет доступа к routeFromUrl()
