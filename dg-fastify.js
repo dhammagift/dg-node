@@ -219,6 +219,15 @@ app.addHook('onRequest', (req, res, done) => {
     if (/^\/en\.dhammadana\.org(\/|$)/i.test(p) || (MIRRORS.test(p) && isBot(req))) return res.code(410).type('text/plain').send('Gone');
     done();
 });
+// The private text folders are not served at all, wherever a static mount reaches them (/assets/texts -> offline-data,
+// /data/dhammagift is offline-data itself): unl, Bodhi (b), bw, the AI drafts, work in progress (svEtc), backups. Found
+// open on F1 2026-11-08 (Apache's password covered unl on old.dhamma.gift only); owner: «убери ты их вообще».
+// Normalized, so /assets//texts/unl or /assets/texts/en/../unl cannot step around the pattern.
+const PRIVATE_TEXTS = /^\/(assets\/texts|data\/dhammagift)\/(unl|b|bw|ai|svEtc|backups)(\/|$)/i;
+app.addHook('onRequest', (req, res, done) => {
+    if (PRIVATE_TEXTS.test(path.posix.normalize(decodedPath(req.url)))) return res.code(404).send('Not found');
+    done();
+});
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password
