@@ -179,12 +179,12 @@
             {
               "label": "Bhikkhu Patimokkha trans. by Ven Nanatusita",
               "desc": "Grammar analysis",
-              "href": "/documents/bupm_trn_by_nanatusita.pdf"
+              "href": "/assets/materials/bupm_trn_by_nanatusita.pdf"
             },
             {
               "label": "Bhikkhuni Patimokkha trans. by Ch Kabilsingh",
               "desc": "Comparasmento of 6 versions",
-              "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf"
+              "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf"
             }
           ]
         },
@@ -972,12 +972,12 @@
             {
               "label": "Nanatusita",
               "desc": "Перевод бхиккху Ньянатусита",
-              "href": "/documents/bupm_trn_by_nanatusita.pdf"
+              "href": "/assets/materials/bupm_trn_by_nanatusita.pdf"
             },
             {
               "label": "Patimokkha Bi пер. Ch Kabilsingh",
               "desc": "Бхиккхуни-патимоккха (PDF)",
-              "href": "/documents/bipm_trn_by_chatsumarn_kabilsingh.pdf",
+              "href": "/assets/materials/bipm_trn_by_chatsumarn_kabilsingh.pdf",
               "blank": true
             }
           ]
@@ -1150,7 +1150,7 @@
             },
             {
               "label": "Dhamma.ru Патимоккха",
-              "href": "/documents/prat.html",
+              "href": "/assets/materials/prat.html",
               "blank": true
             },
             {
@@ -1422,11 +1422,11 @@
             {
               "label": "Падежи — примеры",
               "desc": "Склонения с примерами, PDF",
-              "href": "/documents/pali_declensions_ru.pdf"
+              "href": "/assets/materials/pali_declensions_ru.pdf"
             },
             {
               "label": "Спряжения (рус)",
-              "href": "/documents/pali_conjugations_ru.pdf",
+              "href": "/assets/materials/pali_conjugations_ru.pdf",
               "star": true
             },
             {
@@ -1488,7 +1488,7 @@
             },
             {
               "label": "Елизаренкова, Топоров — Язык Пали",
-              "href": "/documents/yelizarenkova_toporov_pali.pdf",
+              "href": "/assets/materials/yelizarenkova_toporov_pali.pdf",
               "star": true
             },
             {

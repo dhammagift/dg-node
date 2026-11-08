@@ -72,7 +72,8 @@ function normalizeRoot(text) {
 
 
 
-      const scLink = `<p class="sc-link"><a href="/read/?q=${slug}" title="DG read"><img width="20px" alt="DG read" src="/read/images/favicon-sc-mn.png"></a> <a href="https://suttacentral.net/${slug}"><img height="20px" src="/assets/img/favicon-sc.png"></img></a></p>`;
+      // Our reader only, no link to SuttaCentral (owner 2026-11-08: «на diff удали ссылки на sc»).
+      const scLink = `<p class="sc-link"><a href="/${slug}" title="Read on Dhamma.gift"><img width="20px" alt="Read on Dhamma.gift" src="/read/images/favicon-sc-mn.png"></a></p>`;
       
 
       const translatorByline =

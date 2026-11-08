@@ -2755,6 +2755,16 @@
         if (trn) trn.setAttribute('aria-pressed', cur.trn ? 'true' : 'false');
     }
     window.dgRenderLangPill = dgRenderLangPill;
+    // Compare from the reader's footer: both suttas start as the text being read, as the old reader did
+    // (read/js/urlForLbl.js; owner 2026-11-08: «предзаполнились номера текста в обе сутты»).
+    document.addEventListener('click', function (e) {
+        var a = e.target.closest && e.target.closest('a[href="/assets/diff"]');
+        if (!a || currentState() !== 'reader') return;
+        var id = decodeURIComponent(location.pathname.slice(1)).split(/[:/]/)[0].toLowerCase();
+        if (!/^[a-z-]+\d/.test(id)) return;
+        e.preventDefault();
+        location.href = '/assets/diff/?lang=pl&one=' + encodeURIComponent(id) + '&two=' + encodeURIComponent(id);
+    });
     // Screen changes (and dg-busy dropping once results are in) re-render the pill; the reader
     // additionally calls it itself after every buildSutta().
     new MutationObserver(function () { dgRenderLangPill(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });

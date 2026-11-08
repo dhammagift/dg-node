@@ -524,4 +524,7 @@ document.getElementById("hideRuleNameCheckbox").addEventListener("change", updat
             document.getElementById("hideRuleNameCheckbox").checked = true;
         }
         currentIndex = getRandomIndex(modifiedRecords.length);
-        updateDisplay();            
+        // nouns.html and pronouns.html define showNumberOnly() in an inline script AFTER this file: the first display
+        // waits for the page to finish parsing (the same fix as memorizeVerbs.js; "showNumberOnly is not defined").
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', updateDisplay);
+        else updateDisplay();            

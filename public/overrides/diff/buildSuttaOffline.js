@@ -65,7 +65,8 @@ export function buildSutta(slug, suttaArea, language) {
       });
 
       // Add the SC link and translator byline
-      const scLink = `<p class="sc-link"><a href="/read/?q=${slug}" title="SC Light"><img width="20px" alt="SC light" src="/read/images/favicon-sc-mn.png"></a> <a href="https://suttacentral.net/${slug}"><img height="20px" src="/assets/img/favicon-sc.png"></img></a></p>`;
+      // Our reader only, no link to SuttaCentral (owner 2026-11-08: «на diff удали ссылки на sc»).
+      const scLink = `<p class="sc-link"><a href="/${slug}" title="Read on Dhamma.gift"><img width="20px" alt="Read on Dhamma.gift" src="/read/images/favicon-sc-mn.png"></a></p>`;
       const translatorByline =
         language === "en" ? `<div class="byline"><p>Translated by ${suttaplex.translation.author}</p></div>` : "";
 

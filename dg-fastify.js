@@ -2463,7 +2463,17 @@ for (const [rootDir, urlPrefix] of VERSIONED_HTML_ROOTS) {
             const rel = path.relative(rootDir, abs).split(path.sep).join('/');
             // /login/index.html and /login/ are one page; links on the site use the directory form.
             const urls = [`${urlPrefix}/${rel}`];
-            if (rel.endsWith('index.html')) urls.push(`${urlPrefix}/${rel.slice(0, -'index.html'.length)}`);
+            if (rel.endsWith('index.html')) {
+                const dirUrl = `${urlPrefix}/${rel.slice(0, -'index.html'.length)}`;
+                urls.push(dirUrl);
+                // The folder without its slash (/assets/diff, the results' Compare link) served the page as-is, and its
+                // relative style.css/index.js resolved one level up - a bare, dead page (owner 2026-11-08). Redirect.
+                const bare = dirUrl.slice(0, -1);
+                if (bare !== urlPrefix && !versionedHtmlUrls.has(bare)) {
+                    versionedHtmlUrls.add(bare);
+                    app.get(bare, (req, reply) => reply.redirect(dirUrl + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''), 301));
+                }
+            }
             for (const url of urls) {
                 if (versionedHtmlUrls.has(url)) continue;
                 versionedHtmlUrls.add(url);
@@ -4569,10 +4579,14 @@ async function segmentFileFromDb(req) {
     return out;
 }
 
+// The other sites' copies live with the old site's data (offline-data): a host without it (f3) sends a missing mirror
+// page to the old site, where it is, instead of a 404 - the menu and multiTool link them (owner 2026-11-08, the tools).
+const OLD_SITE_MIRRORS = /^\/(accesstoinsight\.org|buddhadust\.net|dhamma\.ru|dhammatalks\.org|metta\.lk|theravada\.ru|theravada\.rf|tipitaka\.theravada\.su|lp)(\/|$)/i;
 app.setNotFoundHandler(async (req, res) => {
     if (req.method === 'GET' || req.method === 'HEAD') {
         const seg = await segmentFileFromDb(req);
         if (seg) return res.header('X-Robots-Tag', 'noindex').header('Cache-Control', 'no-cache').type('application/json; charset=utf-8').send(seg);
+        if (OLD_SITE_MIRRORS.test(decodedPath(req.url))) return res.redirect('https://old.dhamma.gift' + req.url, 302);
     }
     if (req.url === '/ru' || req.url.startsWith('/ru/') || req.url.startsWith('/ru?')) {
         const [pathPart, queryPart] = req.url.split('?');
