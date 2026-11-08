@@ -5,7 +5,8 @@
 // (one letter in two transliterations). Spelling conventions stay visible but are classed as "spelling" (spelling())
 // - owner 2026-10-30: «сañhita и saṁhita… совсем разные буквы… надо хоть как минимум подсвечивать».
 // Apostrophes and quotes go without a space: "ariyasaccan’ti" (Mahāsaṅgīti) and "ariyasacca’nti" (VRI) are one word.
-const foldWords = t => String(t || '').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[’'‘`“”"]/g, '')
+// HTML tags go first: the Mahāsaṅgīti's ds1.1:1.1 "Kusalā dhammā. (<b>1, 363, 985, 1384</b>)" gave every edition "b b"
+const foldWords = t => String(t || '').replace(/<[^>]+>/g, ' ').normalize('NFC').toLowerCase().replace(/[ṃŋ]/g, 'ṁ').replace(/[’'‘`“”"]/g, '')
     .replace(/[^\p{L}\s-]+/gu, ' ').replace(/(^|\s)-+|-+(?=\s|$)/g, ' ').split(/\s+/).filter(Boolean);
 // the same words but for a spelling convention: a compound written apart or hyphenated (katamañca / katamañ ca,
 // ariya-saccaṁ), a word-final m for niggahīta (PTS "samayam"), the Thai script's ñ for niggahīta before h (sañhito)

@@ -433,9 +433,9 @@ function getServer() {
     });
 
     server.registerTool('get_text', {
-        description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali text (Mahāsaṅgīti) of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]), editions for the whole text of other Pali editions line by line (DN, MN, SN, AN). Same data as dhamma.gift/api/text.',
+        description: 'Fetch a sutta by id (e.g. "dn22", "mn1", "sn56.11") — the Pali text (Mahāsaṅgīti) of every segment. Pali only by default; pass langs for translations, translators to name a translator (e.g. ["en_sujato"]), editions for the whole text of other Pali editions line by line (the whole canon, see compare_editions). Same data as dhamma.gift/api/text.',
         inputSchema: {
-            editions: z.array(z.enum([...Object.keys(EDITIONS), 'all'])).max(10).optional().describe('Other Pali editions to add, each segment beside the Mahāsaṅgīti: bjt (Buddha Jayanti, Sri Lanka), my (Chaṭṭha Saṅgāyana, Myanmar), th (Siam Rath, Thailand), mso (Mahāsaṅgīti as printed, 2005), pts (Pali Text Society), or ["all"]. DN, MN, SN and AN only.'),
+            editions: z.array(z.enum([...Object.keys(EDITIONS), 'all'])).max(10).optional().describe('Other Pali editions to add, each segment beside the Mahāsaṅgīti: bjt (Buddha Jayanti, Sri Lanka), my (Chaṭṭha Saṅgāyana, Myanmar), th (Siam Rath, Thailand), mso (Mahāsaṅgīti as printed, 2005), pts (Pali Text Society), or ["all"]. The whole canon (gaps: https://dhamma.gift/docs/compare).'),
             suttaId: zKey().describe('Sutta id, e.g. dn22, mn1, sn56.11.'),
             langs: zList(30).optional().describe('Translation languages to include, e.g. ["ru","en"]. Default: none (Pali only).'),
             translators: zList(30).optional().describe('Explicit translator keys, e.g. ["en_sujato"] to include Sujato.'),
@@ -484,7 +484,7 @@ function getServer() {
     });
 
     server.registerTool('compare_editions', {
-        description: 'Compare the Pali Canon\'s editions line by line: the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (DN, MN, SN, AN). Give a sutta ("sn56.11"), a line ("dn22:18.1") or a range ("sn56.11:5.1-5.4"). The answer starts with a summary per edition (name, license, lines present, missing, differing), then the lines where some edition reads differently, each with the differing words. Case, punctuation and ṁ/ṃ are not counted as differences.',
+        description: 'Compare the Pali Canon\'s editions line by line: the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions (the whole canon; gaps: PTS has no Netti or Peṭakopadesa, of the Jātaka the verses only, of the later books only what PTS printed; Siam Rath has no Pātimokkha (the Mahāmakuṭa Pātimokkha stands in its place, pli-tv-bu-pm); the Mahāsaṅgīti of 2005 lacks a few passages of the later books. Details: https://dhamma.gift/docs/compare). Give a sutta ("sn56.11"), a line ("dn22:18.1") or a range ("sn56.11:5.1-5.4"). The answer starts with a summary per edition (name, license, lines present, missing, differing), then the lines where some edition reads differently, each with the differing words. Case, punctuation and ṁ/ṃ are not counted as differences.',
         inputSchema: {
             id: zKey().describe('A sutta (sn56.11), a line (dn22:18.1) or a range of lines (sn56.11:5.1-5.4).'),
             editions: z.array(z.enum(Object.keys(EDITIONS))).max(10).optional().describe('Editions to compare with the Mahāsaṅgīti. Default: all of bjt, my, th, mso, pts.'),
@@ -499,7 +499,7 @@ function getServer() {
         const rows = db().prepare("SELECT segment_id, txt FROM texts WHERE sutta_id = ? AND kind = 'root' ORDER BY ord").all(t.sutta);
         if (!rows.length) return asText({ error: `Unknown sutta id: ${t.sutta}` }, true);
         const byEd = editionRows(t.sutta, eds);
-        if (!eds.some(ed => byEd[ed].size)) return asText({ error: `No other edition has ${t.sutta}: the editions cover DN, MN, SN and AN.` }, true);
+        if (!eds.some(ed => byEd[ed].size)) return asText({ error: `No other edition has ${t.sutta} (see https://dhamma.gift/docs/compare for each edition's gaps).` }, true);
         const part = sid => sid.slice(sid.indexOf(':') + 1);
         const inRange = r => !t.from || (segCmp(part(r.segment_id), t.from) >= 0 && segCmp(part(r.segment_id), t.to) <= 0);
         const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing_reading: 0, lines_differing_spelling: 0 }]));
@@ -608,7 +608,7 @@ function getServer() {
             translation_languages: Object.keys(byLang).length,
             translations: byLang,
             note: 'Pali root text covers everything; translation coverage differs per translator. '
-                + 'Also here: other Pali editions as whole texts on the same segments (DN, MN, SN, AN): ' + Object.entries(EDITIONS).map(([k, e]) => `${k} = ${e.name}`).join('; ')
+                + 'Also here: other Pali editions as whole texts on the same segments, the whole canon (gaps: https://dhamma.gift/docs/compare): ' + Object.entries(EDITIONS).map(([k, e]) => `${k} = ${e.name}`).join('; ')
                 + '. get_text with editions:[...] returns them line by line; compare_translations shows every edition of one line. The variant readings of all editions are in each segment\'s variant field.',
         });
     });
@@ -629,7 +629,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya), the Pali l
 4. Find the definition with regex search: "kata.*<term>" (Katamañca … X?), "vucc.*<term>" (idaṁ vuccati X), "katha.*<term>" (Kathañca … hoti?); run all three.
 5. The project's translation keeps one rendering per term, by those definitions: dukkha pain (bodily, MN 141:16), sukha pleasant (bodily, SN 48.36), taṇhā clinging, upādāna sustaining (fuel), anicca unreliable, anta end, kāma desire, kamma activity; in Russian боль, приятное, цепляние, поддерживание, ненадёжность, край, желание, активность. Quote it as it stands; in your own words give it beside the usual word ("suffering", "craving", "impermanent"…).
 6. What the site has:
-- The canon's editions compared line by line (compare_editions): the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and PTS, for DN, MN, SN, AN; each differing word classed as a reading or a spelling. Name the edition when you quote.
+- The canon's editions compared line by line (compare_editions): the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and PTS, for the whole canon (each edition's gaps: https://dhamma.gift/docs/compare, "Problems of each edition"); each differing word classed as a reading or a spelling. Name the edition when you quote.
 - Translations aligned with the Pali segment by segment. Russian: the project's own, from the Pali (translator "o", shown as Dhamma.Gift), A. Ya. Syrkin, SV (theravada.ru), Narinyani/Evmenenko, V. Toporov. English: Ṭhānissaro Bhikkhu (1,400+ suttas). Name the translator when you quote.
 7. Tools: search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
 8. The corpus also holds the Abhidhamma books (scope "abhi") for a user who asks for them; by AN 4.180 they are not the criterion, and an answer is not built on them.`;
