@@ -202,6 +202,16 @@ window.DgSearchRender = (function () {
         });
     }
 
+    // The columns Visibility leaves on, the same test TXT and MD use (dt.column().visible()). Not ':visible' - that also
+    // drops what Responsive folded away on a narrow screen (Quote) - and not $(node).closest('table'): a hidden column's
+    // header is out of the page, so every column passed and Copy/CSV/Excel/PDF exported hidden ones (owner 2026-11-08).
+    function visibleColumnsOf(dt) { return function (idx) { return dt.column(idx).visible(); }; }
+    function withVisibleColumns(base) {
+        return function (e, dt, node, config, cb) {
+            config.exportOptions = $.extend({}, config.exportOptions, { columns: visibleColumnsOf(dt) });
+            return $.fn.dataTable.ext.buttons[base].action.call(this, e, dt, node, config, cb);
+        };
+    }
     // Кнопки одинаковые для обоих отчётов (Export/PDF работают по видимым колонкам,
     // не зависят от того, сколько их и что в них — работают одинаково для обоих режимов).
     function buildButtons() {
@@ -227,28 +237,22 @@ window.DgSearchRender = (function () {
                 buttons: [
                     {
                         extend: 'copyHtml5',
+                        action: withVisibleColumns('copyHtml5'),
                         exportOptions: {
-                            columns: function (idx, data, node) {
-                                return $(node).closest('table').DataTable().column(idx).visible();
-                            },
                             modifier: { search: 'applied' }
                         }
                     },
                     {
                         extend: 'excelHtml5',
+                        action: withVisibleColumns('excelHtml5'),
                         exportOptions: {
-                            columns: function (idx, data, node) {
-                                return $(node).closest('table').DataTable().column(idx).visible();
-                            },
                             modifier: { search: 'applied' }
                         }
                     },
                     {
                         extend: 'csvHtml5',
+                        action: withVisibleColumns('csvHtml5'),
                         exportOptions: {
-                            columns: function (idx, data, node) {
-                                return $(node).closest('table').DataTable().column(idx).visible();
-                            },
                             modifier: { search: 'applied' }
                         }
                     },
@@ -336,9 +340,6 @@ window.DgSearchRender = (function () {
                         title: '*',
                         filename: '*',
                         exportOptions: {
-                            columns: function (idx, data, node) {
-                                return $(node).closest('table').DataTable().column(idx).visible();
-                            },
                             modifier: { search: 'applied' },
                             format: {
                                 body: function (data, row, column, node) {
@@ -449,6 +450,7 @@ window.DgSearchRender = (function () {
                                 // calls it after the download and throws "cb is not a function" without
                                 // it, which leaves the button stuck after the first export.
                                 var pdfConfig = $.extend(true, {}, $.fn.dataTable.ext.buttons.pdfHtml5, config);
+                                pdfConfig.exportOptions.columns = visibleColumnsOf(dt);
                                 $.fn.dataTable.ext.buttons.pdfHtml5.action.call(buttonContext, e, dt, node, pdfConfig, cb);
                             };
 
