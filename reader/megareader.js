@@ -1000,7 +1000,7 @@ window.setLanguage = function(lang) {
         && (suttaArea.dataset.gridPaliOnly === '1') !== (lang === 'pli');
     // The line being read stays where it is on the screen while the other language appears or goes (the PHP reader did
     // this; without it the text jumped by a screen and the place was lost - owner 2026-11-02)
-    const keep = !gridStale && window.captureReadingAnchor ? window.captureReadingAnchor() : null;
+    const keep = !gridStale && !(window.dgHolding && window.dgHolding()) && window.captureReadingAnchor ? window.captureReadingAnchor() : null;
     if (lang === "pli-2nd") window.showPaliAndTranslation();
     else if (lang === "pli") window.showPali();
     else if (lang === "2nd") window.showEnglish();
@@ -1014,7 +1014,7 @@ window.setLanguage = function(lang) {
     // an editions grid counts the translations' columns: Pāḷi only and back draw it again, in place
     if (gridStale && window._currentSlug && typeof window.buildSutta === 'function') {
         const anchor = window.captureReadingAnchor && window.captureReadingAnchor();
-        window.dgKeepHeader(window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor); }));
+        window.dgKeepHeader(window.buildSutta(window._currentSlug).then(() => { if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor, true); }));
     }
 };
 
@@ -1768,37 +1768,17 @@ function captureReadingAnchor() {
 
 // The text keeps growing for a moment after buildSutta() resolves (a mode's lines laid out again, late parts): the line
 // was pinned against a layout that then grew above it and ended a screen lower - Active Word kept, the place lost
-// (owner 2026-11-08, mn13 single -> memorize: 414 px -> 1227 px). So the line is held where it was while #sutta changes
-// size, for two seconds, and let go at once when the reader scrolls or presses a key. A newer anchor replaces the hold.
-let readingHold = null;
+// (owner 2026-11-08, mn13 single -> memorize: 414 px -> 1227 px). So the line is held where it was until the text stops
+// changing size (search/index.html dgHoldLine), let go at once when the reader scrolls or presses a key.
 function holdReadingAnchor(anchor) {
-    if (readingHold) readingHold.stop();
-    const sutta = document.getElementById('sutta');
-    if (!sutta || typeof ResizeObserver === 'undefined') return;
-    const repin = () => {
-        const el = document.getElementById(anchor.id);
-        if (!el) return;
-        const delta = el.getBoundingClientRect().top - anchor.topOffset;
-        if (Math.abs(delta) < 2) return;
-        const html = document.documentElement, saved = html.style.scrollBehavior;
-        html.style.scrollBehavior = 'auto';
-        window.scrollTo(0, window.scrollY + delta);
-        html.style.scrollBehavior = saved;
-    };
-    const ro = new ResizeObserver(repin);
-    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'];
-    const stop = () => {
-        ro.disconnect(); clearTimeout(timer);
-        events.forEach(t => removeEventListener(t, stop, true));
-        if (readingHold && readingHold.stop === stop) readingHold = null;
-    };
-    const timer = setTimeout(stop, 2000);
-    events.forEach(t => addEventListener(t, stop, { capture: true, passive: true }));
-    ro.observe(sutta);
-    readingHold = { stop };
+    if (!window.dgHoldLine) return;
+    window.dgHoldLine(() => document.getElementById(anchor.id), () => anchor.topOffset).ready();
 }
 
-function restoreReadingAnchor(anchor) {
+// hold: the text was just rebuilt (a mode, language or editions switch) and may still be laying out - see holdReadingAnchor.
+// Not for the restore inside buildSutta's own language toggle: on opening a text that held the top of the page against the
+// scroll to the asked line (owner 2026-11-08: «открывается с самого начала, дёргается»).
+function restoreReadingAnchor(anchor, hold) {
     if (!anchor) return;
     const el = document.getElementById(anchor.id);
     if (!el) return;
@@ -1814,7 +1794,7 @@ function restoreReadingAnchor(anchor) {
     html.style.scrollBehavior = 'auto';
     window.scrollTo(0, targetScroll);
     setTimeout(() => { html.style.scrollBehavior = savedBehavior; }, 50);
-    holdReadingAnchor(anchor);
+    if (hold) holdReadingAnchor(anchor);
 
     if (anchor.hadActiveWord && typeof window.activateSegmentForTTS === 'function') {
         // Same language may no longer be visible in the new render (e.g. switching away from the
@@ -1860,7 +1840,7 @@ window.switchReaderMode = function(modeKey, event) {
     history.pushState({ page: window._currentSlug, mode: modeKey }, "", `?${params.toString()}`);
 
     const anchor = captureReadingAnchor();
-    if (window._currentSlug) window.buildSutta(window._currentSlug).then(() => restoreReadingAnchor(anchor));
+    if (window._currentSlug) window.buildSutta(window._currentSlug).then(() => restoreReadingAnchor(anchor, true));
 };
 
 // Owner: "язык в бургере... интерфейс + 1ый язык перевода. чтобы он менял и язык чтения, но
@@ -1912,7 +1892,7 @@ window.switchReadingLanguage = async function (lang) {
     if (typeof window.setSiteLanguage === 'function') await window.setSiteLanguage(lang);
     if (window._currentSlug) {
         await window.buildSutta(window._currentSlug);
-        restoreReadingAnchor(anchor);
+        restoreReadingAnchor(anchor, true);
         // Owner: "нужна перезагрузка чтобы поменять язык чтения" — voice.js's TTS playlist is a
         // one-time DOM snapshot; setSiteLanguage() above already dispatched 'dhamma:languagechange'
         // (voice.js listens for it too), but that fires BEFORE buildSutta() re-renders the sutta,
@@ -2989,7 +2969,14 @@ async function initReader() {
         // (settings.js, apply-button) — без этого пришлось бы парсить URL заново или перезагружать
         // страницу целиком только ради одной текстовой настройки.
         window.currentReaderSlug = normalizedSlug;
+        // Opening at a line: the line is held at its place on the screen from the first frame it exists in (the server's
+        // text on a cold load - search/index.html starts the hold), and the rest of the text is laid out around it; it
+        // used to be drawn from the top and then jerk down to the line (owner 2026-11-08, video of /mn13:14.3). A hold
+        // already running for this line (the cold load) is kept, an SPA open starts one here.
+        const hold = segmentId && !window.location.hash && window.dgHoldLine
+            ? (window.dgHolding(segmentId) || window.dgHoldLine(window.dgFindLine(segmentId), window.dgLinePlace, segmentId)) : null;
         const rendered = await window.buildSutta(normalizedSlug);
+        if (hold && !rendered) hold.stop();
         if (rendered && segmentId) {
             // Точное совпадение — обычный случай ("/dn1:1.22.2"). Префиксный запасной вариант —
             // для текстов-диапазонов: сервер, не найдя отдельной сутты an1.9, уводит на
@@ -3013,6 +3000,8 @@ async function initReader() {
                 // A #hash target is scrolled to by smoothScroll.js (ScrollManager.scrollToHash) — two
                 // scrollers racing on the same page was why the landing spot was different every time.
                 if (window.location.hash && typeof ScrollManager !== 'undefined') { /* smoothScroll.js owns it */ }
+                // the hold keeps the line in place until the text stops changing size: ready once the fonts are in
+                else if (hold) (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => hold.ready());
                 // the found word, not the whole segment: with several editions a segment is taller than a phone's screen,
                 // and centring it left the word ~450 px above the top (QA 2026-11-07, /dn2:57.2?s=kacchap, 6 editions)
                 else if (window.dgScrollToElement) window.dgScrollToElement(target.querySelector('b.match.finder') || target, 'center', instant);

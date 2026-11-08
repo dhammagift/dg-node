@@ -155,6 +155,70 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       }
     } catch (e) {}
   })();
+  // Holding a line of the text at its place on the screen (owner 2026-11-08: no glide from the top, no jerks, no timers).
+  // Every frame, and on every size change of the text (ResizeObserver reports after layout, before paint), the line is put
+  // back where it belongs before anything is painted. It is let go when the reader scrolls, taps or presses a key, or once
+  // the text has stopped changing: after ready() (the reader built, the fonts in), 20 frames in a row without a correction.
+  // Used for opening a text at a line (started here on a cold load, so the server's text shows at the line at once, or by
+  // the reader's route) and for keeping the line through a mode or language switch (megareader.js holdReadingAnchor).
+  (function () {
+    var hold = null;
+    window.dgFindLine = function (seg) {
+      return function () {
+        // a verse couplet is drawn as one line under its first id (thig12.1: 6.1 holds 6.1 and 6.2): the reader's fallback
+        var el = document.getElementById(seg) || document.querySelector('[id^="' + seg.replace(/"/g, '') + ':"]')
+          || (typeof ScrollManager !== 'undefined' && ScrollManager.findFallbackElement ? ScrollManager.findFallbackElement(seg) : null);
+        return el && (el.querySelector('b.match.finder') || el);   // the found word, not a segment taller than the screen
+      };
+    };
+    // centred, or a little under the top when the line is taller than most of the screen
+    window.dgLinePlace = function (el) { var h = el.getBoundingClientRect().height; return Math.max(innerHeight * 0.12, (innerHeight - h) / 2); };
+    window.dgHolding = function (seg) { return hold && (!seg || hold.seg === seg) ? hold : null; };
+    window.dgHoldLine = function (find, place, seg) {
+      if (hold) hold.stop();
+      var me = { seg: seg, stopped: false, isReady: false, quiet: 0 }, ro = null, mo = null, inputs = ['wheel', 'touchstart', 'keydown', 'pointerdown'];
+      var put = function () {
+        var el = find(); if (!el) return false;
+        var d = el.getBoundingClientRect().top - place(el);
+        if (Math.abs(d) < 1) return false;
+        window.scrollTo({ top: window.pageYOffset + d, behavior: 'instant' });
+        return true;
+      };
+      me.stop = function () {
+        if (me.stopped) return; me.stopped = true;
+        if (ro) ro.disconnect();
+        if (mo) mo.disconnect();
+        inputs.forEach(function (t) { removeEventListener(t, me.stop, true); });
+        if (window.dgScrollingTo === 'hold') window.dgScrollingTo = 0;
+        if (hold === me) hold = null;
+      };
+      me.ready = function () { me.isReady = true; me.quiet = 0; return me; };
+      inputs.forEach(function (t) { addEventListener(t, me.stop, { capture: true, passive: true }); });
+      window.dgScrollingTo = 'hold';   // our own scroll: the auto-hiding header ignores it
+      (function frame() {
+        if (me.stopped) return;
+        if (put()) me.quiet = 0;
+        // the text and what is drawn above it (the reader's bar, the previous/next row): a change there moves the line too
+        if (!ro && window.ResizeObserver && document.getElementById('sutta')) {
+          ro = new ResizeObserver(function () { me.quiet = 0; put(); });
+          [document.body, document.getElementById('reader-pane'), document.getElementById('sutta')].forEach(function (n) { if (n) ro.observe(n); });
+          // the text redrawn (buildSutta replaces #sutta) or the header shown/hidden: put the line back in the same task,
+          // before the browser gets to paint the new layout
+          mo = new MutationObserver(function () { me.quiet = 0; put(); });
+          mo.observe(document.getElementById('sutta'), { childList: true, subtree: true });
+          mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+        }
+        if (me.isReady && ++me.quiet > 20) return me.stop();
+        requestAnimationFrame(frame);
+      })();
+      hold = me;
+      return me;
+    };
+    try {
+      var m = /^\/[^\/?#:]+:([\w.-]+)/.exec(location.pathname);
+      if (m && !location.hash) window.dgHoldLine(window.dgFindLine(m[1]), window.dgLinePlace, m[1]);
+    } catch (e) {}
+  })();
   (function () {
     try {
       var t = localStorage.getItem('theme') || 'auto';
@@ -4826,52 +4890,8 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
        routeFromUrl), and buildSutta() centres the same line again - it stays on the same pixel, nothing blinks.
        seed: { id: 'sn35.240:1.5', pali: html, trans: { ru: html, en: html } } from the results' line. Returns false
        when it cannot (not a booted reader, another origin) - the caller then loads the frame as before. */
-    /* Keep the clicked line in the middle of the preview while the text settles under it: the full text replaces
-       the seed, then the icons and fonts above it load (~0.3 s, +370 px measured on sn35.240) and the reader's own
-       correction (dgScrollToElement) waits for document.fonts and then 350 ms - the line was seen to slide down and
-       back. Each animation frame, before it is painted, puts the line back on the centre, the same place the reader
-       aims for, so the two agree. Any scroll input of the reader's own ends it at once. */
-    var holdToken = 0;
-    function holdLineCentred(id) {
-        // Until the layout is quiet - 700 ms without a correction, after the first 1.5 s - and never longer than 5 s.
-        // On a phone the reader's own Pali toggle (setLanguage -> restoreReadingAnchor) puts back the position it
-        // took from the first frame, and dgScrollToElement corrects it after that: on dn1/dn2 that came at 1.3-1.9 s.
-        var my = ++holdToken, start = performance.now(), lastFix = start, ro = null;
-        var stop = function () {
-            if (my === holdToken) holdToken++;
-            if (ro) { ro.disconnect(); ro = null; }
-            if (window.dgScrollingTo === 'preview') window.dgScrollingTo = 0;
-        };
-        ['wheel', 'touchstart', 'keydown', 'pointerdown'].forEach(function (ev) { window.addEventListener(ev, stop, { once: true, passive: true }); });
-        window.dgScrollingTo = 'preview';   // our own scroll: the auto-hiding header ignores it (dgScrollToElement does the same)
-        var centre = function () {
-            if (my !== holdToken) return;
-            // a verse couplet is drawn as one line under its first id (thig12.1: 6.1 holds 6.1 and 6.2 - a gāthā made
-            // whole from its lines) - the same fallback the reader lands on (smoothScroll.js findFallbackElement)
-            var el = document.getElementById(id)
-                || (typeof ScrollManager !== 'undefined' && ScrollManager.findFallbackElement ? ScrollManager.findFallbackElement(id) : null);
-            if (!el) return;
-            var r = el.getBoundingClientRect(), delta = (r.top + r.height / 2) - window.innerHeight / 2;
-            if (Math.abs(delta) > 0.5) { window.scrollTo({ top: window.pageYOffset + delta, behavior: 'instant' }); lastFix = performance.now(); }
-        };
-        // Layout that changes during the frame's own layout step (a web font swapping in, an icon learning its size)
-        // comes after requestAnimationFrame: ResizeObserver reports it after layout and before paint, so it is put
-        // right before it is ever seen.
-        // the popup's own window changing size as it opens on a phone: its "centre" moves with it
-        window.addEventListener('resize', centre);
-        var stop0 = stop; stop = function () { window.removeEventListener('resize', centre); stop0(); };
-        if (typeof ResizeObserver === 'function') {
-            ro = new ResizeObserver(centre);
-            [document.body, document.getElementById('reader-pane'), document.getElementById('sutta')].forEach(function (n) { if (n) ro.observe(n); });
-        }
-        (function frame() {
-            if (my !== holdToken) return;
-            centre();
-            var now = performance.now();
-            if (now - start < 5000 && (now - start < 1500 || now - lastFix < 700)) requestAnimationFrame(frame); else stop();
-        })();
-    }
-
+    /* The clicked line is held in the middle while the text settles under it by the same dgHoldLine as a cold open
+       at a line (top of this page) - one mechanism for both (owner 2026-11-08). */
     window.dgPreviewOpen = function (href, seed) {
         try {
             var u = new URL(href, window.location.origin);
@@ -4909,7 +4929,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                     var r0 = t.getBoundingClientRect();
                     window.scrollTo({ top: window.pageYOffset + r0.top - (window.innerHeight - r0.height) / 2, behavior: 'instant' });
                     t.classList.add('active-word');
-                    holdLineCentred(safeId);
+                    window.dgHoldLine(window.dgFindLine(safeId), window.dgLinePlace, safeId);   // the route marks it ready
                 }
             }
             history.pushState({ dgNav: true }, '', u.pathname + u.search + u.hash);

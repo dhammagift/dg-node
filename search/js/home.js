@@ -696,7 +696,7 @@
         // smoothScroll.js neither scrolls nor offers "Continue reading".
         var anchor = window.captureReadingAnchor ? window.captureReadingAnchor() : null;
         Promise.resolve(window.buildSutta(window.currentReaderSlug, { inPlace: true })).then(function () {
-            if (window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+            if (window.restoreReadingAnchor) window.restoreReadingAnchor(anchor, true);
         });
     }
 
@@ -2192,7 +2192,7 @@
             history.replaceState(history.state, '', document.location.pathname + '?' + params.toString());
             var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
             done = window.buildSutta(slug).then(function () {
-                if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+                if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor, true);
             });
         }
         Promise.resolve(window.dgKeepHeader ? window.dgKeepHeader(done) : done).then(function () {
@@ -2213,7 +2213,7 @@
         if (!slug || typeof window.buildSutta !== 'function') return;
         var anchor = window.captureReadingAnchor && window.captureReadingAnchor();
         var redraw = window.buildSutta(slug).then(function () {
-            if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor);
+            if (anchor && window.restoreReadingAnchor) window.restoreReadingAnchor(anchor, true);
             tsRender();
         });
         if (window.dgKeepHeader) window.dgKeepHeader(redraw);   // a redraw is not a scroll: the site header stays as it was
