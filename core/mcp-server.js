@@ -38,8 +38,8 @@ const zList = (max) => z.array(z.string().max(60)).max(max);
 const path = require('path');
 const { DatabaseSync } = require('node:sqlite');
 const { buildFastResponse, enrichResponse, getSuttaBaseData, buildTextDataFromBase, isRegexKeyword } = require('./search-core');
-// Regex queries need the worker too — see core/regex-runner.js. The MCP route has no per-IP
-// budget (no client address reaches here); the worker's single slot and deadline are what bound it.
+// Regex queries need the worker too — see core/regex-runner.js. Literal ones run on this thread: the per-address and
+// total budgets on POST /mcp (dg-fastify.js) are what bound them.
 const regexRunner = require('./regex-runner.js');
 
 async function fastAnswer(query, scope, exact, langs) {
@@ -356,6 +356,9 @@ function composeCensus(all, query, limit) {
     return { scored, kept, truncated };
 }
 
+// list_structure without a prefix scans every translation row (0.7 s); dg.db changes only with a restart.
+let structureCache = null;
+
 function getServer() {
     const server = new McpServer({ name: 'dg-node', version: '1.3.0' }, { instructions: INSTRUCTIONS });
 
@@ -374,7 +377,9 @@ function getServer() {
     }, async ({ query, scope, langs, translators, include_segments, include_translations, exact, limit }) => {
         // Naming a translator is asking for his translation: without include_translations it was silently dropped.
         if (translators && translators.length) include_translations = true;
-        const scopeArg = scope || 'default';
+        // The same key or prefix twice is the same query run twice (outside review 2026-11-07).
+        if (translators) translators = [...new Set(translators.map(t => t.trim()))];
+        const scopeArg = [...new Set(String(scope || 'default').split(',').map(x => x.trim()).filter(Boolean))].join(',') || 'default';
         // Always search every language: a Russian word has to find the sutta, and the old default
         // of ["en"] returned ZERO for "черепаха" and "tortoise" (5). Only the OUTPUT is limited
         // to Pali — the fast response carries no translation text either way.
@@ -505,7 +510,8 @@ function getServer() {
         const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing_reading: 0, lines_differing_spelling: 0 }]));
         const lines = [];
         let compared = 0, differing = 0, differingReading = 0;
-        for (const r of rows.filter(inRange)) {
+        for (const [i, r] of rows.entries()) {
+            if (!inRange(r)) continue;
             compared++;
             const msWords = foldWords(r.txt);
             if (!msWords.length) continue;                       // an empty root line (a numbering-only segment)
@@ -521,7 +527,7 @@ function getServer() {
                 if (!txt) {
                     summary[ed].lines_missing++;
                     // the edition may have joined this line into the one before or after it
-                    const i = rows.indexOf(r), want = msWords.join(' ');
+                    const want = msWords.join(' ');
                     const near = [rows[i - 1], rows[i + 1]].find(n => n && byEd[ed].get(n.segment_id) && foldWords(byEd[ed].get(n.segment_id)).join(' ').includes(want));
                     line.editions[ed] = near ? `missing: joined into ${near.segment_id}` : 'missing';
                     differs = true; reading = true;
@@ -590,6 +596,7 @@ function getServer() {
             prefix: zKey().optional().describe('Sutta id prefix such as mn, sn56, an4, dhp. Max 200 suttas are listed.'),
         },
     }, async ({ prefix }) => {
+        if (!prefix && structureCache) return structureCache;
         if (prefix) {
             const p = prefix.trim().toLowerCase().replace(/[%_]/g, '');
             const rows = db().prepare('SELECT id, title FROM suttas WHERE id LIKE ? ORDER BY rowid LIMIT 200').all(p + '%');
@@ -602,7 +609,7 @@ function getServer() {
         const langsRows = db().prepare("SELECT lang, translator, COUNT(*) segments FROM texts WHERE kind = 'translation' AND translator <> 'ai' GROUP BY 1, 2 ORDER BY lang, segments DESC").all();
         const byLang = {};
         for (const r of langsRows) (byLang[r.lang] = byLang[r.lang] || []).push({ translator: r.translator, segments: r.segments });
-        return asText({
+        return (structureCache = asText({
             collections: collections.map(c => ({ category: c.category, suttas: c.n })),
             books_by_prefix: books.map(b => ({ prefix: b.b, suttas: b.n })),
             translation_languages: Object.keys(byLang).length,
@@ -610,7 +617,7 @@ function getServer() {
             note: 'Pali root text covers everything; translation coverage differs per translator. '
                 + 'Also here: other Pali editions as whole texts on the same segments, the whole canon (gaps: https://dhamma.gift/docs/compare): ' + Object.entries(EDITIONS).map(([k, e]) => `${k} = ${e.name}`).join('; ')
                 + '. get_text with editions:[...] returns them line by line; compare_translations shows every edition of one line. The variant readings of all editions are in each segment\'s variant field.',
-        });
+        }));
     });
 
     return server;
@@ -642,7 +649,14 @@ async function mcpHandler(request, reply) {
         // string body for every route (see its own comment, mirrors an Express text() route) —
         // Fastify never auto-parses JSON here, unlike the SDK's own Express example. Parse it
         // ourselves; handleRequest below needs the actual object, not the JSON text.
-        const body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body;
+        let body;
+        try { body = typeof request.body === 'string' ? JSON.parse(request.body) : request.body; }
+        catch { return reply.code(400).send({ jsonrpc: '2.0', error: { code: -32700, message: 'Parse error' }, id: null }); }
+        // One call per request: a batch of hundreds would run them all on this thread past the rate limit
+        // (the spec dropped batching in 2025-06-18; measured 2026-11-08: 4 calls held the site 2.8 s).
+        if (Array.isArray(body)) {
+            return reply.code(400).send({ jsonrpc: '2.0', error: { code: -32600, message: 'Batches are not accepted: send one request per POST.' }, id: null });
+        }
         const server = getServer();
         const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
         reply.raw.on('close', () => { transport.close(); server.close(); });
@@ -650,6 +664,7 @@ async function mcpHandler(request, reply) {
         await transport.handleRequest(request.raw, reply.raw, body);
         reply.hijack(); // tell Fastify the transport already wrote the response
     } catch (err) {
+        console.warn('[mcp] request failed:', err && err.message);
         if (!reply.raw.headersSent) {
             reply.code(500).send({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal server error' }, id: null });
         }

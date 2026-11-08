@@ -457,12 +457,15 @@ function build() {
     // ~34k-entry map instead of deduplicating millions of rows afterwards.
     t = Date.now();
     const winners = new Map(); // `${suttaId}|${lang}_${author}` -> { file, lang, author, rank }
+    const aiSkipped = [];
     function offerTranslations(dir, source) {
         walkJson(dir, (file, name) => {
             const suttaId = suttaIdFromFile(name);
             if (!meta.has(suttaId)) return;
             const parsed = parseTranslationFilename(path.basename(name, '.json'), suttaId);
             if (!parsed) return;
+            // An AI draft that turns up in a public folder is left out: the drafts live in the private unl repository only.
+            if (parsed.author === 'ai') { aiSkipped.push(name); return; }
             const rank = sourceRank(parsed.lang, source);
             const key = `${suttaId}|${parsed.lang}_${parsed.author}`;
             const prev = winners.get(key);
@@ -473,6 +476,7 @@ function build() {
     for (const l of DG_LANGS) {
         offerTranslations(path.join(DG_OFFLINE, l), l.includes('_other') ? 'dgother' : 'dgmain');
     }
+    if (aiSkipped.length) console.warn(`AI drafts left out (${aiSkipped.length}), e.g. ${aiSkipped[0]}`);
     console.log(`translation files resolved: ${winners.size} (${Date.now() - t}ms)`);
 
     t = Date.now();

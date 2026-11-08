@@ -1754,7 +1754,11 @@ function readJsonFile(file, fallback) {
 }
 function b64urlJson(part) { return JSON.parse(Buffer.from(part, 'base64url').toString('utf8')); }
 
+let lblJwksForcedAt = 0;
 async function firebaseJwks(force) {
+    // An unknown kid forces a refetch: once a minute at most, not once per request (outside review 2026-11-07).
+    if (force && Date.now() - lblJwksForcedAt < 60 * 1000) force = false;
+    if (force) lblJwksForcedAt = Date.now();
     if (!force && lblJwksCache.keys.length && Date.now() - lblJwksCache.at < 6 * 3600 * 1000) {
         return lblJwksCache.keys;
     }
@@ -1824,10 +1828,13 @@ app.post('/assets/lbl-save.php', { bodyLimit: 2 * 1024 * 1024 }, async (req, res
     try {
         fsSync.mkdirSync(saveDir, { recursive: true });
         // a ceiling for the whole folder, so even a valid login in a loop cannot fill the disk
-        // (real use: a few dozen translation files, ~10 MB). Overwriting an existing file is fine.
+        // (real use: a few dozen translation files, ~10 MB). An overwrite counts its growth only, but it counts
+        // (outside review 2026-11-07: overwriting skipped the check, so files could grow past the ceiling).
         const names = fsSync.readdirSync(saveDir);
-        const used = names.reduce((sum, n) => { try { return sum + fsSync.statSync(path.join(saveDir, n)).size; } catch { return sum; } }, 0);
-        if (!names.includes(filename) && (names.length >= LBL_MAX_FILES || used + Buffer.byteLength(req.body) > LBL_MAX_BYTES)) {
+        const sizeOf = n => { try { return fsSync.statSync(path.join(saveDir, n)).size; } catch { return 0; } };
+        const used = names.reduce((sum, n) => sum + sizeOf(n), 0);
+        const exists = names.includes(filename);
+        if ((!exists && names.length >= LBL_MAX_FILES) || used - (exists ? sizeOf(filename) : 0) + Buffer.byteLength(req.body) > LBL_MAX_BYTES) {
             console.warn('[lbl-save] folder full:', names.length, 'files,', used, 'bytes; refused', filename, 'as', auth.email);
             return res.code(507).send('The translations folder is full, ask the site owner');
         }
@@ -2914,7 +2921,15 @@ app.get('/api/ai-search', async (req, res) => {
 // /mcp — dg-node's own data (search, get_text) exposed as MCP tools, symmetric to how
 // core/tipitaka-mcp-client.js calls the friend's server (see docs/AI_SEARCH_BRIEF.md). Stateless,
 // POST-only per the SDK's own stateless example; GET/DELETE answer the same 405 that example does.
-app.post('/mcp', { bodyLimit: 64 * 1024 }, mcpHandler); // a tool call is a few hundred bytes (outside review 2026-11-07)
+// A tool call runs on this thread (a broad search with translations ~3 s, measured 2026-11-08), so the calls are budgeted:
+// per address, and all together so that many addresses cannot hold the site either. An agent's session stays well under.
+const mcpRateLimited = makeRateLimiter(30, 60 * 1000), mcpAllRateLimited = makeRateLimiter(150, 60 * 1000);
+app.post('/mcp', { bodyLimit: 64 * 1024 }, (req, res) => { // a tool call is a few hundred bytes (outside review 2026-11-07)
+    if (mcpRateLimited(req.ip) || mcpAllRateLimited('all')) {
+        return res.code(429).header('retry-after', '60').send({ jsonrpc: '2.0', error: { code: -32000, message: 'Too many requests, try again in a minute.' }, id: null });
+    }
+    return mcpHandler(req, res);
+});
 app.get('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 app.delete('/mcp', (req, res) => res.code(405).send({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed.' }, id: null }));
 
