@@ -109,3 +109,7 @@ siteroot/reviews/
 /app-site-manifest.json
 public/overrides/css/dg-all.css
 public/overrides/js/datatables-slim.js
+
+# The owner's own instructions for Claude (~/.claude/CLAUDE.md on each host, a plain file there): not for a public repo
+# (owner 2026-11-08: «я думал, это вообще секретный файл»).
+CLAUDE.global.md
