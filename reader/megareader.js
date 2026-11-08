@@ -305,12 +305,14 @@ window.setReadingStack = setStack;
 const EDITIONS_KEY = 'dgEditions';
 // The names agreed with the owner for every place (2026-11-01, build-search-db.js EDITION_TITLES): no years, no "(VRI)",
 // the country a caption of its own - beside the name in a tight menu (dgEditionLabel), left out in the columns' names.
+// The canons' names are Pali names and stay in Latin letters in Russian too (owner 2026-11-08: «каноны пусть остаются на
+// латинице»); the countries and everything about translators are translated.
 const READER_EDITIONS = [
-    { id: 'ms', tag: 'MS', ru: 'Махасангити', en: 'Mahāsaṅgīti' },
-    { id: 'bjt', tag: 'BJT', ru: 'Будда Джаянти', en: 'Buddha Jayanti', country: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
-    { id: 'my', tag: 'VRI', ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', country: { ru: 'Мьянма', en: 'Myanmar' } },
-    { id: 'th', tag: 'SR', ru: 'Сиам Рат', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
-    { id: 'mso', tag: 'MS05', ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005' },
+    { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
+    { id: 'bjt', tag: 'BJT', ru: 'Buddha Jayanti', en: 'Buddha Jayanti', country: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
+    { id: 'my', tag: 'VRI', ru: 'Chaṭṭha Saṅgāyana', en: 'Chaṭṭha Saṅgāyana', country: { ru: 'Мьянма', en: 'Myanmar' } },
+    { id: 'th', tag: 'SR', ru: 'Siam Rath', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
+    { id: 'mso', tag: 'MS05', ru: 'Mahāsaṅgīti 2005', en: 'Mahāsaṅgīti 2005' },
     { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', country: { ru: 'Великобритания', en: 'UK' } },
 ];
 window.dgEditionLabel = (ed, ru) => ed[ru ? 'ru' : 'en'] + (ed.country ? ` (${ed.country[ru ? 'ru' : 'en']})` : '');

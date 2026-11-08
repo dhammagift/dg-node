@@ -678,7 +678,7 @@
         var inLang = { en: ru ? 'английский' : 'English', ru: ru ? 'русский' : 'Russian', de: ru ? 'немецкий' : 'German', th: ru ? 'тайский' : 'Thai' };
         var name = function (p) {
             if (p.main && !p.title) return 'Mahāsaṅgīti';
-            if (p.title) return ru ? p.title.ru : p.title.en;
+            if (p.title) return ru && p.kind !== 'edition' && !p.main ? p.title.ru : p.title.en;   // a canon's name stays in Latin letters (owner 2026-11-08)
             if (p.langs && p.langs.length > 1) return ru ? 'Другие языки' : 'Other languages';
             return self[p.lang] || p.lang || p.id;
         };

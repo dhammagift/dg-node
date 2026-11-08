@@ -720,10 +720,10 @@ function writeAtomic(file, obj) {
 // the name, the country of a national canon - one place, in the manifest, so no list keeps its own copy (owner
 // 2026-11-01). The order of this list is the manifest's: the three national canons first, then the composite editions.
 const EDITION_TITLES = {
-    bjt: { ru: 'Будда Джаянти', en: 'Buddha Jayanti', tag: 'BJT', note: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
-    my: { ru: 'Чаттха Сангаяна', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
-    th: { ru: 'Сиам Рат', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
-    mso: { ru: 'Махасангити 2005', en: 'Mahāsaṅgīti 2005', tag: 'MS05' },
+    bjt: { ru: 'Buddha Jayanti', en: 'Buddha Jayanti', tag: 'BJT', note: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
+    my: { ru: 'Chaṭṭha Saṅgāyana', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
+    th: { ru: 'Siam Rath', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
+    mso: { ru: 'Mahāsaṅgīti 2005', en: 'Mahāsaṅgīti 2005', tag: 'MS05' },
     pts: { ru: 'Pali Text Society', en: 'Pali Text Society', tag: 'PTS', note: { ru: 'Великобритания', en: 'UK' } },
 };
 
@@ -769,7 +769,7 @@ function publishPacks(outDir, tmpDir, buildId, fullSegments) {
     const small = langs.filter(l => !own.includes(l));
     const defs = [
         { id: 'root-ms', kind: 'root', lang: 'pli', edition: 'ms', main: true, required: true, default: true,
-          title: { ru: 'Махасангити', en: 'Mahāsaṅgīti' }, tag: 'MS', note: { ru: 'основа: оглавление и поиск', en: 'base: contents and search' },
+          title: { ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' }, tag: 'MS', note: { ru: 'основа: оглавление и поиск', en: 'base: contents and search' },
           has_vocab: true, where: "kind IN ('root', 'variant')", params: [], base: true },
         ...own.map(l => ({ id: `tr-${l}`, kind: 'translation', lang: l,
           where: "kind = 'translation' AND lang = ?", params: [l] })),
