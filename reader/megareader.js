@@ -1766,6 +1766,38 @@ function captureReadingAnchor() {
     return null;
 }
 
+// The text keeps growing for a moment after buildSutta() resolves (a mode's lines laid out again, late parts): the line
+// was pinned against a layout that then grew above it and ended a screen lower - Active Word kept, the place lost
+// (owner 2026-11-08, mn13 single -> memorize: 414 px -> 1227 px). So the line is held where it was while #sutta changes
+// size, for two seconds, and let go at once when the reader scrolls or presses a key. A newer anchor replaces the hold.
+let readingHold = null;
+function holdReadingAnchor(anchor) {
+    if (readingHold) readingHold.stop();
+    const sutta = document.getElementById('sutta');
+    if (!sutta || typeof ResizeObserver === 'undefined') return;
+    const repin = () => {
+        const el = document.getElementById(anchor.id);
+        if (!el) return;
+        const delta = el.getBoundingClientRect().top - anchor.topOffset;
+        if (Math.abs(delta) < 2) return;
+        const html = document.documentElement, saved = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        window.scrollTo(0, window.scrollY + delta);
+        html.style.scrollBehavior = saved;
+    };
+    const ro = new ResizeObserver(repin);
+    const events = ['wheel', 'touchstart', 'keydown', 'mousedown'];
+    const stop = () => {
+        ro.disconnect(); clearTimeout(timer);
+        events.forEach(t => removeEventListener(t, stop, true));
+        if (readingHold && readingHold.stop === stop) readingHold = null;
+    };
+    const timer = setTimeout(stop, 2000);
+    events.forEach(t => addEventListener(t, stop, { capture: true, passive: true }));
+    ro.observe(sutta);
+    readingHold = { stop };
+}
+
 function restoreReadingAnchor(anchor) {
     if (!anchor) return;
     const el = document.getElementById(anchor.id);
@@ -1782,6 +1814,7 @@ function restoreReadingAnchor(anchor) {
     html.style.scrollBehavior = 'auto';
     window.scrollTo(0, targetScroll);
     setTimeout(() => { html.style.scrollBehavior = savedBehavior; }, 50);
+    holdReadingAnchor(anchor);
 
     if (anchor.hadActiveWord && typeof window.activateSegmentForTTS === 'function') {
         // Same language may no longer be visible in the new render (e.g. switching away from the

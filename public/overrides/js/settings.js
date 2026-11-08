@@ -606,7 +606,11 @@ document.addEventListener("click", function (e) {
         !e.target.closest("[data-bs-toggle='modal']") &&   // Кнопки, открывающие модалки
         !e.target.closest(".smart-panel") &&               // Панель шестеренки
         !e.target.closest(".smart-btn") &&                 // Кнопки шестеренки/оглавления
-        !e.target.closest("#smart-gear-btn")               // Сама кнопка шестеренки
+        !e.target.closest("#smart-gear-btn") &&            // Сама кнопка шестеренки
+        // The site's chrome: the burger and its menu (reader modes), the sheets and the toolbar buttons. The Active
+        // Word is where the reader is: a mode switch from the menu keeps that line (captureReadingAnchor), so opening
+        // the menu must not drop it (owner 2026-11-08: «при нажатии бургера Active Word пропадает»).
+        !e.target.closest(".dg-menu-btn, #dg-drawer, #dg-drawer-backdrop, .dg-sheet, #dg-sheet-backdrop, .dg-icon-btn, #dg-langpill")
     ) {
         window.removeAllHighlights();
     }
