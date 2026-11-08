@@ -1237,16 +1237,15 @@ window.addEventListener("keydown", (event) => {
 document.addEventListener("keydown", (event) => {
     if ((event.altKey && event.code === "Space") || (event.altKey && event.code === "KeyZ")) {
       event.preventDefault();
-      // On results, the visible pill (home.js #dg-langpill) now owns this state — its "2nd"
-      // segment toggles the MAIN language's own visibility (dgSetResultsLangVisibility), the
-      // same flag its popover checkbox reads/writes. The legacy #language-button still exists
+      // On results, the visible pill (home.js #dg-langpill) now owns this state — Alt+Z cycles
+      // it (dgCycleResultsLang: both → Pāḷi → translation), the translation part being the MAIN
+      // language's own visibility (dgSetResultsLangVisibility), the flag its popover checkbox uses. The legacy #language-button still exists
       // (hidden) but drives a SEPARATE blanket paliToggleSearch the pill no longer reads — Alt+Z
       // clicking it here would silently desync the pill/checkboxes from what's actually shown.
       // Reader is untouched: megareader.js rebinds #language-button itself there, and that IS
       // still the pill's own single source of truth (localStorage.paliToggle) — no divergence.
       if (document.body.classList.contains('dg-state-results')) {
-        const pillToggle = document.querySelector('#dg-langpill [data-k="2nd"]');
-        if (pillToggle) pillToggle.click();
+        if (typeof window.dgCycleResultsLang === 'function') window.dgCycleResultsLang();
         return;
       }
       const languageButton = document.getElementById("language-button");

@@ -98,6 +98,9 @@ localStorage.paliToggleRuSearch = "pli-rus";
       // Добавляем обработчик сочетания клавиш Alt + S (физическая клавиша)
   document.addEventListener("keydown", (event) => {
     if ((event.altKey && event.code === "Space") || (event.altKey && event.code === "KeyZ")) {
+      // The results' Alt+Z is settings.js's (the language pill): this one on top cycled a second state on the same
+      // press, and a round took six presses (owner 2026-11-08).
+      if (document.body.classList.contains('dg-state-results')) return;
       // Имитируем клик по кнопке
       event.preventDefault();
       languageButton.click();

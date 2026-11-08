@@ -67,12 +67,15 @@ window.DgSearchRender = (function () {
         varFilterOn = true;
         $.fn.dataTable.ext.search.push(variantFilter);
     }
+    // The tables are told apart by their element, not by suttaTableApi/wordTableApi: those are set only after DataTable()
+    // returns, and its first draw ran without the filter - a text found only in its variants stayed listed, without its
+    // word, until the next redraw (owner 2026-11-08, dukkhindriy: an7.47).
     function variantFilter(settings, data, idx, row) {
         if (!document.body.classList.contains('dg-novar') || !row) return true;
-        if (suttaTableApi && settings.nTable === suttaTableApi.table().node()) {
+        if (settings.nTable.id === 'pali') {
             return !(row.variant_segs && row.segments && row.variant_segs >= row.segments.length);
         }
-        if (wordTableApi && settings.nTable === wordTableApi.table().node()) return !row.variant;
+        if (settings.nTable.id === 'pali-words') return !row.variant;
         return true;
     }
 

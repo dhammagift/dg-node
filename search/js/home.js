@@ -2648,26 +2648,7 @@
                 var pli = cur.pli, trn = cur.trn;
                 if (b.dataset.k === 'pli') pli = !pli; else trn = !trn;
                 if (!pli && !trn) { if (b.dataset.k === 'pli') trn = true; else pli = true; }
-                if (currentState() === 'results') {
-                    // Owner: "нажали кнопку — нажали галочку, это одно и то же" — this segment
-                    // must drive the exact same state the main row's popover checkbox does, not
-                    // langswitch.js's own separate paliToggleSearch (which blanket-hides EVERY
-                    // language at once — reintroducing the "one button kills all translations"
-                    // bug this whole feature exists to fix, the moment 2+ languages are active).
-                    var searchPane = document.getElementById('search-pane');
-                    if (searchPane) searchPane.classList.toggle('hide-pali', !pli);
-                    var mainLang = pillLangs[0];
-                    if (mainLang) {
-                        var allLangs = pillLangs.slice();
-                        var checkedNow = allLangs.filter(function (l) { return resultsHiddenLangs.indexOf(l) === -1; });
-                        var idx = checkedNow.indexOf(mainLang);
-                        if (trn && idx === -1) checkedNow.push(mainLang);
-                        else if (!trn && idx !== -1) checkedNow.splice(idx, 1);
-                        dgSetResultsLangVisibility(allLangs, checkedNow);
-                    }
-                    dgSyncLangPill();
-                    return;
-                }
+                if (currentState() === 'results') { dgSetResultsPill(pli, trn); return; }
                 dgSetPaliToggle(pli && trn ? 'pli-2nd' : (pli ? 'pli' : '2nd'));
             });
             // Alt+Z / hidden #language-button still cycle the mode — mirror it here afterwards.
@@ -2734,6 +2715,37 @@
         var sutta = document.getElementById('sutta');
         return { pli: mode !== '2nd' || !(sutta && sutta.classList.contains('hide-pali')), trn: mode !== 'pli' };
     }
+    // Owner: "нажали кнопку — нажали галочку, это одно и то же" — on results the pill drives the exact same state the
+    // main row's popover checkbox does, not langswitch.js's own separate paliToggleSearch (which blanket-hides EVERY
+    // language at once — reintroducing the "one button kills all translations" bug this whole feature exists to fix,
+    // the moment 2+ languages are active).
+    function dgSetResultsPill(pli, trn) {
+        var searchPane = document.getElementById('search-pane');
+        if (searchPane) searchPane.classList.toggle('hide-pali', !pli);
+        var mainLang = pillLangs[0];
+        if (mainLang) {
+            var allLangs = pillLangs.slice();
+            var checkedNow = allLangs.filter(function (l) { return resultsHiddenLangs.indexOf(l) === -1; });
+            var idx = checkedNow.indexOf(mainLang);
+            if (trn && idx === -1) checkedNow.push(mainLang);
+            else if (!trn && idx !== -1) checkedNow.splice(idx, 1);
+            dgSetResultsLangVisibility(allLangs, checkedNow);
+        }
+        dgSyncLangPill();
+    }
+    // Alt+Z on results (settings.js): Pāḷi + translations → Pāḷi only → translations only → both, three presses round
+    // (owner 2026-11-08: it took six - langswitch.js cycled its own state on the same key while this toggled the pill).
+    // Every translation on screen goes and comes back together (ru + en on a Russian page), not the main one alone.
+    var altzShown = null;
+    window.dgCycleResultsLang = function () {
+        var pane = document.getElementById('search-pane');
+        var pliOn = !(pane && pane.classList.contains('hide-pali'));
+        var shown = pillLangs.filter(function (l) { return resultsHiddenLangs.indexOf(l) === -1; });
+        if (pliOn && shown.length) { altzShown = shown; dgSetResultsLangVisibility(pillLangs.slice(), []); }
+        else if (pliOn) { if (pane) pane.classList.add('hide-pali'); dgSetResultsLangVisibility(pillLangs.slice(), altzShown || pillLangs.slice()); }
+        else if (pane) pane.classList.remove('hide-pali');
+        dgSyncLangPill();
+    };
     function dgSyncLangPill() {
         var host = document.getElementById('dg-langpill');
         if (!host) return;
