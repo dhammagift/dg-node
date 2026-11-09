@@ -1823,7 +1823,7 @@
         addLink:{ ru: 'Мои языки', en: 'My languages' },
         localOnly:{ ru: 'до конца сессии', en: 'until you close the tab' },
         modeRead: { ru: 'Читать', en: 'Reading' },
-        modeMulti:{ ru: 'Мульти', en: 'Multi' },
+        modeMulti:{ ru: 'Сравнить', en: 'Compare' },
         readNote: { ru: 'правки до конца сессии', en: 'changes last for this session' },
         multiNote:{ ru: 'сохранится для всех текстов', en: 'saved for every text' },
         keepIt:   { ru: 'Оставить себе', en: 'Keep this' },
@@ -3328,7 +3328,7 @@
     // называть конкретный язык ("+ русский"/"+ английский") — они универсальны для любого языка.
     var MODE_TITLES = {
         single: { ru: 'Читать', en: 'Reading' },
-        multi: { ru: 'Мульти', en: 'Multi' },
+        multi: { ru: 'Сравнить', en: 'Compare' },
         memorize: { ru: 'Для запоминания', en: 'For Memorization' },
         // Owner: this one row's name stays quoted — "Devanagari" is used loosely for the whole
         // mode (any non-Latin script, not literally the Devanagari script), quotes flag that.
@@ -3340,7 +3340,7 @@
     // «Мульти» открывается на сохранённом наборе.
     var MODE_DESCRIPTIONS = {
         single: { ru: 'Всегда на основном языке', en: 'Always in your main language' },
-        multi: { ru: 'Сохранённый набор языков и переводчиков', en: 'Your saved set of languages and translators' },
+        multi: { ru: 'Сравнить редакции Канона или переводы', en: 'Compare editions of the Canon or translations' },
         memorize: { ru: 'Мнемоника по первой букве', en: 'First-letter mnemonic' },
         devanagari: { ru: 'Pāḷi в другом письме + Pāḷi латиницей', en: 'Pāḷi in another script + Pāḷi in Roman' }
     };

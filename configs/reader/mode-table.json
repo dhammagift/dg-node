@@ -1,6 +1,6 @@
 {
   "single": { "label": "Single" },
-  "multi": { "label": "Multi" },
+  "multi": { "label": "Compare" },
   "memorize": { "mnemonic": true, "label": "Memorize" },
   "devanagari": { "dualScript": true, "label": "Devanagari" }
 }

@@ -2265,6 +2265,15 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
+    // "Compare" from the line menu (common.js): every translation this text has in the reader's languages, as a set for this
+    // session only (setStack local) - the saved one is not touched; drawn again with them, the main translation first
+    let compareSeed = null;
+    try { compareSeed = sessionStorage.getItem('dgCompareSeed'); sessionStorage.removeItem('dgCompareSeed'); } catch (e) { /* private mode */ }
+    if (compareSeed && READER_MODE.modeKey === 'multi' && READER_MODE.availableTranslators) {
+        const mine = getEnabledLangs(), have = getStack();
+        const more = READER_MODE.availableTranslators.filter(k => mine.includes(k.slice(0, k.indexOf('_'))) && !have.includes(k));
+        if (more.length) { setStack(have.concat(more), { local: true }); return window.buildSutta(rawSlug, opts); }
+    }
     // the Pali editions THIS text is in (the Translations window marks the rest); null = not known (the DG app offline:
     // its library holds only the packs it downloaded, the corpus list comes with /api/text-online when online)
     READER_MODE.availableEditions = Array.isArray(suttaData.availableEditions) ? ['ms'].concat(suttaData.availableEditions)

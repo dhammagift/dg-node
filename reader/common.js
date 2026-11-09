@@ -561,10 +561,13 @@ onReady(() => {
     });
 
     // --- СРАВНИТЬ (COMPARE) ---
-    // Compare (owner 2026-11-01): this text at this line in multi - its own place, kept there (columns by default, the
-    // texts, their order); a new step of the history, Back returns to the reading. The first time, while multi holds
-    // one text or none, it opens with every Pali edition and every translation in the reader's languages
-    // (megareader.js dgCompareSeed). Was the 4nt comparison site in a new tab.
+    // Compare (owner 2026-11-01): this text at this line in multi - its own place, a new step of the history, Back returns
+    // to the reading. Asked for explicitly, it shows the most there is (owner 2026-11-09: «через сравнить… максимум
+    // канонов… и переводов»): every edition (?editions=, the address's per-visit choice) and every translation this text
+    // has in the reader's languages (megareader.js dgCompareSeed, a session-only set), differences on unless the reader
+    // turned them off in Compare - for this visit
+    // only: the reader's saved Compare settings (multi's own editions, lines or columns, translators) are not touched.
+    // Was the 4nt comparison site in a new tab.
     document.getElementById('sm-compare').addEventListener('click', (e) => {
         e.stopPropagation();
         menu.classList.add('segment-menu-hidden');
@@ -575,17 +578,10 @@ onReady(() => {
         const slug = (decodeURIComponent(u.pathname).split('/').pop().split(':')[0] || window._currentSlug || '').toLowerCase();
         const seg = currentContext.hash.split(':').pop();
         if (!slug) return;
-        try {
-            let stack = [];
-            try { stack = JSON.parse(localStorage.getItem('dgReadingStack') || '[]') || []; } catch (err) { /* broken */ }
-            if (localStorage.getItem('dgEditionsMulti') === null && stack.length <= 1) {
-                localStorage.setItem('dgEditionsMulti', JSON.stringify((window.DG_EDITIONS || [{ id: 'ms' }]).map(x => x.id)));
-                sessionStorage.setItem('dgCompareSeed', '1');
-            }
-        } catch (err) { /* private mode: multi as it is */ }
-        // Differences on: comparing is what was asked for (owner 2026-11-01: «разница должна быть включена сразу»); ?diff=1 is
-        // the share links' per-visit override (megareader.js), the reader's own saved choice stays as it was
-        const path = '/' + slug + ':' + seg + '?mode=multi&diff=1';
+        try { sessionStorage.setItem('dgCompareSeed', '1'); } catch (err) { /* private mode: the saved set as it is */ }
+        // no ?diff=1: Compare shows the differences unless the reader switched them off there (megareader.js dgEditionsDiff);
+        // the address's diff would have stayed on for the rest of the tab, single reading included
+        const path = '/' + slug + ':' + seg + '?mode=multi&editions=' + (window.DG_EDITIONS || [{ id: 'ms' }]).map(x => x.id).join(',');
         // In the apps /sn56.11 is no file (the dot reads as an extension): the root with the _nativeRoute handoff, as Default does
         if (window.dgOfflineReady && slug.indexOf('.') !== -1) window.location.href = '/?_nativeRoute=' + encodeURIComponent(path);
         else window.location.href = path;
