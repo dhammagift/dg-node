@@ -4869,6 +4869,21 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     };
     window.handleFetchError = function (slug) { window.executeGlobalSearch(slug); };
     window.dgRerunSearch = runSearchFromUrl; // a results setting changed (home.js quick settings: context lines)
+    /* The installed app's shortcuts (configs/manifest.json): launch_handler focus-existing hands an open window the
+       shortcut's address instead of opening a new one - nothing took it, so with the app already open a shortcut only
+       brought the window forward (owner 2026-11-09: «в шорткатах не открывается патимоккха»). The address is opened here;
+       the plain icon (start_url) leaves the reader where they are. Own pages (memo, dict) and /open?url= load in full. */
+    if ('launchQueue' in window && typeof window.launchQueue.setConsumer === 'function') {
+        window.launchQueue.setConsumer(function (params) {
+            if (!params || !params.targetURL) return;
+            var u;
+            try { u = new URL(params.targetURL); } catch (e) { return; }
+            if (u.origin !== location.origin || u.href === location.href) return;
+            if (u.pathname === '/' && /(^|[?&])source=pwa(&|$)/.test(u.search.slice(1))) return;   // the icon itself
+            if (/^\/(memo|dict|open|assets)(\/|$)/.test(u.pathname)) { location.href = u.href; return; }
+            if (!window.dgNavigateInternal || !window.dgNavigateInternal(u.pathname + u.search + u.hash)) location.href = u.href;
+        });
+    }
 
     /* Точка входа для "перейти по этому внутреннему пути через SPA, без перезагрузки" — нужна
        СНАРУЖИ этого <script> (autopali.js, отдельный файл, не имеет доступа к routeFromUrl()
