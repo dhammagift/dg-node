@@ -491,6 +491,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         transition: transform 0.2s ease, opacity 0.2s ease;
     }
     body #scrollToTopBtn:hover { opacity: 1; }
+    /* the reader's .hide-button:hover turns the light button navy (reader/css index.css): the black arrow image went with
+       it, nearly invisible (owner 2026-11-09); white on hover, as the dark theme's arrow always is */
+    body:not(.dark) #scrollToTopBtn:hover #arrowImg { filter: invert(1); }
     /* display НЕ трогаем: smoothScroll.js показывает и прячет кнопку инлайновым стилем по
        скроллу (тот же файл работает и в ридере) — любое правило display здесь всё равно
        проиграет инлайну и только запутает. */
