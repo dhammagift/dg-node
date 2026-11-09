@@ -214,11 +214,16 @@
           var b = col.text[s - 1], a = col.text[e];
           if ((b && LETTER.test(b)) || (a && LETTER.test(a))) continue;
         }
-        self.total++;
-        if (self.matches.length >= MAX_MATCHES) continue;
         var startAt = self._locate(col, s);
         var endAt = self._locate(col, e - 1);
         if (!startAt || !endAt) continue;
+        // What is not displayed is not a match, as in the browser's own find: a variant line with the variants off, a
+        // language switched off, a folded result row - "next" landed on them and could show nothing, every third press
+        // on mn13 (owner 2026-11-09). A hidden container (the closed drawer) and the closed branches/details that
+        // revealCollapsedAncestors opens stay in; a paragraph merely not laid out yet (content-visibility) is displayed.
+        if (!hidden && !shownText(startAt.node)) continue;
+        self.total++;
+        if (self.matches.length >= MAX_MATCHES) continue;
         endAt = { node: endAt.node, offset: endAt.offset + 1 };
         self.matches.push({
           index: self.matches.length,
@@ -298,6 +303,12 @@
      branch's child list). Walk up from the match and open every such ancestor on the way,
      clicking the real toggle header when there is one so toc.js's own open/closed bookkeeping
      (expandedBooks/expandedBranches) stays consistent — not just stripping the class. */
+  function shownText(node) {
+    var el = node && (node.nodeType === 3 ? node.parentElement : node);
+    if (!el || typeof el.checkVisibility !== 'function') return true;
+    if (el.checkVisibility({ visibilityProperty: true })) return true;
+    return !!(el.closest && el.closest('.d-none, details:not([open])'));
+  }
   function revealCollapsedAncestors(node) {
     var chain = [];
     for (var p = node && node.nodeType === 3 ? node.parentElement : node; p; p = p.parentElement) {
@@ -338,6 +349,12 @@
     var self = this;
     var m = this.matches[this.active];
     var box = null;
+    // A match in a paragraph the browser has not laid out yet (content-visibility: auto, the reader's long texts) has no box
+    // at all, and the page did not move to it - every third "next" on mn13 (owner 2026-11-09). That paragraph is laid out
+    // now; the ones on the way still have estimated heights, so the match is then held at its place while they settle.
+    var node = m && (m.el || (m._start && m._start.node && m._start.node.parentElement));
+    var para = node && node.closest && node.closest('p');
+    if (para && global.getComputedStyle(para).contentVisibility === 'auto') para.style.contentVisibility = 'visible';
     if (HIGHLIGHTS) {
       if (m && m.range) {
         global.CSS.highlights.set('dg-find-active', new global.Highlight(m.range));
@@ -357,6 +374,11 @@
     // of px) was still travelling when the reader looked, and the match was nowhere on screen.
     // 'instant', not 'auto': the site's CSS sets scroll-behavior:smooth, which 'auto' would follow.
     window.scrollTo({ top: Math.max(0, target), behavior: 'instant' });
+    // the site's one way of holding a line in place (search/index.html dgHoldLine); the dictionary page has none
+    if (typeof global.dgHoldLine === 'function') {
+      var at = m.range || m.el;
+      global.dgHoldLine(function () { return at; }, function () { return global.innerHeight * 0.35; }).ready();
+    }
   };
 
   /* Ссылка на строку — то, что копирует чип с id в списке совпадений. */
