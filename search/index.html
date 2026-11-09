@@ -2073,6 +2073,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (viewportMoved()) { lastY = y; upRun = 0; return; }   // the browser's own bar moved the page, not the reader
       // the page's own jump to a place (smoothScroll.js dgScrollToElement, its corrections included): not a move back up -
       // away from the top the header stays out of the way (owner 2026-11-01: it slid in at the end of opening dn2)
+      // holding a line while a text opens (dgHoldLine): the header stays as it is - hidden by that scroll it brought in the
+      // second, top spinner (#dg-busy-indicator shows while busy with the header hidden; owner 2026-11-08: «2 спиннера»)
+      if (window.dgScrollingTo === 'hold') { lastY = y; upRun = 0; return; }
       if (window.dgScrollingTo) {
         lastY = y; upRun = 0;
         if ((y >= bandHeight) !== hide) document.body.classList.toggle('dg-header-hidden', y >= bandHeight);
