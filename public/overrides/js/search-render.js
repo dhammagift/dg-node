@@ -206,9 +206,65 @@ window.DgSearchRender = (function () {
     // drops what Responsive folded away on a narrow screen (Quote) - and not $(node).closest('table'): a hidden column's
     // header is out of the page, so every column passed and Copy/CSV/Excel/PDF exported hidden ones (owner 2026-11-08).
     function visibleColumnsOf(dt) { return function (idx) { return dt.column(idx).visible(); }; }
+    // ...and inside a cell only what is on the screen: a language switched off (Pāḷi only, a hidden translation), the
+    // variant lines with the variants off - the quote was exported whole (owner 2026-11-09: «я просто хочу скопировать
+    // пали текст»). The cell's HTML is laid out once in an off-screen box inside #search-pane, so the page's own rules
+    // decide, and every element they hide is dropped.
+    // Hidden is decided once per kind of element (tag, classes, lang) with a bare copy in an off-screen box inside
+    // #search-pane, so the page's own rules decide, and remembered for the export under way: per element it took 10.7 s
+    // on 1326 rows, against 0.3 s for the whole export before.
+    var exportProbe = null, hiddenKinds = null, hiddenKindsAt = 0;
+    function hiddenKind(el) {
+        var now = Date.now();
+        if (!hiddenKinds || now - hiddenKindsAt > 1000) hiddenKinds = new Map();
+        hiddenKindsAt = now;
+        var lang = el.getAttribute('lang') || '', key = el.tagName + '|' + el.className + '|' + lang;
+        var v = hiddenKinds.get(key);
+        if (v === undefined) {
+            if (!exportProbe || !exportProbe.isConnected) {
+                exportProbe = document.createElement('div');
+                exportProbe.setAttribute('aria-hidden', 'true');
+                exportProbe.style.cssText = 'position:absolute;left:-99999px;top:0;width:800px;visibility:hidden';
+                (document.getElementById('search-pane') || document.body).appendChild(exportProbe);
+            }
+            var c = document.createElement(el.tagName);
+            c.className = el.className;
+            if (lang) c.setAttribute('lang', lang);
+            exportProbe.appendChild(c);
+            v = getComputedStyle(c).display === 'none';
+            exportProbe.removeChild(c);
+            hiddenKinds.set(key, v);
+        }
+        return v;
+    }
+    function shownFragment(html) {
+        var tpl = document.createElement('template');
+        tpl.innerHTML = html;
+        Array.prototype.slice.call(tpl.content.querySelectorAll('*')).forEach(function (el) {
+            if (el.isConnected === false && !tpl.content.contains(el)) return;   // already gone with a hidden parent
+            if (hiddenKind(el)) el.remove();
+        });
+        return tpl.content;
+    }
+    function shownHtml(html) {
+        if (typeof html !== 'string' || html.indexOf('<') === -1) return html;
+        var d = document.createElement('div');
+        d.appendChild(shownFragment(html));
+        return d.innerHTML;
+    }
+    // The text of what is shown, as DataTables' own export makes it (its tag stripping is skipped once a format is given):
+    // the lines kept apart by a space, the whitespace folded.
+    function shownText(html) {
+        if (typeof html !== 'string' || html.indexOf('<') === -1) return html;
+        var f = shownFragment(html);
+        Array.prototype.slice.call(f.querySelectorAll('br')).forEach(function (b) { b.replaceWith(' '); });
+        Array.prototype.slice.call(f.querySelectorAll('.quote, .quote-segment, p, div, li')).forEach(function (e) { e.append(' '); });
+        return f.textContent.replace(/\s+/g, ' ').trim();
+    }
+    var shownFormat = { body: function (data) { return shownText(data); } };
     function withVisibleColumns(base) {
         return function (e, dt, node, config, cb) {
-            config.exportOptions = $.extend({}, config.exportOptions, { columns: visibleColumnsOf(dt) });
+            config.exportOptions = $.extend({}, config.exportOptions, { columns: visibleColumnsOf(dt), format: shownFormat });
             return $.fn.dataTable.ext.buttons[base].action.call(this, e, dt, node, config, cb);
         };
     }
@@ -263,7 +319,8 @@ window.DgSearchRender = (function () {
                                 columns: function (idx) {
                                     return dt.column(idx).visible();
                                 },
-                                modifier: { search: 'applied' }
+                                modifier: { search: 'applied' },
+                                format: shownFormat
                             });
 
                             var textContent = [];
@@ -302,7 +359,8 @@ window.DgSearchRender = (function () {
                                 columns: function (idx) {
                                     return dt.column(idx).visible();
                                 },
-                                modifier: { search: 'applied' }
+                                modifier: { search: 'applied' },
+                                format: shownFormat
                             });
 
                             var mdCell = function (cell) {
@@ -345,7 +403,7 @@ window.DgSearchRender = (function () {
                                 body: function (data, row, column, node) {
                                     if (data === null || data === undefined) return '';
 
-                                    var text = String(data);
+                                    var text = String(shownHtml(data));
                                     var temp = document.createElement('div');
                                     temp.innerHTML = text;
 
