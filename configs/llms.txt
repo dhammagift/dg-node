@@ -25,6 +25,11 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 
 - [MN 10 in Thanissaro Bhikkhu and Bhikkhu Sujato side by side](https://dhamma.gift/mn10?mode=multi&translators=en_thanissaro,en_sujato): any text in several translations at once, segment by segment with the Pali (`?mode=multi&translators=…`, or `&langs=ru,en` for languages)
 
+## Compare Pali editions
+
+- [6 Pali editions side by side](https://dhamma.gift/docs/compare/): any text line by line in the Mahāsaṅgīti, Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions, with the differences highlighted; each edition's known problems listed
+- [SN 56.11 in all editions](https://dhamma.gift/sn56.11?mode=multi&editions=ms,bjt,my,th,mso,pts&diff=1): the comparison on one text (`?mode=multi&editions=…&diff=1`)
+
 ## Browse
 
 - [Contents](https://dhamma.gift/toc): every collection and book

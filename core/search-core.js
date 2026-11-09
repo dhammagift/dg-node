@@ -1691,14 +1691,17 @@ async function runRegexJob(job) {
     return result;
 }
 
-// Under every text, after the audio line: the site's own pages on how the texts are read, as plain links - the one
-// internal link that tells search engines and AI crawlers what matters here (owner 2026-10-22: neutral, no claims
-// about other translations, just «принципы по суттам, обоснование»). Here so the apps' offline /api/text has it too.
-function principlesLineHtml(ru, top) {
+// Under every text, after the links row and before the footer, one quiet centred line: the site's own pages on how the
+// texts are read, plain links - the one internal link that tells search engines and AI crawlers what matters here
+// (owner 2026-10-22: neutral, no claims about other translations), the editions comparison (owner 2026-11-09: «6 Pali
+// editions», Google has to know it), and the MP3 files when there are any (audio: dg-fastify.js audioLineHtml). One
+// line instead of two italic captions under the text (owner 2026-11-09, mockup: «давай так»). Here so the apps'
+// offline /api/text has it too.
+function principlesLineHtml(ru, audio = '') {
     const links = ru
-        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
-        : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']];
-    return `<p class="dg-principles" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:${top} 0 .5em">${links.map(([h, t]) => `<a href="${h}">${t}</a>`).join(' · ')}</p>`;
+        ? [['/ru/docs/sutta', 'Принципы'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий'], ['/ru/docs/compare', '6 изданий Пали']]
+        : [['/docs/sutta/', 'Principles'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary'], ['/docs/compare/', '6 Pali editions']];
+    return `<p class="dg-principles" style="text-align:center;font-size:.8em;opacity:.7;margin:1.5em auto .5em;line-height:1.9">${links.map(([h, t]) => `<a href="${h}" style="white-space:nowrap">${t}</a>`).join(' · ')}${audio ? '<br>' + audio : ''}</p>`;
 }
 
 // ---------- other Pali editions (moved from dg-fastify.js, 2026-11-01) ----------

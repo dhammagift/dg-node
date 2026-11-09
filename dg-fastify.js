@@ -1255,6 +1255,9 @@ function textRoster(suttaId) {
 // The other Pali editions (textEditions, addEditions): in core/search-core.js since 2026-11-01, so the offline worker
 // answers ?editions= from the ed-* packs with the same code.
 const textEditions = (suttaId) => searchCore.textEditions(suttaId);
+// their names for the text's JSON-LD (textHead workExample), as /docs/compare names them
+const EDITION_NAMES = { ms: 'Mahāsaṅgīti Tipiṭaka', bjt: 'Buddha Jayanti Tipiṭaka (Sri Lanka)', my: 'Chaṭṭha Saṅgāyana Tipiṭaka (Myanmar)',
+    th: 'Syāmaraṭṭha Tipiṭaka (Siam Rath, 1927)', mso: 'Mahāsaṅgīti Tipiṭaka as printed (2005)', pts: 'Pali Text Society editions' };
 const addEditions = (data, suttaId, wanted) => searchCore.addEditions(data, suttaId, wanted);
 // The parts of /api/text the apps' own SQLite cannot give (it is a ru+en slice with no audio index): the audio line and
 // the text's languages and translators in the whole corpus (a Thai text, the popover's "нет перевода"). The apps ask
@@ -1278,9 +1281,9 @@ function audioLineHtml(id, lang) {
     // had lost its translator credit, this line brings it back with the audio)
     const who = a => String((SITE_TRANSLATORS[a.lang] || {})[a.translator] || a.translator || '').replace(/<[^>]+>/g, '');
     const links = ['pli', lang].map(l => files.find(a => a.lang === l)).filter(Boolean)
-        .map(a => `<a href="${a.url}" type="audio/mpeg">${names[a.lang]}</a>` + (a.lang === 'pli' || !who(a) ? '' : ` (${ru ? 'пер.' : 'trans.'} ${who(a)})`));
-    return (links.length ? `<p class="dg-audio-mp3" style="text-align:right;font-style:italic;font-size:.85em;opacity:.8;margin:2em 0 .5em">${ru ? 'Слушать в MP3' : 'Listen in MP3'}: ${links.join(' · ')}</p>` : '')
-        + searchCore.principlesLineHtml(ru, links.length ? '.3em' : '2em');
+        .map(a => `<a href="${a.url}" type="audio/mpeg"${a.lang === 'pli' || !who(a) ? '' : ` title="${htmlAttr((ru ? 'пер. ' : 'trans. ') + who(a))}"`}>${names[a.lang]}</a>`);
+    // the translator's credit stays on the link (title): the one line under the links row has no room for it
+    return searchCore.principlesLineHtml(ru, links.length ? `<span class="dg-audio-mp3">MP3: ${links.join(' · ')}</span>` : '');
 }
 
 // index: false — the dist folder's own index.html would otherwise shadow the page above
@@ -3808,9 +3811,13 @@ async function textHead(dataId, urlId, reqLang) {
     const trNames = [...new Set(searchDb.prepare("SELECT DISTINCT translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND lang = ? AND translator NOT IN ('ai', 'gemini')")
         .all(dataId, lang).map(r => r.translator).sort((a, b) => (b === 'o') - (a === 'o')).map(shortName).filter(Boolean))];
     const compareNote = trNames.length < 2 ? '' : lang === 'ru' ? ` Сравнить переводы: ${trNames.join(', ')}.` : ` Compare translations: ${trNames.join(', ')}.`;
-    const room = 160 - audioNote.length - compareNote.length;
+    // the other Pali editions this text has: the snippet says how many (owner 2026-11-09: «6 Pali editions», Google has to
+    // know the comparison), the JSON-LD names them and points to the page that explains it (work.subjectOf)
+    const eds = textEditions(dataId);
+    const edNote = !eds.length ? '' : lang === 'ru' ? ` ${eds.length + 1} изданий Пали.` : ` ${eds.length + 1} Pali editions.`;
+    const room = 160 - audioNote.length - compareNote.length - edNote.length;
     if (description.length > room) description = description.slice(0, description.lastIndexOf(' ', room - 3)) + '…';
-    description += compareNote + audioNote;
+    description += compareNote + edNote + audioNote;
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
     const url = id => SITE + '/' + encodeURIComponent(urlId) + (id === 'en' ? '' : '?lang=' + id);
@@ -3827,6 +3834,8 @@ async function textHead(dataId, urlId, reqLang) {
         keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
+            workExample: eds.length ? ['ms', ...eds].map(e => ({ '@type': 'Book', name: EDITION_NAMES[e], inLanguage: 'pi' })) : undefined,
+            subjectOf: eds.length ? { '@type': 'WebPage', name: `${eds.length + 1} Pali editions side by side`, url: SITE + (lang === 'ru' ? '/ru/docs/compare' : '/docs/compare/') } : undefined,
             audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
                 contentUrl: a.url, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
         alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
@@ -3934,7 +3943,7 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     // applyPadding; skipped by the reader's compare)
     const out = '<div id="top-links-container" class="min-h-24"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
         (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
-        byline + html + audioLineHtml(dataId, lang) + '<div id="bottom-links-container" class="min-h-24"></div>';
+        byline + html + '<div id="bottom-links-container" class="min-h-24"></div>' + audioLineHtml(dataId, lang);
     if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
     textBodyCache.set(key, out);
     return out;
@@ -4184,7 +4193,7 @@ const SITE_LD = [
         applicationCategory: 'ReferenceApplication', operatingSystem: 'Web, Android, iOS', inLanguage: ['en', 'ru'],
         description: 'Search the Pali Canon (Sutta and Vinaya) in Pali and 25 languages, read suttas with translations side by side, listen and memorize.',
         featureList: ['Search of the Sutta and Vinaya in Pali and translations', 'Reader with Pali and translations side by side',
-            'Translator comparison', 'Voice (text to speech)', 'Sutta podcasts in Pali, English and Russian', 'Memorization mode',
+            'Translator comparison', '6 Pali editions side by side, line by line, differences highlighted (Mahāsaṅgīti, Buddha Jayanti, Chaṭṭha Saṅgāyana, Siam Rath, PTS)', 'Voice (text to speech)', 'Sutta podcasts in Pali, English and Russian', 'Memorization mode',
             'Key terms read by the Suttas\' own definitions (glossary, rationale)', 'Pali dictionary', 'MCP server for AI assistants',
             'Telegram bot', 'Offline Android and iOS apps'],
         installUrl: ['https://play.google.com/store/apps/details?id=gift.dhamma.twa', 'https://apps.apple.com/app/dhamma-gift/id6813706217'],

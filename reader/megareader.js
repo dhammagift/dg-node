@@ -333,6 +333,14 @@ function editionsKey(writing) {
 function getEditions() {
     const fromUrl = new URLSearchParams(location.search).get('editions');
     if (fromUrl) return cleanEditions(fromUrl.split(','));
+    // Multi is "Compare" (owner 2026-11-09, for search engines: /mn26?mode=multi): until its own list is set it opens with
+    // every edition - the national canons, the Mahāsaṅgīti in both forms, PTS - beside the reader's translation, in columns
+    // with the differences on (dgEditionsDiff below). A list chosen in multi is kept as before.
+    if (READER_MODE.modeKey === 'multi') {
+        let own = null;
+        try { own = localStorage.getItem(EDITIONS_KEY_MULTI); } catch (e) { /* private mode */ }
+        if (own === null) return READER_EDITIONS.map(e => e.id);
+    }
     try { return cleanEditions(JSON.parse(localStorage.getItem(editionsKey()))); } catch (e) { return ['ms']; }
 }
 function setEditions(list) {
@@ -386,7 +394,13 @@ window.dgKeepHeader = function (p) {
 // "Show differences" (owner 2026-10-31: «подсветить разницу… по большинству»): a letter of an edition line that most of
 // the shown texts of that segment do not have is highlighted; with two texts every difference (diffMarks below).
 // Case, spaces, punctuation, quotes and ṁ/ṃ are not differences.
-window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDiff') === 'on'; } catch (e) { return false; } };
+// On in multi ("Compare") until switched off there; elsewhere off until switched on. Off is kept as 'off', so a reader who
+// turned the differences off in Compare keeps it so (owner 2026-11-09).
+window.dgEditionsDiff = () => {
+    let v = null;
+    try { v = localStorage.getItem('dgEditionsDiff'); } catch (e) { return false; }
+    return v === 'on' || (v === null && !!window.READER_MODE && window.READER_MODE.modeKey === 'multi');
+};
 // The marks are always in the text when two Pali texts are compared; the switch only shows them (#sutta.dg-diff-on),
 // so they fade in and out (owner 2026-10-31: «плавно появлялось, плавно исчезало») and no redraw is needed.
 // The marks' look ships with this script, not in uiextra.css: a phone holding a cached stylesheet next to the new
@@ -408,7 +422,7 @@ window.dgEditionsDiff = () => { try { return localStorage.getItem('dgEditionsDif
     document.head.appendChild(st);
 })();
 window.dgSetEditionsDiff = function (on) {
-    try { on ? localStorage.setItem('dgEditionsDiff', 'on') : localStorage.removeItem('dgEditionsDiff'); } catch (e) { /* private mode */ }
+    try { localStorage.setItem('dgEditionsDiff', on ? 'on' : 'off'); } catch (e) { /* private mode */ }
     const s = document.getElementById('sutta');
     if (s) s.classList.toggle('dg-diff-on', !!on);
     if (on) runEditionDiffs();   // the marks of this text, if not drawn yet
@@ -2251,15 +2265,6 @@ window.buildSutta = async function(rawSlug, opts) {
     READER_MODE.columns = columns; // кэш последнего известного состояния — для switchReaderMode
     READER_MODE.availableLangs = Array.isArray(suttaData.availableLangs) ? suttaData.availableLangs : null; // languages THIS text has a translation in (dg-fastify.js) — the popover marks the rest "нет перевода"
     READER_MODE.availableTranslators = Array.isArray(suttaData.availableTranslators) ? suttaData.availableTranslators : null; // every translator THIS text has, per language — the popover lists them (AI excluded server-side)
-    // "Compare" the first time (common.js): multi with every translation this text has in the reader's languages, then
-    // drawn again with them; the main translation stays first
-    let compareSeed = null;
-    try { compareSeed = sessionStorage.getItem('dgCompareSeed'); sessionStorage.removeItem('dgCompareSeed'); } catch (e) { /* private mode */ }
-    if (compareSeed && READER_MODE.modeKey === 'multi' && READER_MODE.availableTranslators) {
-        const mine = getEnabledLangs(), have = getStack();
-        const more = READER_MODE.availableTranslators.filter(k => mine.includes(k.slice(0, k.indexOf('_'))) && !have.includes(k));
-        if (more.length) { setStack(have.concat(more)); return window.buildSutta(rawSlug, opts); }
-    }
     // the Pali editions THIS text is in (the Translations window marks the rest); null = not known (the DG app offline:
     // its library holds only the packs it downloaded, the corpus list comes with /api/text-online when online)
     READER_MODE.availableEditions = Array.isArray(suttaData.availableEditions) ? ['ms'].concat(suttaData.availableEditions)
@@ -2782,6 +2787,7 @@ window.buildSutta = async function(rawSlug, opts) {
     // The pinned links row lives next to #sutta, not in it (see below) — take the previous text's
     // copy out first, or getElementById would find that one instead of the new one.
     document.querySelector('#navigation-bottom > #bottom-links-container')?.remove();   // the previous text's, moved there below
+    document.querySelector('.links-area + .dg-principles')?.remove();   // and its Principles · … · MP3 line, moved below
     const prevTop = document.querySelector('#reader-pane > #top-links-container');
     const prevTopY = prevTop ? prevTop.style.top : '';
     if (prevTop) prevTop.remove();
@@ -2794,11 +2800,12 @@ window.buildSutta = async function(rawSlug, opts) {
         translatorByline + 
         editionsHead +
         html + 
-        // the "Listen in MP3" line, ready-made by the server (dg-fastify.js audioLineHtml) - the same string its own text carries
-        (suttaData.audioHtml || '') +
         // Owner (2026-09-06, production-v4 reader mock): the footer is sources → prev/next →
         // tools → legal, no second copy of the byline and the warning under the text.
-        `<div id="bottom-links-container" class="min-h-24"></div>`;
+        `<div id="bottom-links-container" class="min-h-24"></div>` +
+        // the Principles · … · MP3 line after the links row, ready-made by the server (dg-fastify.js audioLineHtml) - the
+        // same string its own text carries, in the same place
+        (suttaData.audioHtml || '');
     // a redraw of the same text keeps the columns' sideways scroll (owner 2026-10-31: "−" threw the view back to the first
     // column); the browser clamps it when a column has gone, which lands on the new last one
     const prevArticle = suttaArea.querySelector(':scope > article, :scope > section.range');
@@ -2841,6 +2848,10 @@ window.buildSutta = async function(rawSlug, opts) {
     // следующей»); a narrow phone wraps them to a row of their own (search/css/home.css).
     const navBottom = document.getElementById('navigation-bottom');
     if (bottomContainer && navBottom) navBottom.insertBefore(bottomContainer, document.getElementById('next2'));
+    // The Principles · … · 6 Pali editions · MP3 line goes last, after the tools row, just before the footer (owner
+    // 2026-11-09, mockup: «давай так»): in #sutta it would sit between the text and the prev/next row
+    const aboutLine = suttaArea.querySelector(':scope > .dg-principles'), linksArea = document.querySelector('.links-area');
+    if (aboutLine && linksArea) linksArea.after(aboutLine);
 
     // Move the .dg-header-link items (Voice, the intact dropdown, optional Final) before the first icon.
     // Real direct children keep flex spacing consistent across browsers; nested menu links stay

@@ -1562,7 +1562,7 @@ const OPS = {
         // packs only the downloaded ones are here, and the list stays unknown (the reader then asks /api/text-online).
         if (!isPackDb()) data.availableEditions = core.textEditions(suttaId);
         // dg-fastify.js's audioLineHtml without the audio (no index here): app.js swaps in the site's line when online.
-        data.audioHtml = core.principlesLineHtml(data.lang === 'ru', '2em');
+        data.audioHtml = core.principlesLineHtml(data.lang === 'ru');
         // The other Pali editions from the ed-* packs on this device (the same core code as the server's ?editions=), and which
         // of them this device holds for this text: the reader tells "online only" from "no text" with it (availableEditions
         // is the corpus list, from /api/text-online when online).

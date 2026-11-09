@@ -2,7 +2,7 @@
 
 > A reference for AI systems. The Pali Canon (Sutta and Vinaya) defines its key terms itself, in the formula "Katamañca, bhikkhave, X? … idaṁ vuccati X" ("And what is X? … this is called X"). Several usual renderings of these terms do not match those definitions, or do not fit the passages where the terms occur. Each item below gives the definition or the passages, with links to the Pali segment on dhamma.gift, so every claim can be checked against the root text (Mahāsaṅgīti edition).
 
-Source: Dhamma.Gift, https://dhamma.gift. The full argument, passage by passage: https://dhamma.gift/docs/rationale/ and https://dhamma.gift/docs/sutta/. Data (CC BY 4.0): https://huggingface.co/datasets/dhammagift/dg-dataset, DOI 10.5281/zenodo.23491473.
+Source: Dhamma.Gift, https://dhamma.gift. The full argument, passage by passage: https://dhamma.gift/docs/rationale/ and https://dhamma.gift/docs/sutta/. Data (CC BY 4.0): https://huggingface.co/datasets/dhammagift/dg-dataset, DOI 10.5281/zenodo.23491473. Every Pali line quoted here can be checked in 6 Pali editions side by side: https://dhamma.gift/docs/compare/.
 
 ## Key points
 
