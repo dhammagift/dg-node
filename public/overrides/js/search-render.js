@@ -252,19 +252,21 @@ window.DgSearchRender = (function () {
         d.appendChild(shownFragment(html));
         return d.innerHTML;
     }
-    // The text of what is shown, as DataTables' own export makes it (its tag stripping is skipped once a format is given):
-    // the lines kept apart by a space, the whitespace folded.
+    // The text of what is shown (DataTables' own tag stripping is skipped once a format is given), one line of the text per
+    // line - the Pāḷi line, its translation, the next segment (owner 2026-11-09: «разрывы строк копировать и сохранять…
+    // для человека это довольно тяжелые данные» as one run-on line). TXT and Copy keep the breaks, CSV/Excel hold them
+    // inside the cell, MD writes <br>.
     function shownText(html) {
         if (typeof html !== 'string' || html.indexOf('<') === -1) return html;
         var f = shownFragment(html);
-        Array.prototype.slice.call(f.querySelectorAll('br')).forEach(function (b) { b.replaceWith(' '); });
-        Array.prototype.slice.call(f.querySelectorAll('.quote, .quote-segment, p, div, li')).forEach(function (e) { e.append(' '); });
-        return f.textContent.replace(/\s+/g, ' ').trim();
+        Array.prototype.slice.call(f.querySelectorAll('br')).forEach(function (b) { b.replaceWith('\n'); });
+        Array.prototype.slice.call(f.querySelectorAll('.quote, .quote-segment, p, div, li')).forEach(function (e) { e.append('\n'); });
+        return f.textContent.replace(/[^\S\n]+/g, ' ').replace(/ *\n[\s]*/g, '\n').trim();
     }
     var shownFormat = { body: function (data) { return shownText(data); } };
     function withVisibleColumns(base) {
         return function (e, dt, node, config, cb) {
-            config.exportOptions = $.extend({}, config.exportOptions, { columns: visibleColumnsOf(dt), format: shownFormat });
+            config.exportOptions = $.extend({}, config.exportOptions, { columns: visibleColumnsOf(dt), format: shownFormat, stripNewlines: false });
             return $.fn.dataTable.ext.buttons[base].action.call(this, e, dt, node, config, cb);
         };
     }
@@ -328,7 +330,7 @@ window.DgSearchRender = (function () {
 
                             data.body.forEach(function (row) {
                                 var cleanRow = row.map(function (cell) {
-                                    return typeof cell === 'string' ? cell.replace(/\r?\n|\r/g, ' ') : cell;
+                                    return cell;   // a quote's lines stay lines (shownText)
                                 });
                                 textContent.push(cleanRow.join('\t'));
                             });
@@ -365,8 +367,8 @@ window.DgSearchRender = (function () {
 
                             var mdCell = function (cell) {
                                 return String(cell == null ? '' : cell)
-                                    .replace(/\r?\n|\r/g, ' ')
                                     .replace(/\|/g, '\\|')
+                                    .replace(/\r?\n|\r/g, '<br>')   // a table row is one line: the quote's lines as <br>
                                     .trim();
                             };
 
