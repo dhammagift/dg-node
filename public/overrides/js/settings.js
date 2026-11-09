@@ -808,9 +808,16 @@ async function addToSearchHistory(title) {
     }
 }
 
+window.dgSaveToHistory = saveToHistory;   // the contents (toc.js) save the Pātimokkha too; a reference, not a wrapper:
+                                           // in the global scope "saveToHistory" IS window.saveToHistory
 async function saveToHistory(key, url) {
     key = formatSlug(key); 
     const value = url.pathname + url.search + url.hash;
+    // The Pātimokkha is one history entry, the last place in it (owner 2026-11-09: in the apps the launcher shows the
+    // history, not the PWA's Pātimokkha shortcuts): its contents (/toc/pm, toc.js) and every rule read from there
+    // (/pli-tv-bu-pm:…) save under one name, so it moves to the top with the newest place instead of a row per rule.
+    const pmSide = /^\/(toc\/(pm|bupm|bu-pm)|pli-tv-bu-pm)\b/.test(url.pathname) ? 'bu' : /^\/(toc\/(bipm|bi-pm)|pli-tv-bi-pm)\b/.test(url.pathname) ? 'bi' : null;
+    if (pmSide) key = pmSide === 'bu' ? 'Bhikkhu Pātimokkha' : 'Bhikkhunī Pātimokkha';
     const timestamp = new Date().toISOString();
   
     let history = JSON.parse(localStorage.getItem("localSearchHistory")) || [];

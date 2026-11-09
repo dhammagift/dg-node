@@ -993,6 +993,11 @@
                 bookHeader.addEventListener('click', function () {
                     var willShow = bodyEl.classList.contains('d-none');
                     expandedBooks[book.code] = willShow;
+                    // opened by the reader (a tap, or /toc/pm): it goes to the history - settings.js saveToHistory keeps one
+                    // Pātimokkha entry; a Pātimokkha left open and drawn again with the contents is not a new reading
+                    if (willShow && patimokkhaSide && typeof window.dgSaveToHistory === 'function') {
+                        window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'pm' : 'bipm'), location.origin));
+                    }
                     if (willShow) openBookBody();
                     else bodyEl.classList.add('d-none');
                 });
