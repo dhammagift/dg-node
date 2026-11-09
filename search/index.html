@@ -163,6 +163,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   // the reader's route) and for keeping the line through a mode or language switch (megareader.js holdReadingAnchor).
   (function () {
     var hold = null;
+    var hs = document.createElement('style');
+    hs.textContent = 'html.dg-holding #dg-busy-indicator{display:none!important}';
+    document.head.appendChild(hs);
     window.dgFindLine = function (seg) {
       return function () {
         // a verse couplet is drawn as one line under its first id (thig12.1: 6.1 holds 6.1 and 6.2): the reader's fallback
@@ -190,11 +193,15 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (mo) mo.disconnect();
         inputs.forEach(function (t) { removeEventListener(t, me.stop, true); });
         if (window.dgScrollingTo === 'hold') window.dgScrollingTo = 0;
-        if (hold === me) hold = null;
+        if (hold === me) { hold = null; document.documentElement.classList.remove('dg-holding'); }
       };
       me.ready = function () { me.isReady = true; me.quiet = 0; return me; };
       inputs.forEach(function (t) { addEventListener(t, me.stop, { capture: true, passive: true }); });
       window.dgScrollingTo = 'hold';   // our own scroll: the auto-hiding header ignores it
+      // The header hides away from the top as usual, and the small top spinner that comes with a hidden header while busy
+      // (#dg-busy-indicator) stays out: the reader's own spinner already shows (owner 2026-11-08: «2 спиннера», then «откуда
+      // появился хедер» when the header was kept instead).
+      document.documentElement.classList.add('dg-holding');
       (function frame() {
         if (me.stopped) return;
         if (put()) me.quiet = 0;
@@ -2073,9 +2080,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       if (viewportMoved()) { lastY = y; upRun = 0; return; }   // the browser's own bar moved the page, not the reader
       // the page's own jump to a place (smoothScroll.js dgScrollToElement, its corrections included): not a move back up -
       // away from the top the header stays out of the way (owner 2026-11-01: it slid in at the end of opening dn2)
-      // holding a line while a text opens (dgHoldLine): the header stays as it is - hidden by that scroll it brought in the
-      // second, top spinner (#dg-busy-indicator shows while busy with the header hidden; owner 2026-11-08: «2 спиннера»)
-      if (window.dgScrollingTo === 'hold') { lastY = y; upRun = 0; return; }
       if (window.dgScrollingTo) {
         lastY = y; upRun = 0;
         if ((y >= bandHeight) !== hide) document.body.classList.toggle('dg-header-hidden', y >= bandHeight);
