@@ -159,6 +159,7 @@ function legacyReaderRedirect(url) {
 // served the whole site with 200 beside dhamma.gift; they move to it, path and query kept. Any other *.dhamma.gift
 // that reaches this process (f1., a server's own name, api.) stays usable but leaves search (onSend below).
 const ALIAS_HOSTS = new Set(['www.dhamma.gift', 'f.dhamma.gift', 'www.f.dhamma.gift', 'find.dhamma.gift', 'www.find.dhamma.gift']);
+const STATIC_INDEXED = new Set(['docs', 'dict', 'hatthipada', 'memo']); // folders served as-is that search may index (see the onSend hook)
 const INDEXED_HOSTS = new Set(['dhamma.gift', 'test.dhamma.gift', 'dict.dhamma.gift']); // test: Apache adds its own noindex
 const hostOf = req => String(req.headers.host || '').toLowerCase().replace(/:\d+$/, '');
 app.addHook('onRequest', (req, res, done) => {
@@ -753,6 +754,13 @@ app.addHook('onSend', (req, reply, payload, done) => {
     // search: everything they had is in the docs and the home page now (owner 2026-10-27). HTML only, so
     // scripts, styles and images are untouched.
     if (/^\/([a-z]{2}\/)?assets\//.test(req.url) && /^text\/html/.test(reply.getHeader('content-type') || '')) reply.header('x-robots-tag', 'noindex');
+    // Closed by default (owner 2026-11-12: «закрыть все и оставить только нужное»): whatever is served as-is from a
+    // folder (siteroot/, offline-data) leaves search unless the folder is ours and meant for it. A new folder, a copy
+    // of another site (like /4nt/ was), a PDF or a test page then never reaches Google by accident. Pages, styles,
+    // scripts, images and fonts stay as they were; the texts, terms, contents and docs are not affected.
+    const seg = (req.url.match(/^\/(?:ru\/)?([^/?#]+)/) || [])[1];
+    if (seg && !STATIC_INDEXED.has(seg) && (siteRootEntries.has(seg) || offlineMirrors.has(seg))
+        && !/^(image|font|audio|video)\/|javascript|css/.test(reply.getHeader('content-type') || '')) reply.header('x-robots-tag', 'noindex');
     // f1.dhamma.gift and the like: full copies of the site under another name (Googlebot fetched ~5,700 pages a week from f1)
     if (/\.dhamma\.gift$/.test(hostOf(req)) && !INDEXED_HOSTS.has(hostOf(req))) reply.header('x-robots-tag', 'noindex');
     done(null, payload);

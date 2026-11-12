@@ -71,6 +71,13 @@ siteroot/dict && git update-index --no-skip-worktree siteroot/dict`. Правк�
 `git pull` там: `git -C /var/www/ddg-ui checkout public/static/extra.js` (незакоммиченная правка 27.10, она же теперь в
 `25d1687`, иначе pull откажет).
 
+## Search engines: folders closed by default (2026-11-12)
+
+Everything the server hands out as-is from a folder (`siteroot/*`, offline-data mounts) gets `X-Robots-Tag: noindex`,
+except the folders in `STATIC_INDEXED` in `dg-fastify.js` (now `docs`, `dict`, `hatthipada`, `memo`). A new folder meant
+for Google (a new tool page) must be added there, or it never gets indexed. Copies of other sites stay closed by
+themselves. Texts, terms, contents and search pages are built by the server and are not affected.
+
 ## Layout
 
 | What | Path | Repo / branch | Served as |
