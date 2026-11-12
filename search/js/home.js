@@ -687,10 +687,21 @@
         if (READER_SETTING_KEYS.indexOf(e.key) === -1) return;
         if (typeof window.buildSutta !== 'function' || !window.currentReaderSlug) return;
         if (!document.body.classList.contains('dg-state-reader')) return;
+        if (e.key === 'dhammaLanguage' || e.key === 'siteLanguage') readerLangChanged = true;
         clearTimeout(readerRebuildTimer);
         readerRebuildTimer = setTimeout(rebuildReaderKeepingPlace, 250);
     });
+    var readerLangChanged = false;
     function rebuildReaderKeepingPlace() {
+        // The language: the way the pill switches it (megareader.js switchReadingLanguage), which also moves the chosen set of
+        // translations to that language - a plain re-render kept Compare's own set (Bhikkhu Sujato · en) after the switch to
+        // Russian in Settings (owner 2026-11-12); other modes followed the language already
+        var lang = readerLangChanged && (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage'));
+        readerLangChanged = false;
+        if (lang && typeof window.switchReadingLanguage === 'function' && window.READER_MODE && window.READER_MODE.lang !== lang) {
+            window.switchReadingLanguage(lang);
+            return;
+        }
         // Remember the segment on screen, re-render the text only (same as a reader mode switch,
         // megareader.js), put the segment back. inPlace: not a new open of the text, so
         // smoothScroll.js neither scrolls nor offers "Continue reading".
