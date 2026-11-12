@@ -71,6 +71,13 @@ for (const [prefix, dirs] of ROOTS) {
     }
 }
 
+// The apps' pages as their sources, the bytes /app-src/<key> sends (dg-fastify.js, core/app-page-sources.js)
+if (!opts('root').length) {
+    for (const [key, file] of Object.entries(require('../core/app-page-sources.js'))) {
+        try { hashes['/app-src/' + key] = crypto.createHash('sha256').update(fs.readFileSync(path.join(REPO, file))).digest('hex'); } catch (e) { /* not on this host */ }
+    }
+}
+
 const git = (...a) => execFileSync('git', ['-C', GIT, ...a], { encoding: 'utf8' }).trim();
 const [commit, commitTime] = git('log', '-1', '--format=%H %ct').split(' ');
 const list = {

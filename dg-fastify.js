@@ -858,6 +858,13 @@ function rebuildSiteManifest() {
             else console.log('[site-manifest] ' + String(out).trim().split('\n').pop());
         });
 }
+const APP_PAGE_SOURCES = require('./core/app-page-sources.js');
+app.get('/app-src/*', (req, res) => {
+    const file = Object.prototype.hasOwnProperty.call(APP_PAGE_SOURCES, req.params['*']) ? APP_PAGE_SOURCES[req.params['*']] : null;
+    if (!file) return res.code(404).type('text/plain').send('Not found');
+    res.header('cache-control', 'no-cache').header('X-Robots-Tag', 'noindex');
+    return res.type('text/html; charset=utf-8').send(require('fs').readFileSync(path.join(__dirname, file)));
+});
 app.get('/app-site-manifest.json', (req, res) => {
     res.header('cache-control', 'no-cache');
     return sendFile(req, res, path.join(__dirname, 'app-site-manifest.json'), 'application/json')
