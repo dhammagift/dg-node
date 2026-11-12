@@ -690,7 +690,7 @@ ScrollManager.init();
     const KEY = 'dgLastRoute', RUN = 'dgResumeRun', MAX_AGE = 30 * 24 * 3600 * 1000;
     const isHome = () => /^\/(ru\/?)?$/.test(location.pathname) && !/[?&]q=/.test(location.search) && !location.hash;
     const save = () => {
-        if (/^\/(assets|settings|memo|login)\//.test(location.pathname)) return;   // a page of its own, not the reader's place
+        if (/^\/(assets|settings|login)\//.test(location.pathname)) return;   // a page of its own, not the reader's place
         try { localStorage.setItem(KEY, JSON.stringify({ route: isHome() ? '' : location.pathname + location.search + location.hash, at: Date.now() })); } catch (e) { /* private mode */ }
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
@@ -701,10 +701,13 @@ ScrollManager.init();
     } catch (e) { return; }
     let last = null;
     try { last = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* none */ }
-    if (!last || !last.route || Date.now() - last.at > MAX_AGE || !isHome()) return;
+    let home = false;
+    try { home = localStorage.getItem('dgStartPage') === 'home'; } catch (e) { /* default: the last place */ }   // Settings: «При запуске открывать»
+    if (home || !last || !last.route || Date.now() - last.at > MAX_AGE || !isHome()) return;
     let tries = 0;
     (function go() {
         if (!isHome()) return;   // a link or a shortcut got there first
+        if (/^\/memo\//.test(last.route)) { location.href = last.route; return; }   // Memo is a page of its own (its place: nav-component.js)
         if (typeof window.dgNavigateInternal === 'function') { window.dgNavigateInternal(last.route); return; }
         if (++tries < 50) setTimeout(go, 100);
     })();

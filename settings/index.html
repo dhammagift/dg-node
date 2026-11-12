@@ -438,6 +438,13 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
         </div></div>
       </div>
       <div class="row">
+        <div><p class="row-title" id="startLbl">При запуске открывать</p><p class="row-desc" id="startDesc">Для приложения и установленного сайта: последнее место — поиск, оглавление, текст или Мемо</p></div>
+        <div class="row-control"><div class="seg" role="group" aria-labelledby="startLbl" id="startSeg">
+          <button type="button" data-start="last" aria-pressed="true" id="t-start-last">Последнее</button>
+          <button type="button" data-start="home" aria-pressed="false" id="t-start-home">Главную</button>
+        </div></div>
+      </div>
+      <div class="row">
         <div><p class="row-title" id="t-cloud">Облако</p><p class="row-desc" id="t-cloudDesc">Синхронизация закладок, истории, подписок и настроек между устройствами.</p></div>
         <div class="row-control"><button class="btn btn-primary" type="button" id="cloudBtn">Войти</button></div>
       </div>
@@ -939,6 +946,10 @@ function showTheme(t){
   document.querySelectorAll('#themeSeg button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.theme===t)));
 }
 document.querySelectorAll('#themeSeg button').forEach(b=> b.onclick=()=> setTheme(b.dataset.theme));
+// Where the app starts (smoothScroll.js resumeLastPlace reads dgStartPage; owner 2026-11-12)
+(function(){ const seg=document.getElementById('startSeg'); if(!seg) return; let v='last'; try{ v=localStorage.getItem('dgStartPage')==='home'?'home':'last'; }catch(e){}
+  const paint=()=>seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.start===v)));
+  seg.querySelectorAll('button').forEach(b=> b.onclick=()=>{ v=b.dataset.start; try{ localStorage.setItem('dgStartPage', v); }catch(e){} paint(); }); paint(); })();
 // The site around this page (the settings sheet's parent, Alt+T there, another tab) changes the
 // theme in localStorage; follow it at once instead of keeping the theme this page opened with.
 addEventListener('storage', e => { if (e.key === 'theme') showTheme(localStorage.getItem('theme') || 'auto'); });
@@ -1479,6 +1490,7 @@ const STR = {
     previewCollapse:'Свернуть образец', previewExpand:'Развернуть образец',
     gGeneral:'Общее', uiLang:'Язык интерфейса', uiLangDesc:'Меню и подписи. На языки текстов не влияет.',
     themeLbl:'Тема', thAuto:'Авто', thLight:'Светлая', thDark:'Тёмная',
+    startLbl:'При запуске открывать', startDesc:'Для приложения и установленного сайта: последнее место — поиск, оглавление, текст или Мемо', startLast:'Последнее', startHome:'Главную',
     cloud:'Облако', cloudDesc:'Синхронизация закладок, истории, подписок и настроек между устройствами.', cloudBtn:'Войти',
     tileDesc:'Описания кнопок', tileDescDesc:'Короткая строка под названием каждой кнопки на главной. Если выключить, описание остаётся только всплывающей подсказкой.',
     gReading:'Чтение', readLangs:'Языки для чтения',
@@ -1519,6 +1531,7 @@ const STR = {
     previewCollapse:'Collapse preview', previewExpand:'Expand preview',
     gGeneral:'General', uiLang:'Interface language', uiLangDesc:"Menus and labels. Doesn't affect text languages.",
     themeLbl:'Theme', thAuto:'Auto', thLight:'Light', thDark:'Dark',
+    startLbl:'On start, open', startDesc:'In the app and the installed site: the last place - search, contents, a text or Memo', startLast:'Last place', startHome:'Home',
     cloud:'Cloud', cloudDesc:'Sync bookmarks, history, subscriptions, and settings across devices.', cloudBtn:'Log in',
     tileDesc:'Button descriptions', tileDescDesc:'A short line under each home-screen button’s name. Turn it off and the description stays as a hover tooltip only.',
     gReading:'Reading', readLangs:'Reading languages',
@@ -1560,6 +1573,7 @@ function applyLang(){
   [['t-title','title'],['t-saved','saved'],['t-sub','sub'],['t-reloadNotice','reloadNotice'],
    ['t-previewLabel','previewLabel'],
    ['t-g-general','gGeneral'],['t-uiLang','uiLang'],['t-uiLangDesc','uiLangDesc'],
+   ['startLbl','startLbl'],['startDesc','startDesc'],['t-start-last','startLast'],['t-start-home','startHome'],
    ['themeLbl','themeLbl'],['t-th-auto','thAuto'],['t-th-light','thLight'],['t-th-dark','thDark'],
    ['t-cloud','cloud'],['t-cloudDesc','cloudDesc'],['cloudBtn','cloudBtn'],
    ['t-tileDesc','tileDesc'],['t-tileDescDesc','tileDescDesc'],
