@@ -176,14 +176,16 @@
             var side = pmSideOf(probe);
             if (!side) return;
             // the last rule (an id that is not a section's) at or above that line, among those on the screen
-            var line = window.innerHeight / 3, el = null;
-            probe.closest('[data-toc-book-body]').querySelectorAll('[id]').forEach(function (r) {
-                if (/Collapse/.test(r.id) || !r.getClientRects().length) return;
+            // and how far below it the line is: ids are sparse (two in a chapter of ten rules), so the place is that rule + pixels
+            var line = window.innerHeight / 3, body = probe.closest('[data-toc-book-body]'), el = null;
+            body.querySelectorAll('[id]').forEach(function (r) {
+                if (/Collapse/.test(r.id) || !r.getClientRects().length || body.querySelectorAll('[id="' + r.id + '"]').length > 1) return;
                 if (r.getBoundingClientRect().top <= line) el = r;
             });
             if (!el) return;
-            if ((pmPlace()[side] || {}).at === el.id) return;
-            pmSave(side, { at: el.id });
+            var dy = Math.round(line - el.getBoundingClientRect().top), was = pmPlace()[side] || {};
+            pmSave(side, { at: el.id, dy: dy });
+            if (was.at === el.id) return;   // the history entry follows the rule, not every pixel
             clearTimeout(pmHistTimer);
             pmHistTimer = setTimeout(function () {
                 if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm') + '#' + el.id, location.origin));
@@ -193,7 +195,8 @@
     function insertFragment(bodyEl, html) {
         var side = pmSideOf(bodyEl), place = side ? (pmPlace()[side] || {}) : {};
         // the address's rule (/toc/bipm#bi-pj5: the history row, a shortcut) or the side's own last place
-        var at = (/^#[\w-]+$/.test(location.hash) ? location.hash.slice(1) : '') || place.at || '';
+        var hashAt = /^#[\w-]+$/.test(location.hash) ? location.hash.slice(1) : '';
+        var at = hashAt || place.at || '', dy = (!hashAt || hashAt === place.at) ? (place.dy || 0) : 0;
         (place.open || []).forEach(function (id) { pmOpen[id] = true; });
         bodyEl.innerHTML = html;
         // Each rule line has two links: the title (-> Vibhanga analysis) and a bare "pm" (-> Pātimokkha).
@@ -222,7 +225,7 @@
             // ready() later: the contents finish their own drawing (and the router its scroll to the top) after the fragment is in
             // the fragment repeats some ids (bi-pj1-4 four times): the instance on the screen
             var shown = function () { return [].filter.call(document.querySelectorAll('[id="' + at.replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0] || null; };
-            var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3; }, at);
+            var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3 - dy; }, at);
             setTimeout(function () { hold.ready(); }, 1500);
         } else if (target) target.scrollIntoView({ block: 'center', behavior: 'instant' });
     }
@@ -1052,6 +1055,13 @@
                     if (willShow && patimokkhaSide && typeof window.dgSaveToHistory === 'function') {
                         var placeAt = (pmPlace()[patimokkhaSide] || {}).at;   // the entry keeps the reader's place (see pmSave)
                         window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'bupm' : 'bipm') + (placeAt ? '#' + placeAt : ''), location.origin));
+                    }
+                    // The address follows the open Pātimokkha (/toc/bipm), so a reload (pull to refresh, the browser's Reload) brings
+                    // it back open at the reader's place rather than the bare contents (owner 2026-11-13: «нажимаю Обновить —
+                    // чистая страница»); closing it gives the contents' address back
+                    if (patimokkhaSide) {
+                        var tocBase = location.pathname.replace(/\/toc(\/.*)?$/, '/toc');
+                        try { history.replaceState(history.state, '', (willShow ? tocBase + '/' + (patimokkhaSide === 'bu' ? 'bupm' : 'bipm') : tocBase) + location.search); } catch (e) { /* stays */ }
                     }
                     if (willShow) openBookBody();
                     else bodyEl.classList.add('d-none');
