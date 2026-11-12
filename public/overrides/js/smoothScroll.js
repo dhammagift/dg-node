@@ -677,3 +677,35 @@ const ScrollManager = {
 };
 
 ScrollManager.init();
+
+// Opened as an app - the installed site (PWA, TWA) or the store apps - it starts where the reader left it, as a browser tab does
+// (owner 2026-11-12, Trello keqnW7iC: «открывается с главной, и приходится проделывать весь путь заново»). A browser tab is left
+// alone: dhamma.gift typed in it means the home page. The route is kept when the app goes to the background; a start on the bare
+// home page (a shortcut or a link brings its own route) goes back to it, and ScrollManager above takes the reader to the line.
+// Left on the home page = home next time. This file is one the apps refresh from the site, so it reaches them without a build.
+(function resumeLastPlace() {
+    const appMode = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true
+        || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    if (!appMode) return;
+    const KEY = 'dgLastRoute', RUN = 'dgResumeRun', MAX_AGE = 30 * 24 * 3600 * 1000;
+    const isHome = () => /^\/(ru\/?)?$/.test(location.pathname) && !/[?&]q=/.test(location.search) && !location.hash;
+    const save = () => {
+        if (/^\/(assets|settings|memo|login)\//.test(location.pathname)) return;   // a page of its own, not the reader's place
+        try { localStorage.setItem(KEY, JSON.stringify({ route: isHome() ? '' : location.pathname + location.search + location.hash, at: Date.now() })); } catch (e) { /* private mode */ }
+    };
+    document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+    window.addEventListener('pagehide', save);
+    try {
+        if (sessionStorage.getItem(RUN)) return;   // only the first page of a run
+        sessionStorage.setItem(RUN, '1');
+    } catch (e) { return; }
+    let last = null;
+    try { last = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) { /* none */ }
+    if (!last || !last.route || Date.now() - last.at > MAX_AGE || !isHome()) return;
+    let tries = 0;
+    (function go() {
+        if (!isHome()) return;   // a link or a shortcut got there first
+        if (typeof window.dgNavigateInternal === 'function') { window.dgNavigateInternal(last.route); return; }
+        if (++tries < 50) setTimeout(go, 100);
+    })();
+})();
