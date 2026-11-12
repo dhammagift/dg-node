@@ -147,11 +147,54 @@
     // The fragment is inserted as fresh HTML every time the TOC is rebuilt (coming Back from the
     // reader included), so without this every section came back closed.
     var pmOpen = {};
+    // The reader's place in each Pātimokkha (owner 2026-11-12: «на том же месте», «перезаписывать», not one entry per opened tab):
+    // the open sections and the rule on the screen, kept per side (bu/bi) across starts. The one history entry ("bupm"/"bipm")
+    // follows the place (/toc/bipm#<rule>); opening it, the history row, a launcher shortcut or the app's start at the last place
+    // brings the sections back open and the rule to the screen (insertFragment).
+    var PM_PLACE_KEY = 'dgPmPlace';
+    function pmPlace() { try { return JSON.parse(localStorage.getItem(PM_PLACE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+    function pmSideOf(el) { var b = el && el.closest && el.closest('[data-toc-book-body]'); var c = b && b.getAttribute('data-toc-book-body'); return c === 'pli-tv-bu-pm' ? 'bu' : c === 'pli-tv-bi-pm' ? 'bi' : null; }
+    function pmSave(side, patch) {
+        var all = pmPlace(), cur = all[side] || {};
+        Object.keys(patch).forEach(function (k) { cur[k] = patch[k]; });
+        all[side] = cur;
+        try { localStorage.setItem(PM_PLACE_KEY, JSON.stringify(all)); } catch (e) { /* private mode */ }
+    }
     function trackPmCollapse(e) {
         if (!e.target.id) return;
         if (e.type.indexOf('shown') === 0) pmOpen[e.target.id] = true; else delete pmOpen[e.target.id];
+        var side = pmSideOf(e.target);
+        if (side) pmSave(side, { open: Object.keys(pmOpen).filter(function (id) { return pmSideOf(document.getElementById(id)) === side; }) });
     }
+    // While reading: the rule a third down the screen is the place; the history entry moves to it (once it settles)
+    var pmSaveTimer = 0, pmHistTimer = 0;
+    window.addEventListener('scroll', function () {
+        clearTimeout(pmSaveTimer);
+        pmSaveTimer = setTimeout(function () {
+            if (!/^\/(ru\/)?toc(\/|$)/.test(location.pathname)) return;
+            var probe = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 3);
+            var side = pmSideOf(probe);
+            if (!side) return;
+            // the last rule (an id that is not a section's) at or above that line, among those on the screen
+            var line = window.innerHeight / 3, el = null;
+            probe.closest('[data-toc-book-body]').querySelectorAll('[id]').forEach(function (r) {
+                if (/Collapse/.test(r.id) || !r.getClientRects().length) return;
+                if (r.getBoundingClientRect().top <= line) el = r;
+            });
+            if (!el) return;
+            if ((pmPlace()[side] || {}).at === el.id) return;
+            pmSave(side, { at: el.id });
+            clearTimeout(pmHistTimer);
+            pmHistTimer = setTimeout(function () {
+                if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm') + '#' + el.id, location.origin));
+            }, 2500);
+        }, 400);
+    }, { passive: true });
     function insertFragment(bodyEl, html) {
+        var side = pmSideOf(bodyEl), place = side ? (pmPlace()[side] || {}) : {};
+        // the address's rule (/toc/bipm#bi-pj5: the history row, a shortcut) or the side's own last place
+        var at = (/^#[\w-]+$/.test(location.hash) ? location.hash.slice(1) : '') || place.at || '';
+        (place.open || []).forEach(function (id) { pmOpen[id] = true; });
         bodyEl.innerHTML = html;
         // Each rule line has two links: the title (-> Vibhanga analysis) and a bare "pm" (-> Pātimokkha).
         // Swap them: the title opens the rule text, the second link is labelled "History"/"Story" and opens the analysis.
@@ -163,14 +206,25 @@
             pm.setAttribute('href', vb.replace(/#.*$/, '')); // no anchor: open the analysis from its start
             pm.textContent = uiIsRu() ? 'История' : 'Story';
         });
+        var target = at ? bodyEl.querySelector('[id="' + at.replace(/"/g, '') + '"]') : null;
         bodyEl.querySelectorAll('.collapse').forEach(function (c) {
-            if (!pmOpen[c.id]) return;
+            // the sections that were open, and the one holding the place even if it was not saved as open
+            if (!pmOpen[c.id] && !(target && c.contains(target))) return;
+            pmOpen[c.id] = true;
             c.classList.add('show'); // no animation: the page height must be final before the scroll is restored
             bodyEl.querySelectorAll('[data-bs-target="#' + c.id + '"]').forEach(function (b) {
                 b.classList.remove('collapsed');
                 b.setAttribute('aria-expanded', 'true');
             });
         });
+        // the rule back on the screen, held there while the page settles (search/index.html dgHoldLine)
+        if (target && typeof window.dgHoldLine === 'function') {
+            // ready() later: the contents finish their own drawing (and the router its scroll to the top) after the fragment is in
+            // the fragment repeats some ids (bi-pj1-4 four times): the instance on the screen
+            var shown = function () { return [].filter.call(document.querySelectorAll('[id="' + at.replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0] || null; };
+            var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3; }, at);
+            setTimeout(function () { hold.ready(); }, 1500);
+        } else if (target) target.scrollIntoView({ block: 'center', behavior: 'instant' });
     }
 
     // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
@@ -996,7 +1050,8 @@
                     // opened by the reader (a tap, or /toc/pm): it goes to the history - settings.js saveToHistory keeps one
                     // Pātimokkha entry; a Pātimokkha left open and drawn again with the contents is not a new reading
                     if (willShow && patimokkhaSide && typeof window.dgSaveToHistory === 'function') {
-                        window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'pm' : 'bipm'), location.origin));
+                        var placeAt = (pmPlace()[patimokkhaSide] || {}).at;   // the entry keeps the reader's place (see pmSave)
+                        window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'bupm' : 'bipm') + (placeAt ? '#' + placeAt : ''), location.origin));
                     }
                     if (willShow) openBookBody();
                     else bodyEl.classList.add('d-none');

@@ -300,7 +300,9 @@ const ScrollManager = {
 
                     if (bestData) {
                         const isSearchInputLoad = event && event.type === 'suttaLoaded';
-                        const forceAutoJump = localStorage.getItem('dg_autoJumpProgress') === 'true';
+                        let resumed = false;   // the app's start at the last place (resumeLastPlace below): the reader was reading here
+                        try { resumed = sessionStorage.getItem('dgResumeJump') === '1'; sessionStorage.removeItem('dgResumeJump'); } catch (e) { /* none */ }
+                        const forceAutoJump = resumed || localStorage.getItem('dg_autoJumpProgress') === 'true';
                         
                         if (!isSearchInputLoad || forceAutoJump) {
                             anchorId = bestData.id;
@@ -691,7 +693,13 @@ ScrollManager.init();
     const isHome = () => /^\/(ru\/?)?$/.test(location.pathname) && !/[?&]q=/.test(location.search) && !location.hash;
     const save = () => {
         if (/^\/(assets|settings|login)\//.test(location.pathname)) return;   // a page of its own, not the reader's place
-        try { localStorage.setItem(KEY, JSON.stringify({ route: isHome() ? '' : location.pathname + location.search + location.hash, at: Date.now() })); } catch (e) { /* private mode */ }
+        // a text without the line it was opened at (/mn77:1.1 -> /mn77): the reading progress takes the reader to where they
+        // read to, not to the line of the link they came by (owner 2026-11-12); other places keep their address as it is
+        let route = location.pathname + location.search + location.hash;
+        const text = /^(\/(?:ru\/)?[a-z][a-z.-]*\d[\w.-]*):[^?#]*/i.exec(location.pathname);
+        if (text) route = text[1] + location.search;
+        else if (/^\/(ru\/)?[a-z][a-z.-]*\d[\w.-]*$/i.test(location.pathname)) route = location.pathname + location.search;
+        try { localStorage.setItem(KEY, JSON.stringify({ route: isHome() ? '' : route, at: Date.now() })); } catch (e) { /* private mode */ }
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
     window.addEventListener('pagehide', save);
@@ -709,6 +717,7 @@ ScrollManager.init();
         if (!isHome()) return;   // a link or a shortcut got there first
         // a page of its own (Memo, the tools, history...: their place is kept by nav-component.js) is a real navigation
         if (/^\/(memo|hatthipada|assets)\/|\.html(\?|#|$)/.test(last.route)) { location.href = last.route; return; }
+        try { sessionStorage.setItem('dgResumeJump', '1'); } catch (e) { /* the offer then */ }   // straight to the progress, no offer
         if (typeof window.dgNavigateInternal === 'function') { window.dgNavigateInternal(last.route); return; }
         if (++tries < 50) setTimeout(go, 100);
     })();

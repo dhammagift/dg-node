@@ -478,7 +478,9 @@ onReady(() => {
                 slug: uniqueLineSlug,
                 id: currentContext.hash,
                 title: `${q} - ${textSnippet}`,
-                path: window.location.pathname,
+                // the text's address without the line it was opened at (/mn77:1.1 -> /mn77): that line overrode the bookmark's own
+                // and the favourite opened at the first line (owner 2026-11-12)
+                path: window.location.pathname.replace(/^(\/(?:ru\/)?[^\/:]+):[^\/]*$/, '$1'),
                 search: window.location.search + '#' + currentContext.hash,
                 timestamp: Date.now()
             };

@@ -837,7 +837,9 @@ async function saveToHistory(key, url) {
     // history, not the PWA's Pātimokkha shortcuts): its contents (/toc/pm, toc.js) and every rule read from there
     // (/pli-tv-bu-pm:…) save under one name, so it moves to the top with the newest place instead of a row per rule.
     const pmSide = /^\/(toc\/(pm|bupm|bu-pm)|pli-tv-bu-pm)\b/.test(url.pathname) ? 'bu' : /^\/(toc\/(bipm|bi-pm)|pli-tv-bi-pm)\b/.test(url.pathname) ? 'bi' : null;
-    if (pmSide) key = pmSide === 'bu' ? 'Bhikkhu Pātimokkha' : 'Bhikkhunī Pātimokkha';
+    // the Pātimokkha's entry is its short name, as typed and as the PWA's shortcuts have it (owner 2026-11-12: «bupm, bipm»);
+    // what the row opens is the address with the reader's place (/toc/bipm#bi-pj5, toc.js), never the name as a search
+    if (pmSide) key = pmSide === 'bu' ? 'bupm' : 'bipm';
     const timestamp = new Date().toISOString();
   
     let history = JSON.parse(localStorage.getItem("localSearchHistory")) || [];

@@ -516,8 +516,11 @@ function renderQuickLists(isRu, queryBase) {
         // A text path (/an1.11-20:an1.17:1.1) opens as saved even with no query string; only a bare
         // search page (/, /ru/) needs the slug as ?q=.
         const textPath = fav.path && !/^\/(ru\/)?(index\.php)?$/.test(fav.path);
-        let url = (fav.path && (fav.search || textPath)) ? `${fav.path}${fav.search || ''}` : `${queryBase}${fav.slug}`;
-        if (fav.id && fav.id !== fav.slug) url += `#${fav.id}`;
+        // a bookmark's line wins: the address it was saved from may carry the line the text was opened at (/mn77:1.1), and an older
+        // bookmark's search already ends in its #line (owner 2026-11-12: the favourite opened at the first line)
+        const favPath = fav.id && fav.path ? fav.path.replace(/^(\/(?:ru\/)?[^\/:]+):[^\/]*$/, '$1') : fav.path;
+        let url = (favPath && (fav.search || textPath)) ? `${favPath}${fav.search || ''}` : `${queryBase}${fav.slug}`;
+        if (fav.id && fav.id !== fav.slug && url.indexOf('#') === -1) url += `#${fav.id}`;
         // Добавили кнопку rename-fav-btn (карандаш) перед кнопкой удаления
         // ТЗ §2: bell in the row — not subscribed: subscribe form for this query; subscribed: its settings.
         const favSub = typeof window.subGetAll === 'function' ? window.subGetAll().find(x => x.type === 'search' && (x.query || '').toLowerCase() === String(fav.slug).toLowerCase()) : null;
