@@ -707,7 +707,8 @@ ScrollManager.init();
     let tries = 0;
     (function go() {
         if (!isHome()) return;   // a link or a shortcut got there first
-        if (/^\/memo\//.test(last.route)) { location.href = last.route; return; }   // Memo is a page of its own (its place: nav-component.js)
+        // a page of its own (Memo, the tools, history...: their place is kept by nav-component.js) is a real navigation
+        if (/^\/(memo|hatthipada|assets)\/|\.html(\?|#|$)/.test(last.route)) { location.href = last.route; return; }
         if (typeof window.dgNavigateInternal === 'function') { window.dgNavigateInternal(last.route); return; }
         if (++tries < 50) setTimeout(go, 100);
     })();

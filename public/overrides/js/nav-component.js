@@ -55,10 +55,11 @@ class TopNavIcons extends HTMLElement {
 
 customElements.define('top-nav-icons', TopNavIcons);
 
-// Memo (a page of its own) keeps its place for the app's next start, as the main page does in smoothScroll.js resumeLastPlace:
+// A page of its own (Memo, the tools, history, lists, Hatthipada - every page that loads this file) keeps its place for the
+// app's next start, as the main page does in smoothScroll.js resumeLastPlace:
 // only when opened as an app (the installed site or the store apps); a browser tab is left alone (owner 2026-11-12).
 (function () {
-    if (!/^\/memo\//.test(location.pathname)) return;
+    if (/^\/(ru\/)?(login|settings)\//.test(location.pathname)) return;
     const appMode = (window.matchMedia && matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true
         || !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
     if (!appMode) return;
