@@ -1,0 +1,43 @@
+{
+ "_about": "The DG app's own words (dg-apps src/native-bridge.js window.dgAppText): the app bundles this file and refreshes it from the site, so a word changed here reaches the apps without a build. A key missing here = the words built into the app.",
+ "ru": {
+  "the-library-is-ready-read-offline": "Библиотека готова. Читайте без сети.",
+  "unpacking-and-applying": "Распаковка и применение…",
+  "script-conversion-is-done-on-the-server": "Конвертация системы письма выполняется на сервере",
+  "this-language-is-not-part-of-the-offline": "Этот язык не входит в офлайн-библиотеку",
+  "it-needs-an-internet-connection-open-thi": "Нужен интернет. Открыть этот текст в браузере?",
+  "internet-required": "Нужен интернет",
+  "open-in-browser": "Открыть в браузере",
+  "stay-here": "Остаться",
+  "check": "проверить",
+  "recent-texts-in-app-shortcuts": "Недавние тексты в ярлыках",
+  "rate-this-app": "Оценить приложение",
+  "how-do-you-like-the-app": "Как вам приложение?",
+  "your-opinion-matters-to-us-feedback-tell": "Нам важно ваше мнение: по обратной связи мы понимаем, что вам нравится, а что улучшить. Рейтинг и комментарии помогают приложению.",
+  "later": "Позже",
+  "rate": "Оценить",
+  "rate-us": "Оценить приложение",
+  "open-the-store-page-and-leave-a-review": "Открыть страницу в магазине и оставить отзыв.",
+  "privacy-policy": "Политика конфиденциальности"
+ },
+ "en": {
+  "the-library-is-ready-read-offline": "The library is ready. Read offline.",
+  "unpacking-and-applying": "Unpacking and applying…",
+  "script-conversion-is-done-on-the-server": "Script conversion is done on the server",
+  "this-language-is-not-part-of-the-offline": "This language is not part of the offline library",
+  "it-needs-an-internet-connection-open-thi": "It needs an internet connection. Open this text in the browser?",
+  "internet-required": "Internet required",
+  "open-in-browser": "Open in browser",
+  "stay-here": "Stay here",
+  "check": "check",
+  "recent-texts-in-app-shortcuts": "Recent texts in app shortcuts",
+  "rate-this-app": "Rate this app",
+  "how-do-you-like-the-app": "How do you like the app?",
+  "your-opinion-matters-to-us-feedback-tell": "Your opinion matters to us: feedback tells us what you like and what to improve. Ratings and comments help the app.",
+  "later": "Later",
+  "rate": "Rate",
+  "rate-us": "Rate Us",
+  "open-the-store-page-and-leave-a-review": "Open the store page and leave a review.",
+  "privacy-policy": "Privacy Policy"
+ }
+}
