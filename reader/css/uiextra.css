@@ -1982,7 +1982,8 @@ body.dark .mem-bubble::before {
    between them and the line sat under the buttons in the app (owner 2026-11-12, DG 612/613: «не юзабельно», «слишком низко»).
    Larger, fingertip-sized links. The line's own style is inline (core/search-core.js principlesLineHtml). */
 .links-area:has(+ .dg-principles) { margin-bottom: .4em !important; }
-.dg-principles { font-size: .9em !important; opacity: .85 !important; margin-top: .4em !important;
-    margin-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important; }
+.dg-principles { font-size: .9em !important; opacity: .85 !important; margin-top: .4em !important; margin-bottom: 1em !important; }
+/* the app has no site footer below the line: the floating buttons' room goes there (html.dg-app: the app's page) */
+html.dg-app .dg-principles { margin-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important; }
 .dg-principles a { display: inline-block; padding: .3em .2em; }
 .dg-principles .dg-audio-mp3 { display: inline-block; margin-top: .2em; }
