@@ -1011,23 +1011,52 @@
        сборке можно было, только зайдя в Настройки: событие никто не слушал. Одна подсказка —
        один раз на сборку, чтобы не долбить на каждой загрузке. Скачивание по-прежнему по кнопке
        в Настройках: пол-гигабайта не качают без спроса (docs/OFFLINE_PWA_PLAN.md). */
-    var UPDATE_SEEN_KEY = 'dg.offline.updateSeen';
+    // A new library build: a bar like the app's own "new version" one, with the size and Update (owner 2026-11-12: the
+    // one-time 7-second note was missed, and it only said "go to Settings"). Downloading stays the reader's choice; "✕" is
+    // "later": the bar comes back after three days until the library is updated.
+    var UPDATE_LATER_KEY = 'dg.offline.updateLater';   // JSON {build, at}
+    var LATER_MS = 3 * 24 * 3600 * 1000;
     window.addEventListener('dg:update-available', function (e) {
-        var build = (e.detail && e.detail.build_id) || '';
+        var d = e.detail || {}, build = d.build_id || '';
         try {
-            if (localStorage.getItem(UPDATE_SEEN_KEY) === build) return;
-            localStorage.setItem(UPDATE_SEEN_KEY, build);
-        } catch (err) { /* приватный режим — покажем подсказку, просто каждый раз */ }
-        var text = isRuLang()
-            ? 'Офлайн-библиотека обновилась — скачать новую версию можно в Настройках'
-            : 'The offline library has a new version — download it from Settings';
-        // Системное уведомление, если разрешение уже дано (просим его в момент скачивания
-        // библиотеки — см. ниже; сами по себе окна с запросом прав не всплывают). Это локальное
-        // уведомление через уже зарегистрированный service worker: ни сервера, ни push-подписок
-        // для него не нужно, и в PWA/TWA/Capacitor оно работает одинаково.
-        if (!systemNotify(text) && typeof window.showBubbleNotification === 'function') {
-            window.showBubbleNotification(text, 7000, 'info');
-        }
+            var later = JSON.parse(localStorage.getItem(UPDATE_LATER_KEY) || 'null');
+            if (later && later.build === build && Date.now() - later.at < LATER_MS) return;
+        } catch (err) { /* no storage: shown on each start */ }
+        if (document.getElementById('dg-lib-upd')) return;
+        var ru = isRuLang();
+        var mb = d.bytes ? Math.max(1, Math.round(d.bytes / 1048576)) : 0;
+        var bar = document.createElement('div');
+        bar.id = 'dg-lib-upd';
+        bar.setAttribute('role', 'status');
+        var dark = document.body.classList.contains('dark') || document.documentElement.getAttribute('data-bs-theme') === 'dark';
+        bar.style.cssText = 'position:fixed;left:12px;right:12px;max-width:440px;margin:0 auto;bottom:calc(14px + max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,0px)));z-index:2147481999;'
+            + 'display:flex;align-items:center;gap:12px;padding:12px 12px 12px 16px;border-radius:16px;border:1px solid;font:500 15px/1.25 system-ui,sans-serif;'
+            + (dark ? 'border-color:#34414f;background:#1d2630;color:#e8eef4;box-shadow:0 8px 28px rgba(0,0,0,.55)' : 'border-color:#d9e1e8;background:#fff;color:#1b2430;box-shadow:0 8px 28px rgba(15,30,50,.22)');
+        var text = document.createElement('div');
+        text.style.cssText = 'flex:1;min-width:0';
+        text.innerHTML = '<div></div><div style="font-weight:400;font-size:12.5px;opacity:.7;margin-top:2px"></div>';
+        text.firstChild.textContent = ru ? 'Обновление офлайн-библиотеки' : 'Offline library update';
+        text.lastChild.textContent = mb ? (ru ? 'Скачать ' + mb + ' МБ' : 'Download ' + mb + ' MB') : '';
+        var go = document.createElement('button');
+        go.type = 'button';
+        go.textContent = ru ? 'Обновить' : 'Update';
+        go.style.cssText = 'font:600 14px system-ui,sans-serif;border:0;border-radius:11px;padding:10px 16px;background:#139b7b;color:#fff';
+        go.addEventListener('click', function () {
+            bar.remove();
+            try { localStorage.removeItem(UPDATE_LATER_KEY); } catch (err) { /* ignore */ }
+            window.postMessage({ dgOfflineDownloadRequest: 'update', agreed: true }, location.origin);   // app.js: the same path as Settings
+        });
+        var x = document.createElement('button');
+        x.type = 'button';
+        x.setAttribute('aria-label', ru ? 'Позже' : 'Later');
+        x.textContent = '✕';
+        x.style.cssText = 'border:0;background:none;color:inherit;opacity:.55;padding:8px;font-size:18px;line-height:1';
+        x.addEventListener('click', function () {
+            bar.remove();
+            try { localStorage.setItem(UPDATE_LATER_KEY, JSON.stringify({ build: build, at: Date.now() })); } catch (err) { /* ignore */ }
+        });
+        bar.appendChild(text); bar.appendChild(go); bar.appendChild(x);
+        document.body.appendChild(bar);
     });
 
     function systemNotify(text) {
