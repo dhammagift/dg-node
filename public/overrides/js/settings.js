@@ -647,9 +647,29 @@ function dgApplyColumnMode() {
     });
 }
 function dgToggleColumnMode() {
+    // The reader stays on the line it was reading (owner 2026-11-12, DG 613, mn88 in Compare: lines <-> columns jumped
+    // elsewhere): the segment under a point a third down the screen is found by its id before the switch and brought back to the
+    // same height after it - for a moment, as the editions' view redraws and the header settles; the reader's own scroll stops it.
+    var probe = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 3);
+    var seg = probe && probe.closest ? probe.closest('#sutta span[id], #sutta [data-dd]') : null;
+    if (seg && !seg.id) seg = seg.closest('span[id]');
+    var anchorId = seg && seg.id, anchorTop = seg ? seg.getBoundingClientRect().top : 0;
     var isColumns = (localStorage.getItem('viewMode') || 'alternate') !== 'columns';
     localStorage.setItem('viewMode', isColumns ? 'columns' : 'alternate');
     dgApplyColumnMode();
+    if (anchorId) {
+        var stop = false, until = Date.now() + 1200, quit = function () { stop = true; };
+        ['wheel', 'touchstart', 'keydown'].forEach(function (t) { window.addEventListener(t, quit, { once: true, passive: true }); });
+        (function settle() {
+            if (stop) return;
+            var el = document.getElementById(anchorId);
+            if (el && el.getClientRects().length) {
+                var d = el.getBoundingClientRect().top - anchorTop;
+                if (Math.abs(d) > 2) window.scrollBy({ top: d, behavior: 'instant' });
+            }
+            if (Date.now() < until) requestAnimationFrame(settle);
+        })();
+    }
     // Keep the quick-settings toggle in sync no matter which of the two paths (toolbar click or
     // Alt+C) fired — single source of truth, quick.reading's own click already re-renders itself.
     if (typeof window.refreshQuickSettings === 'function') window.refreshQuickSettings();
