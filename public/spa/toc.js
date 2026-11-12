@@ -148,8 +148,8 @@
     // reader included), so without this every section came back closed.
     var pmOpen = {};
     // The reader's place in each Pātimokkha (owner 2026-11-12: «на том же месте», «перезаписывать», not one entry per opened tab):
-    // the open sections and the rule on the screen, kept per side (bu/bi) across starts. The one history entry ("bupm"/"bipm")
-    // follows the place (/toc/bipm#<rule>); opening it, the history row, a launcher shortcut or the app's start at the last place
+    // the open sections and the rule on the screen, kept per side (bu/bi) across starts. The one history entry ("bupm"/"bipm",
+    // /toc/bipm) comes up to the top as the reader goes on; opening it, the history row, a launcher shortcut or the app's start at the last place
     // brings the sections back open and the rule to the screen (insertFragment).
     var PM_PLACE_KEY = 'dgPmPlace';
     function pmPlace() { try { return JSON.parse(localStorage.getItem(PM_PLACE_KEY) || '{}') || {}; } catch (e) { return {}; } }
@@ -188,7 +188,7 @@
             if (was.at === el.id) return;   // the history entry follows the rule, not every pixel
             clearTimeout(pmHistTimer);
             pmHistTimer = setTimeout(function () {
-                if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm') + '#' + el.id, location.origin));
+                if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm'), location.origin));
             }, 2500);
         }, 400);
     }, { passive: true });
@@ -797,7 +797,13 @@
             if (g.codes.indexOf(entry.code) !== -1) g.bodyEl.classList.remove('d-none');
         });
         if (!entry.bodyEl) { scrollTo(entry.bookEl); return; } // single-page book — the row IS the link
-        if (entry.singlePage) { entry.headerEl.click(); scrollTo(entry.bookEl); return; } // patimokkha
+        // patimokkha: a click opens it - unless it is already open (left open earlier in this visit), where the click closed it
+        // and the history row came to the bare contents (owner 2026-11-13)
+        if (entry.singlePage) {
+            var pmBody = entry.bookEl.querySelector('[data-toc-book-body]');
+            if (!pmBody || pmBody.classList.contains('d-none')) entry.headerEl.click();
+            scrollTo(entry.bookEl); return;
+        }
         // The fetched tree is taller than the screen: inserted while the rows below the book were on screen, it
         // pushed them all down at once (PageSpeed: CLS 0.23 on /toc/mn in about 1 of 3 runs). Those rows are
         // hidden while the tree loads and come back two frames after it is in - by then far below the screen,
@@ -1053,8 +1059,9 @@
                     // opened by the reader (a tap, or /toc/pm): it goes to the history - settings.js saveToHistory keeps one
                     // Pātimokkha entry; a Pātimokkha left open and drawn again with the contents is not a new reading
                     if (willShow && patimokkhaSide && typeof window.dgSaveToHistory === 'function') {
-                        var placeAt = (pmPlace()[patimokkhaSide] || {}).at;   // the entry keeps the reader's place (see pmSave)
-                        window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'bupm' : 'bipm') + (placeAt ? '#' + placeAt : ''), location.origin));
+                        // the entry is the address alone: the router does not take /toc/bipm#rule (it opened the bare contents); the place
+                        // is kept apart (pmSave) and brought back when the Pātimokkha opens
+                        window.dgSaveToHistory(patimokkhaSide, new URL('/toc/' + (patimokkhaSide === 'bu' ? 'bupm' : 'bipm'), location.origin));
                     }
                     // The address follows the open Pātimokkha (/toc/bipm), so a reload (pull to refresh, the browser's Reload) brings
                     // it back open at the reader's place rather than the bare contents (owner 2026-11-13: «нажимаю Обновить —

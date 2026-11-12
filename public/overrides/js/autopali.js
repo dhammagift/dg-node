@@ -474,7 +474,9 @@ function bindAutocomplete(selector, allWords) {
         focus: function() { return false; },
         select: function(event, ui) {
             // a several-words entry ("dukkh samud (в строке)", dg-node#26) runs its stored search, operator and all
-            if (ui.item.url && (/\d/.test(ui.item.value) || /\s&&?\s/.test(safeDecode(ui.item.url)))) {
+            // ...and a place in the contents (the Pātimokkha's "bipm": /toc/bipm#bi-np12) - as a word it was searched, and the
+            // search opened a Pātimokkha page of its own, not the reader's place (owner 2026-11-13)
+            if (ui.item.url && (/\d/.test(ui.item.value) || /\s&&?\s/.test(safeDecode(ui.item.url)) || /^\/(ru\/)?toc\//.test(ui.item.url))) {
                 // Пункт ИСТОРИИ (ui.item.url только у них, см. historyObjList выше) — свой же
                 // внутренний путь (saveToHistory кладёт url.pathname текущей страницы), не
                 // внешняя ссылка. window.location.href был полной перезагрузкой — терял SPA
