@@ -38,6 +38,8 @@ const ROOTS = opts('root').length
         ['/reader/', ['reader', 'configs/reader']],
         ['/nodejs/res/', ['search', 'configs/search']],
         ['/settings/', ['settings']],
+        // the offline layer (app.js, offline-status.js, db-worker.js, core-bundle.js...): the apps take it too (Sippa 2026-11-12)
+        ['/offline/', ['public/offline']],
     ].map(([prefix, dirs]) => [prefix, dirs.map((d) => path.join(REPO, d))]);
 const TYPES = /\.(js|mjs|css|svg|png|webp|ico|woff2?|json|mp3|html)$/;
 const SKIP_DIRS = new Set(['texts', 'shots', 'bak', 'unusedcode', 'node_modules']);
