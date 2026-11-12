@@ -671,7 +671,11 @@
         // same body-scroll lock the side drawer already uses (home.css: body.dg-drawer-open) fixes it
         // here too. Wide screens keep scrolling on purpose (comment above), so this is narrow-only.
         if (!wide) document.body.classList.add('dg-drawer-open');
-        if (!wide) unzoomForSheet(true);
+        // ...and in the iOS app at any width: on a Mac (the iPad app in a wide window) the panel opened over the zoomed page and
+        // WebKit drew the frame shifted left, its text cut off (owner 2026-11-09, Trello jQbmAUSr) - the same WebKit trouble
+        // unzoomForSheet describes for the phone
+        var iosApp = !!(window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'ios');
+        if (!wide || iosApp) unzoomForSheet(true);
         showLater(sheet, backdrop, wide);
     }
 
