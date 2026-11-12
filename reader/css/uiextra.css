@@ -1977,11 +1977,12 @@ body.dark .mem-bubble::before {
 /* the titles' plates (#sutta header .dg-tag): the height of the title's own line, computed there; top level, as @property must be */
 @property --dg-line { syntax: '<length>'; inherits: true; initial-value: 24px; }
 
-/* The quiet line under the text (Principles · Rationale · Glossary · 6 Pali editions, and MP3): clear of the floating
-   buttons at the bottom (to top, Pāli/En) and with fingertip-sized links - it sat under them, too small to tap
-   (owner 2026-11-12, DG 612: «не юзабельно»). The line's own style is inline (core/search-core.js principlesLineHtml). */
-.dg-principles { font-size: .9em !important; opacity: .85 !important; }
-/* the app has no site footer under it: room for the floating buttons there (html.dg-app: the app's page) */
-html.dg-app .dg-principles { margin-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important; }
+/* The quiet line under the text (Principles · Rationale · Glossary · 6 Pali editions, and MP3): right under the tools row, with
+   the room the floating buttons need (to top, Pāli/En) below it rather than above it - the tools row's 96px bottom margin stood
+   between them and the line sat under the buttons in the app (owner 2026-11-12, DG 612/613: «не юзабельно», «слишком низко»).
+   Larger, fingertip-sized links. The line's own style is inline (core/search-core.js principlesLineHtml). */
+.links-area:has(+ .dg-principles) { margin-bottom: .4em !important; }
+.dg-principles { font-size: .9em !important; opacity: .85 !important; margin-top: .4em !important;
+    margin-bottom: calc(6rem + env(safe-area-inset-bottom, 0px)) !important; }
 .dg-principles a { display: inline-block; padding: .3em .2em; }
-.dg-principles .dg-audio-mp3 { display: inline-block; margin-top: .4em; }
+.dg-principles .dg-audio-mp3 { display: inline-block; margin-top: .2em; }
