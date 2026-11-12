@@ -801,8 +801,17 @@
         // and the history row came to the bare contents (owner 2026-11-13)
         if (entry.singlePage) {
             var pmBody = entry.bookEl.querySelector('[data-toc-book-body]');
-            if (!pmBody || pmBody.classList.contains('d-none')) entry.headerEl.click();
-            scrollTo(entry.bookEl); return;
+            var wasOpen = pmBody && !pmBody.classList.contains('d-none');
+            if (!wasOpen) entry.headerEl.click();
+            // a reader's place there: straight to it, no smooth scroll to the title first - the two fought (up, then down) on a phone
+            // (owner 2026-11-13: «вниз, вверх уходит… сразу открылось на нужном месте»); insertFragment holds it on a fresh open
+            var place = pmBody ? (pmPlace()[pmSideOf(pmBody)] || {}) : {};
+            if (!place.at) { scrollTo(entry.bookEl); return; }
+            if (wasOpen) {
+                var el = [].filter.call(pmBody.querySelectorAll('[id="' + place.at.replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0];
+                if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - (window.innerHeight / 3 - (place.dy || 0)), behavior: 'instant' });
+            }
+            return;
         }
         // The fetched tree is taller than the screen: inserted while the rows below the book were on screen, it
         // pushed them all down at once (PageSpeed: CLS 0.23 on /toc/mn in about 1 of 3 runs). Those rows are
