@@ -436,6 +436,18 @@ const ScrollManager = {
 
     executeScroll(element, offsetData, isInstant) {
         const restoring = window.isRestoringProgress;
+        // A #line (a favourite, "Continue reading", a shared link) is held by the site's one way of holding a line
+        // (search/index.html dgHoldLine): put back every frame and on every size change until the text is quiet - the
+        // scroll here landed at the top of the text or off it, the paragraphs on the way not laid out yet, and worse with
+        // the size setting changed (owner 2026-11-10: favourites did not reach the line). Called again once the reader
+        // has drawn the text ('suttaLoaded'), which replaces the hold from the server's text.
+        if (typeof window.dgHoldLine === 'function' && typeof offsetData === 'number') {
+            const id = element.id;
+            const find = () => (element.isConnected ? element : (id && document.getElementById(id))) || null;
+            const hold = window.dgHoldLine(find, () => offsetData, id || null);
+            (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(() => { hold.ready(); window.isRestoringProgress = false; });
+            return;
+        }
         window.dgScrollToElement(element, offsetData, isInstant || restoring, () => { window.isRestoringProgress = false; });
     },
 
