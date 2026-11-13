@@ -164,7 +164,9 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   (function () {
     var hold = null;
     var hs = document.createElement('style');
-    hs.textContent = 'html.dg-holding #dg-busy-indicator{display:none!important}';
+    // dg-pm-placing: the contents wait unseen until the Pātimokkha's place is put back (toc.js), so the top of the contents does
+    // not show for a second and then jump away to the place (owner 2026-11-13: «дёргается»)
+    hs.textContent = 'html.dg-holding #dg-busy-indicator{display:none!important}html.dg-pm-placing #toc-pane{visibility:hidden}';
     document.head.appendChild(hs);
     window.dgFindLine = function (seg) {
       return function () {
@@ -176,6 +178,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     };
     // centred, or a little under the top when the line is taller than most of the screen
     window.dgLinePlace = function (el) { var h = el.getBoundingClientRect().height; return Math.max(innerHeight * 0.12, (innerHeight - h) / 2); };
+    // a reader's place in that Pātimokkha (toc.js dgPmPlace): hide the contents until toc.js puts it back, at most 6 s
+    window.dgPmPlacing = function (side) {
+      try {
+        var pl = (JSON.parse(localStorage.getItem('dgPmPlace') || '{}') || {})[side];
+        if (!pl || (pl.b == null && !pl.at)) return false;
+        document.documentElement.classList.add('dg-pm-placing');
+        clearTimeout(window.dgPmPlacingTimer);
+        window.dgPmPlacingTimer = setTimeout(function () { document.documentElement.classList.remove('dg-pm-placing'); }, 6000);
+        return true;
+      } catch (e) { return false; }
+    };
     window.dgHolding = function (seg) { return hold && (!seg || hold.seg === seg) ? hold : null; };
     window.dgHoldLine = function (find, place, seg) {
       if (hold) hold.stop();
@@ -206,13 +219,17 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         if (me.stopped) return;
         if (put()) me.quiet = 0;
         // the text and what is drawn above it (the reader's bar, the previous/next row): a change there moves the line too
-        if (!ro && window.ResizeObserver && document.getElementById('sutta')) {
+        // (or the contents: the Pātimokkha's place, toc.js)
+        var box = document.getElementById('sutta') || document.getElementById('toc-pane');
+        if (!ro && window.ResizeObserver && box) {
           ro = new ResizeObserver(function () { me.quiet = 0; put(); });
-          [document.body, document.getElementById('reader-pane'), document.getElementById('sutta')].forEach(function (n) { if (n) ro.observe(n); });
+          [document.body, document.getElementById('reader-pane'), box].forEach(function (n) { if (n) ro.observe(n); });
           // the text redrawn (buildSutta replaces #sutta) or the header shown/hidden: put the line back in the same task,
           // before the browser gets to paint the new layout
           mo = new MutationObserver(function () { me.quiet = 0; put(); });
-          mo.observe(document.getElementById('sutta'), { childList: true, subtree: true });
+          // in the contents also a part shown or hidden (a class: a book's body comes out of d-none after its text is in); not in
+          // the text, where classes come and go all the time (the line being read) and would keep the hold from ever letting go
+          mo.observe(box, box.id === 'toc-pane' ? { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] } : { childList: true, subtree: true });
           mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
         }
         if (me.isReady && ++me.quiet > 20) return me.stop();
@@ -222,6 +239,10 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       return me;
     };
     try {
+      // the Pātimokkha's place is put back by toc.js: the browser's own restoring of the old scroll on a reload jumped in between
+      var pm = /^\/(?:ru\/)?toc\/(?:(b[iu])-?pm|pm)\b/.exec(location.pathname);
+      if (pm && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
+      if (pm && window.dgPmPlacing) window.dgPmPlacing(pm[1] || 'bu');
       var m = /^\/[^\/?#:]+:([\w.-]+)/.exec(location.pathname);
       if (m && !location.hash) window.dgHoldLine(window.dgFindLine(m[1]), window.dgLinePlace, m[1]);
     } catch (e) {}
@@ -4687,6 +4708,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         addReaderCss('/reader/css/rus-multi.css');
         addReaderCss('/reader/css/uiextra.css');
     }
+    window.dgEnsureReaderCss = ensureReaderCss;   // toc.js: the Pātimokkha's text is styled by these too
 
     var readerAssetsPromise = null;
     function ensureReaderAssets() {

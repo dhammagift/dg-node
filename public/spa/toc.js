@@ -160,43 +160,58 @@
         all[side] = cur;
         try { localStorage.setItem(PM_PLACE_KEY, JSON.stringify(all)); } catch (e) { /* private mode */ }
     }
+    // The place is a paragraph of the text (the n-th block: .level2/3/4, every line of the fragment has one) + pixels below its
+    // top: the rules' ids are too sparse for it (none in the Pubbakaraṇa, two in a chapter of ten rules) - where there was none,
+    // nothing was kept and the return went to the title (owner 2026-11-13: «дёргается, позиция не восстанавливается»).
+    function pmBlocks(body) { return body.querySelectorAll('.level2, .level3, .level4'); }
+    function pmBody(side) { return document.querySelector('[data-toc-book-body="pli-tv-' + side + '-pm"]'); }
+    function pmAnchor(body, place) {
+        if (!body || !place) return null;
+        var bl = place.b != null ? pmBlocks(body)[place.b] : null;
+        if (bl && bl.getClientRects().length) return bl;
+        // a place kept before the blocks (2af9818): the rule's id; the fragment repeats some ids: the instance on the screen
+        return place.at ? [].filter.call(body.querySelectorAll('[id="' + String(place.at).replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0] || null : null;
+    }
     function trackPmCollapse(e) {
         if (!e.target.id) return;
         if (e.type.indexOf('shown') === 0) pmOpen[e.target.id] = true; else delete pmOpen[e.target.id];
         var side = pmSideOf(e.target);
         if (side) pmSave(side, { open: Object.keys(pmOpen).filter(function (id) { return pmSideOf(document.getElementById(id)) === side; }) });
     }
-    // While reading: the rule a third down the screen is the place; the history entry moves to it (once it settles)
+    // While reading: the paragraph a third down the screen is the place; the history entry moves to it (once it settles)
     var pmSaveTimer = 0, pmHistTimer = 0;
-    window.addEventListener('scroll', function () {
+    function pmSaveNow() {
         clearTimeout(pmSaveTimer);
-        pmSaveTimer = setTimeout(function () {
-            if (!/^\/(ru\/)?toc(\/|$)/.test(location.pathname)) return;
-            var probe = document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 3);
-            var side = pmSideOf(probe);
-            if (!side) return;
-            // the last rule (an id that is not a section's) at or above that line, among those on the screen
-            // and how far below it the line is: ids are sparse (two in a chapter of ten rules), so the place is that rule + pixels
-            var line = window.innerHeight / 3, body = probe.closest('[data-toc-book-body]'), el = null;
-            body.querySelectorAll('[id]').forEach(function (r) {
-                if (/Collapse/.test(r.id) || !r.getClientRects().length || body.querySelectorAll('[id="' + r.id + '"]').length > 1) return;
-                if (r.getBoundingClientRect().top <= line) el = r;
-            });
-            if (!el) return;
-            var dy = Math.round(line - el.getBoundingClientRect().top), was = pmPlace()[side] || {};
-            pmSave(side, { at: el.id, dy: dy });
-            if (was.at === el.id) return;   // the history entry follows the rule, not every pixel
-            clearTimeout(pmHistTimer);
-            pmHistTimer = setTimeout(function () {
-                if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm'), location.origin));
-            }, 2500);
-        }, 400);
-    }, { passive: true });
+        if (!/^\/(ru\/)?toc(\/|$)/.test(location.pathname)) return;
+        if (window.dgHolding && window.dgHolding()) return;   // our own putting back, not the reader's
+        var line = window.innerHeight / 3, probe = document.elementFromPoint(window.innerWidth / 2, line);
+        var side = pmSideOf(probe);
+        if (!side) return;
+        var body = probe.closest('[data-toc-book-body]'), blocks = pmBlocks(body), el = null, b = -1;
+        for (var i = 0; i < blocks.length; i++) {
+            if (!blocks[i].getClientRects().length) continue;
+            if (blocks[i].getBoundingClientRect().top > line) break;
+            el = blocks[i]; b = i;
+        }
+        if (!el) return;
+        var dy = Math.round(line - el.getBoundingClientRect().top), was = pmPlace()[side] || {};
+        pmSave(side, { b: b, dy: dy, at: null });
+        if (was.b === b) return;   // the history entry follows the paragraph, not every pixel
+        clearTimeout(pmHistTimer);
+        pmHistTimer = setTimeout(function () {
+            if (typeof window.dgSaveToHistory === 'function') window.dgSaveToHistory(side, new URL('/toc/' + (side === 'bu' ? 'bupm' : 'bipm'), location.origin));
+        }, 2500);
+    }
+    window.addEventListener('scroll', function () { clearTimeout(pmSaveTimer); pmSaveTimer = setTimeout(pmSaveNow, 400); }, { passive: true });
+    // the app closed or the tab hidden within the 400 ms: the last place is still kept
+    window.addEventListener('pagehide', pmSaveNow);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') pmSaveNow(); });
     function insertFragment(bodyEl, html) {
         var side = pmSideOf(bodyEl), place = side ? (pmPlace()[side] || {}) : {};
         // the address's rule (/toc/bipm#bi-pj5: the history row, a shortcut) or the side's own last place
         var hashAt = /^#[\w-]+$/.test(location.hash) ? location.hash.slice(1) : '';
         var at = hashAt || place.at || '', dy = (!hashAt || hashAt === place.at) ? (place.dy || 0) : 0;
+        var byBlock = !hashAt && place.b != null;
         (place.open || []).forEach(function (id) { pmOpen[id] = true; });
         bodyEl.innerHTML = html;
         // Each rule line has two links: the title (-> Vibhanga analysis) and a bare "pm" (-> Pātimokkha).
@@ -209,7 +224,7 @@
             pm.setAttribute('href', vb.replace(/#.*$/, '')); // no anchor: open the analysis from its start
             pm.textContent = uiIsRu() ? 'История' : 'Story';
         });
-        var target = at ? bodyEl.querySelector('[id="' + at.replace(/"/g, '') + '"]') : null;
+        var target = byBlock ? pmBlocks(bodyEl)[place.b] || null : at ? bodyEl.querySelector('[id="' + at.replace(/"/g, '') + '"]') : null;
         bodyEl.querySelectorAll('.collapse').forEach(function (c) {
             // the sections that were open, and the one holding the place even if it was not saved as open
             if (!pmOpen[c.id] && !(target && c.contains(target))) return;
@@ -224,10 +239,29 @@
         if (target && typeof window.dgHoldLine === 'function') {
             // ready() later: the contents finish their own drawing (and the router its scroll to the top) after the fragment is in
             // the fragment repeats some ids (bi-pj1-4 four times): the instance on the screen
-            var shown = function () { return [].filter.call(document.querySelectorAll('[id="' + at.replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0] || null; };
-            var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3 - dy; }, at);
+            var want = byBlock ? place : { at: at };
+            var shown = function () { return pmAnchor(pmBody(side) || bodyEl, want); };
+            var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3 - dy; }, 'pm-' + side);
             setTimeout(function () { hold.ready(); }, 1500);
         } else if (target) target.scrollIntoView({ block: 'center', behavior: 'instant' });
+        // the place is on the screen (dgHoldLine put it there in this same task): the contents may show - once the page's full
+        // styles (loaded after the critical ones on a cold start) and the fonts they ask for are in, so the text does not reflow
+        // under the reader's eyes (the hold keeps the place through it meanwhile)
+        // The reader's styles (search/index.html ensureReaderCss) style this text as well and used to come in a moment later,
+        // reflowing it on the screen: asked for now, and waited for.
+        if (window.dgEnsureReaderCss) window.dgEnsureReaderCss();
+        var reveal = function () {
+            Promise.all([].map.call(document.querySelectorAll('link.dg-reader-css'), function (l) {
+                return l.sheet ? 0 : new Promise(function (r) { l.addEventListener('load', r, { once: true }); l.addEventListener('error', r, { once: true }); });
+            })).then(function () {
+                requestAnimationFrame(function () {
+                    (document.fonts && document.fonts.status === 'loading' ? document.fonts.ready : Promise.resolve()).then(function () {
+                        document.documentElement.classList.remove('dg-pm-placing');
+                    });
+                });
+            });
+        };
+        if (document.readyState === 'complete') reveal(); else window.addEventListener('load', reveal, { once: true });
     }
 
     // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
@@ -802,13 +836,15 @@
         if (entry.singlePage) {
             var pmBody = entry.bookEl.querySelector('[data-toc-book-body]');
             var wasOpen = pmBody && !pmBody.classList.contains('d-none');
+            // the contents wait unseen for the place (search/index.html dgPmPlacing; insertFragment shows them)
+            if (!wasOpen && window.dgPmPlacing) window.dgPmPlacing(pmSideOf(entry.bookEl.querySelector('[data-toc-book-body]')));
             if (!wasOpen) entry.headerEl.click();
             // a reader's place there: straight to it, no smooth scroll to the title first - the two fought (up, then down) on a phone
             // (owner 2026-11-13: «вниз, вверх уходит… сразу открылось на нужном месте»); insertFragment holds it on a fresh open
             var place = pmBody ? (pmPlace()[pmSideOf(pmBody)] || {}) : {};
-            if (!place.at) { scrollTo(entry.bookEl); return; }
+            if (!place.at && place.b == null) { scrollTo(entry.bookEl); return; }
             if (wasOpen) {
-                var el = [].filter.call(pmBody.querySelectorAll('[id="' + place.at.replace(/"/g, '') + '"]'), function (e) { return e.getClientRects().length; })[0];
+                var el = pmAnchor(pmBody, place);
                 if (el) window.scrollTo({ top: el.getBoundingClientRect().top + window.pageYOffset - (window.innerHeight / 3 - (place.dy || 0)), behavior: 'instant' });
             }
             return;
