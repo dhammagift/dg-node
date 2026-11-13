@@ -244,24 +244,12 @@
             var hold = window.dgHoldLine(shown, function () { return window.innerHeight / 3 - dy; }, 'pm-' + side);
             setTimeout(function () { hold.ready(); }, 1500);
         } else if (target) target.scrollIntoView({ block: 'center', behavior: 'instant' });
-        // the place is on the screen (dgHoldLine put it there in this same task): the contents may show - once the page's full
-        // styles (loaded after the critical ones on a cold start) and the fonts they ask for are in, so the text does not reflow
-        // under the reader's eyes (the hold keeps the place through it meanwhile)
-        // The reader's styles (search/index.html ensureReaderCss) style this text as well and used to come in a moment later,
-        // reflowing it on the screen: asked for now, and waited for.
+        // The place is on the screen (dgHoldLine put it there in this same task): the contents show at once. Waiting for the
+        // page's load, the reader's styles and the fonts first (so nothing reflowed in sight) made the Pātimokkha slow to come
+        // (owner 2026-11-13: «еле-еле загружается»); the hold keeps the line through a late reflow. The reader's styles are asked
+        // for now, so most of it is in before the first paint anyway.
         if (window.dgEnsureReaderCss) window.dgEnsureReaderCss();
-        var reveal = function () {
-            Promise.all([].map.call(document.querySelectorAll('link.dg-reader-css'), function (l) {
-                return l.sheet ? 0 : new Promise(function (r) { l.addEventListener('load', r, { once: true }); l.addEventListener('error', r, { once: true }); });
-            })).then(function () {
-                requestAnimationFrame(function () {
-                    (document.fonts && document.fonts.status === 'loading' ? document.fonts.ready : Promise.resolve()).then(function () {
-                        document.documentElement.classList.remove('dg-pm-placing');
-                    });
-                });
-            });
-        };
-        if (document.readyState === 'complete') reveal(); else window.addEventListener('load', reveal, { once: true });
+        requestAnimationFrame(function () { document.documentElement.classList.remove('dg-pm-placing'); });
     }
 
     // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
