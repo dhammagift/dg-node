@@ -333,7 +333,17 @@ function bindAutocomplete(selector, allWords) {
         position: {
             my: "left top",
             at: "left bottom",
-            collision: "none"
+            collision: "none",
+            // Right under the field, whatever the text size: the size is a CSS zoom on <html> (home.js applyUiScale), and jQuery
+            // UI mixes the field's on-screen box with unzoomed style px - the list opened under the header row at 100 % on a
+            // phone (zoom 1.1), off the top of the screen at 110 %, over the field at 90 % (owner 2026-11-13). The field's box
+            // is on-screen px, scrollY too; the list's top/left are CSS px, multiplied by the zoom when drawn.
+            using: function () {
+                var input = autocompleteInstance && autocompleteInstance.element[0];
+                if (!input) return;
+                var z = (window.dgZoom && window.dgZoom()) || 1, r = input.getBoundingClientRect();
+                $(this).css({ top: (r.bottom + window.scrollY) / z, left: (r.left + window.scrollX) / z });
+            }
         },
         minLength: 0,
         multiple: /[\s\*]/,
@@ -496,6 +506,14 @@ function bindAutocomplete(selector, allWords) {
             if (/\s+\d+$/.test(selectedValue)) selectedValue = selectedValue.split(/\s+/)[0];
             if (/\d+\s+/.test(selectedValue)) selectedValue = selectedValue.split(/\s+/)[0];
             if (/b[ui]pm|b[ui]-pm|pm/.test(selectedValue)) selectedValue = selectedValue.split(/\s+/)[0];
+            // a Pātimokkha from the word list ("bipm Bhikkhunīpātimokkha") opens it at the reader's place in the contents, as the
+            // history row does - it only filled the field (Cakkhu's prod check 2026-11-13)
+            var pmWord = /^(b[ui])-?pm$|^pm$/.exec(selectedValue);
+            if (pmWord) {
+                var pmUrl = (document.documentElement.lang === 'ru' || /^\/ru(\/|$)/.test(location.pathname) ? '/ru' : '') + '/toc/' + (pmWord[1] || 'bu') + 'pm';
+                if (typeof window.dgNavigateInternal !== 'function' || !window.dgNavigateInternal(pmUrl)) window.location.href = pmUrl;
+                return false;
+            }
             
             if (/\d/.test(selectedValue)) {
                 this.value = selectedValue.split(/\s+/)[0]; 

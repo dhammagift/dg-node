@@ -558,34 +558,8 @@ const ScrollManager = {
         const element = this.findFallbackElement(elementId);
         if (!element) return;
 
-        const originalPosition = element.style.position;
-        if (getComputedStyle(element).position === 'static') {
-            element.style.position = 'relative';
-        }
-
-        const overlay = document.createElement('div');
-        overlay.style.position = 'absolute';
-        overlay.style.top = '0'; overlay.style.left = '0';
-        overlay.style.width = '100%'; overlay.style.height = '100%';
-        overlay.style.pointerEvents = 'none'; overlay.style.zIndex = '10';
-        overlay.style.borderRadius = getComputedStyle(element).borderRadius;
-        overlay.style.transition = 'background-color 0.45s ease-in-out';
-        overlay.style.backgroundColor = 'transparent';
-        element.appendChild(overlay);
-
-        let blinkCount = 0;
-        const blinkInterval = setInterval(() => {
-            overlay.style.backgroundColor = blinkCount % 2 === 0 ? 'rgba(26, 188, 156, 0.25)' : 'transparent';
-            blinkCount++;
-            if (blinkCount >= 6) { 
-                clearInterval(blinkInterval);
-                setTimeout(() => {
-                    if (overlay.parentNode === element) element.removeChild(overlay);
-                    if (!originalPosition) element.style.removeProperty('position');
-                    else element.style.position = originalPosition;
-                }, 450);
-            }
-        }, 450);
+        // No blinking frame over the line any more (owner 2026-11-13: «рамка что-то не то выделяет… Актив ворд то выделяет»):
+        // on a line of columns it covered the first row only; the Active Word below marks the whole line.
 
         // Искусственная задержка для инициализации плеера и DOM в iframe
         setTimeout(() => {
@@ -610,31 +584,7 @@ const ScrollManager = {
         const element = this.findFallbackElement(elementId);
         if (!element) return;
 
-        const originalTransition = element.style.transition;
-        const originalBoxShadow = element.style.boxShadow;
-        const originalBorderRadius = element.style.borderRadius;
-        element.style.borderRadius = '6px';
-        element.style.transition = 'box-shadow 0.3s ease-in-out';
-        
-        let blinkCount = 0;
-        let isWide = false;
-        
-        const blinkInterval = setInterval(function() {
-            element.style.boxShadow = isWide ? '0 0 0 2px grey' : '0 0 0 5px rgba(128,128,128, 0.5)';
-            isWide = !isWide;
-            blinkCount++;
-            if (blinkCount >= 6) {
-                clearInterval(blinkInterval);
-                setTimeout(() => {
-                    element.style.removeProperty('box-shadow');
-                    element.style.removeProperty('transition');
-                    element.style.removeProperty('border-radius');
-                    if (originalBoxShadow) element.style.boxShadow = originalBoxShadow;
-                    if (originalTransition) element.style.transition = originalTransition;
-                    if (originalBorderRadius) element.style.borderRadius = originalBorderRadius;
-                }, 300);
-            }
-        }, 400);
+        // the Active Word marks it, no blinking frame (see highlightAllById)
 
         // Искусственная задержка для инициализации плеера и DOM в iframe
         setTimeout(() => {

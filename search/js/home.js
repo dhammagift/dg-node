@@ -5760,16 +5760,29 @@
         if (!CAN_ZOOM) { root.style.fontSize = (z * 100) + '%'; return; }
         // The settings sheet has the page's zoom off while it is open (unzoomForSheet): the new value waits for its close.
         if (root.dataset.dgSheetZoom != null) { root.dataset.dgSheetZoom = z; root.dataset.dgSheetZoomVar = z; return; }
-        // In the contents (the Pātimokkha read there) the line a third down stays where it was: nothing else keeps it, and the
-        // new size moved the reader to another rule (owner 2026-11-13: «если изменить зум… опять сломается»). The reader keeps
-        // its own line.
-        var probe = String(z) !== root.style.zoom ? document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 3) : null;
-        var keep = probe && probe.closest('#toc-pane') ? (probe.closest('.level4, .level3, .level2, li, .toc-book') || probe) : null;
-        var keepTop = keep ? keep.getBoundingClientRect().top : 0;
+        // The line being read stays where it was on the screen, as on the old site: the text's line (a segment of the reader,
+        // Compare included, or a paragraph of the contents/Pātimokkha) under a third of the screen and its share of the
+        // screen's height are taken before the size changes, and the line is held there while the text reflows (dgHoldLine).
+        // Nothing kept it before: two steps moved Compare from mn10 5.1 to 4.8, the Pātimokkha two rules up (owner 2026-11-13).
+        // elementsFromPoint, not elementFromPoint: the menu with the size buttons lies over the text.
+        var keep = null, keepAt = 0;
+        if (String(z) !== root.style.zoom && document.elementsFromPoint) {
+            var under = document.elementsFromPoint(window.innerWidth / 2, window.innerHeight / 3);
+            for (var i = 0; i < under.length && !keep; i++) {
+                var el = under[i];
+                if (el.closest('#sutta')) { while (el && !(el.id && el.parentElement && el.parentElement.closest('#sutta'))) el = el.parentElement; keep = el; }
+                else if (el.closest('#toc-pane')) keep = el.closest('.level4, .level3, .level2, li, .toc-book') || el;
+            }
+            if (keep) keepAt = keep.getBoundingClientRect().top / window.innerHeight;
+        }
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', z);
         root.style.zoom = z;
-        if (keep && keep.isConnected) window.scrollBy({ top: keep.getBoundingClientRect().top - keepTop, behavior: 'instant' });   // not the page's smooth scrolling: a second step in a row measured mid-glide
+        if (keep && keep.isConnected) {
+            var keepId = keep.id, find = function () { return keep.isConnected ? keep : (keepId ? document.getElementById(keepId) : null); };
+            if (typeof window.dgHoldLine === 'function') window.dgHoldLine(find, function () { return keepAt * window.innerHeight; }, keepId || 'size').ready();
+            else window.scrollBy({ top: keep.getBoundingClientRect().top - keepAt * window.innerHeight, behavior: 'instant' });
+        }
         headZoom();
         reMeasure();
     }

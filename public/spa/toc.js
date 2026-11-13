@@ -195,7 +195,10 @@
         }
         if (!el) return;
         var dy = Math.round(line - el.getBoundingClientRect().top), was = pmPlace()[side] || {};
-        pmSave(side, { b: b, dy: dy, at: null });
+        // the open sections as they are on the screen: «Развернуть всё» opens them without the collapse events trackPmCollapse
+        // listens to, and a reload came back with everything closed (Cakkhu's prod check 2026-11-13)
+        var open = [].map.call(body.querySelectorAll('.collapse.show[id]'), function (c) { return c.id; });
+        pmSave(side, { b: b, dy: dy, at: null, open: open });
         if (was.b === b) return;   // the history entry follows the paragraph, not every pixel
         clearTimeout(pmHistTimer);
         pmHistTimer = setTimeout(function () {
