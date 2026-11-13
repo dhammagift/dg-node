@@ -5347,15 +5347,25 @@
         // 2022 — год начала проекта, второй год всегда текущий (на проде date("Y")).
         host.appendChild(document.createTextNode('© 2022–' + new Date().getFullYear() + ' dhamma.gift · '));
 
-        // Only the licences, on the docs' terms (owner 2026-11-13: «из подвала можно вообще все убрать и оставить ссылку на
-        // лицензии»); the long note in a sheet named SuttaCentral and the rest, the docs page has all of it.
-        var lic = document.createElement('a');
-        lic.className = 'dg-footer-link';
-        lic.target = '_blank';
-        lic.rel = 'noopener';
-        lic.href = menuLang() === 'ru' ? '/ru/docs/policies#условия-использования' : '/docs/policies#terms';
-        lic.textContent = t('footer.licenses', 'Лицензии');
-        host.appendChild(lic);
+        var terms = document.createElement('a');
+        terms.href = 'javascript:void(0)';
+        terms.setAttribute('role', 'button');
+        terms.className = 'dg-footer-link';
+        terms.textContent = short ? t('footer.termsShort', 'Условия') : t('footer.terms', 'Условия использования');
+        terms.addEventListener('click', openTerms);
+        host.appendChild(terms);
+
+        host.appendChild(document.createTextNode(' · '));
+
+        var privacy = document.createElement('a');
+        privacy.className = 'dg-footer-link';
+        privacy.target = '_blank';
+        privacy.rel = 'noopener';
+        // Owner (2026-09-06): the policy page is /docs/policies (dg-docs); the old
+        // /assets/common/privacy*.html URLs only redirect there.
+        privacy.href = menuLang() === 'ru' ? '/ru/docs/policies' : '/docs/policies';
+        privacy.textContent = short ? t('footer.privacyShort', 'Политика') : t('footer.privacy', 'Политика конфиденциальности');
+        host.appendChild(privacy);
     }
 
     /* Приложения/расширения и контакты — перенос двух нижних блоков боевой главной. Данные
@@ -5511,11 +5521,11 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
         // Owner: on desktop this sheet spans the text column (as wide as the mega menu), not the
-        // 560px list width the tile sheets use. openSheet() clears the class again.
+        // 560px list width the tile sheets use. openSheet()/openTerms() clear the class again.
         sheet.classList.add('dg-wide');
         // Bottom-sheet chrome for this one (production-v4 redesign, docs/Home-standalone.html
         // .sheet): full-width from the bottom edge, drag handle, no title bar — see
-        // .dg-sheet.dg-about-sheet in home.css. openSheet() clears it with dg-wide.
+        // .dg-sheet.dg-about-sheet in home.css. openSheet()/openTerms() clear it with dg-wide.
         sheet.classList.add('dg-about-sheet');
         document.getElementById('dg-sheet-title').textContent = t('menu.about', 'О проекте');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
@@ -5600,6 +5610,46 @@
             // is a no-op in some browsers.
             setTimeout(function () { if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 350);
         }
+    }
+
+    // Полный текст условий — в шторке. Ссылка на саму лицензию внутри остаётся кликабельной.
+    function openTerms() {
+        ensureSheet();
+        var sheet = document.getElementById('dg-sheet');
+        var backdrop = document.getElementById('dg-sheet-backdrop');
+        sheet.hidden = false;
+        sheet.classList.remove('dg-wide');
+        sheet.classList.remove('dg-about-sheet');
+        document.getElementById('dg-sheet-title').textContent = t('footer.terms', 'Условия использования');
+        document.getElementById('dg-sheet-tabs').innerHTML = '';
+
+        var body = document.getElementById('dg-sheet-body');
+        body.innerHTML = '';
+
+        var ru = menuLang() === 'ru';
+        var ccLink = ru
+            ? 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ru'
+            : 'https://creativecommons.org/licenses/by-nc-sa/4.0';
+
+        var p = document.createElement('p');
+        p.className = 'dg-terms-text';
+        // Текст перенесён из config/translate.php ($copyrightnote), название лицензии — ссылкой.
+        var parts = String(t('footer.copyright',
+            'Материалы сайта распространяются по модели %s, но Пали тексты и Английские переводы SuttaCentral.net и работы А. Я. Сыркина и TheBuddhasWords.net подчиняются другим условиям. Для их использования уточняйте условия у правообладателей.'
+        )).split('%s');
+        p.appendChild(document.createTextNode(parts[0]));
+        var cc = document.createElement('a');
+        cc.href = ccLink;
+        cc.target = '_blank';
+        cc.rel = 'noopener';
+        cc.textContent = 'CC BY-NC-SA 4.0';
+        p.appendChild(cc);
+        p.appendChild(document.createTextNode(parts[1] || ''));
+        body.appendChild(p);
+
+        currentSheetKey = '__terms__';
+        if (!window.matchMedia('(min-width: 768px)').matches) document.body.classList.add('dg-drawer-open');
+        showLater(sheet, backdrop);
     }
 
     function renderLangSwitch() {
