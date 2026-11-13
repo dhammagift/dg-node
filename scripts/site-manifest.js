@@ -46,7 +46,10 @@ const ROOTS = opts('root').length
 const TYPES = /\.(js|mjs|css|svg|png|webp|ico|woff2?|json|mp3|html)$/;
 const SKIP_DIRS = new Set(['texts', 'shots', 'bak', 'unusedcode', 'node_modules']);
 // Answered by a route of their own, not by the file on disk (dg-fastify.js): never listed, so never taken.
-const ROUTED = new Set(['/reader/mode-table.json', '/assets/js/translators.json']);
+const ROUTED = new Set(['/reader/mode-table.json', '/assets/js/translators.json',
+    // built on each host with its own time stamp (npm run build-offline): F1's hash never matched f3's file, and one file that
+    // does not match stops the apps' whole update («Не удалось», owner 2026-11-13, DG 615)
+    '/offline/build-id.json']);
 const MAX_BYTES = 8 * 1024 * 1024;   // DgSite.put's limit
 
 const hashes = {};
