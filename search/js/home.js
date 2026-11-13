@@ -5760,9 +5760,16 @@
         if (!CAN_ZOOM) { root.style.fontSize = (z * 100) + '%'; return; }
         // The settings sheet has the page's zoom off while it is open (unzoomForSheet): the new value waits for its close.
         if (root.dataset.dgSheetZoom != null) { root.dataset.dgSheetZoom = z; root.dataset.dgSheetZoomVar = z; return; }
+        // In the contents (the Pātimokkha read there) the line a third down stays where it was: nothing else keeps it, and the
+        // new size moved the reader to another rule (owner 2026-11-13: «если изменить зум… опять сломается»). The reader keeps
+        // its own line.
+        var probe = String(z) !== root.style.zoom ? document.elementFromPoint(window.innerWidth / 2, window.innerHeight / 3) : null;
+        var keep = probe && probe.closest('#toc-pane') ? (probe.closest('.level4, .level3, .level2, li, .toc-book') || probe) : null;
+        var keepTop = keep ? keep.getBoundingClientRect().top : 0;
         root.style.fontSize = '';
         root.style.setProperty('--dg-zoom', z);
         root.style.zoom = z;
+        if (keep && keep.isConnected) window.scrollBy({ top: keep.getBoundingClientRect().top - keepTop, behavior: 'instant' });   // not the page's smooth scrolling: a second step in a row measured mid-glide
         headZoom();
         reMeasure();
     }
