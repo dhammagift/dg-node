@@ -5531,11 +5531,11 @@
         var backdrop = document.getElementById('dg-sheet-backdrop');
         sheet.hidden = false;
         // Owner: on desktop this sheet spans the text column (as wide as the mega menu), not the
-        // 560px list width the tile sheets use. openSheet()/openTerms() clear the class again.
+        // 560px list width the tile sheets use. openSheet() clears the class again.
         sheet.classList.add('dg-wide');
         // Bottom-sheet chrome for this one (production-v4 redesign, docs/Home-standalone.html
         // .sheet): full-width from the bottom edge, drag handle, no title bar — see
-        // .dg-sheet.dg-about-sheet in home.css. openSheet()/openTerms() clear it with dg-wide.
+        // .dg-sheet.dg-about-sheet in home.css. openSheet() clears it with dg-wide.
         sheet.classList.add('dg-about-sheet');
         document.getElementById('dg-sheet-title').textContent = t('menu.about', 'О проекте');
         document.getElementById('dg-sheet-tabs').innerHTML = '';
@@ -5620,46 +5620,6 @@
             // is a no-op in some browsers.
             setTimeout(function () { if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 350);
         }
-    }
-
-    // Полный текст условий — в шторке. Ссылка на саму лицензию внутри остаётся кликабельной.
-    function openTerms() {
-        ensureSheet();
-        var sheet = document.getElementById('dg-sheet');
-        var backdrop = document.getElementById('dg-sheet-backdrop');
-        sheet.hidden = false;
-        sheet.classList.remove('dg-wide');
-        sheet.classList.remove('dg-about-sheet');
-        document.getElementById('dg-sheet-title').textContent = t('footer.terms', 'Условия использования');
-        document.getElementById('dg-sheet-tabs').innerHTML = '';
-
-        var body = document.getElementById('dg-sheet-body');
-        body.innerHTML = '';
-
-        var ru = menuLang() === 'ru';
-        var ccLink = ru
-            ? 'https://creativecommons.org/licenses/by-nc-sa/4.0/deed.ru'
-            : 'https://creativecommons.org/licenses/by-nc-sa/4.0';
-
-        var p = document.createElement('p');
-        p.className = 'dg-terms-text';
-        // Текст перенесён из config/translate.php ($copyrightnote), название лицензии — ссылкой.
-        var parts = String(t('footer.copyright',
-            'Материалы сайта распространяются по модели %s, но Пали тексты и Английские переводы SuttaCentral.net и работы А. Я. Сыркина и TheBuddhasWords.net подчиняются другим условиям. Для их использования уточняйте условия у правообладателей.'
-        )).split('%s');
-        p.appendChild(document.createTextNode(parts[0]));
-        var cc = document.createElement('a');
-        cc.href = ccLink;
-        cc.target = '_blank';
-        cc.rel = 'noopener';
-        cc.textContent = 'CC BY-NC-SA 4.0';
-        p.appendChild(cc);
-        p.appendChild(document.createTextNode(parts[1] || ''));
-        body.appendChild(p);
-
-        currentSheetKey = '__terms__';
-        if (!window.matchMedia('(min-width: 768px)').matches) document.body.classList.add('dg-drawer-open');
-        showLater(sheet, backdrop);
     }
 
     function renderLangSwitch() {
