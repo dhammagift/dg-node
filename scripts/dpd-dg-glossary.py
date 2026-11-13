@@ -54,7 +54,10 @@ def load_glossary(path):
             where = ['/' + w.lstrip('/') for w in (canon.get('where') or []) if w]
             link = canon.get('link') or ''
             links = ([link] if link else []) + [w for w in where if w != link]
-            out.append({'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''), 'links': links})
+            # a special definition (the sheet's «Definition type»; before dg-docs read that column, the note's own start)
+            kind = t.get('kind') or ('special: ' + ('assutavā puthujjano bhāsati' if 'обыватель' in t['dgNote'][:60] else 'ariyassa vinaye')
+                                     if (t.get('dgNote') or '').startswith('Особое определение') else '')
+            out.append({'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''), 'links': links, 'kind': kind})
         return out
     for m in LD_RE.finditer(text):
         try:
@@ -76,8 +79,18 @@ def load_glossary(path):
 MAX_LINKS = 4
 
 
-def entry(meaning, links, lang):
+# Owner 2026-11-13: the canon's special definitions (ariyassa vinaye) go in like the others, but marked, so nobody takes
+# them for the word's ordinary sense. The mark is the Pali phrase itself, as on the dg-docs glossary badge.
+SPECIAL = ('ariyassa vinaye', 'assutavā puthujjano bhāsati')
+
+
+def entry(meaning, links, lang, kind=''):
     out = f'<b>{meaning}</b>' if meaning else ''
+    mark = kind.removeprefix('special: ').strip()
+    special = mark in SPECIAL
+    if special:
+        # «ariyassa vinaye:» already says the links are where the canon redefines the word: no «опред.» (owner 2026-11-13)
+        out += f' <i class="dg-special">{mark}</i>:'
     shown, seen = [], set()
     for seg in links:
         sutta = seg.lstrip('/').split(':')[0]   # the text only (mn9); the segment stays in the address
@@ -90,7 +103,7 @@ def entry(meaning, links, lang):
             break
     if shown:
         # "def." / "опред." in italics says what the links are: the suttas where the term is defined (owner 2026-11-05)
-        out += f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i> ' + ', '.join(shown)
+        out += (' ' if special else f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i> ') + ', '.join(shown)
     return out
 
 
@@ -132,8 +145,8 @@ def main():
         ru, en = t.get('ru') or '', t.get('en') or t.get('ru') or ''
         links = [l.strip() for l in (t.get('links') or []) if l and l.strip()]
         key = f'{name} (DG)'
-        ebts_en[key] = entry(en, links, 'en')
-        ebts_ru[key] = entry(ru, links, 'ru')
+        ebts_en[key] = entry(en, links, 'en', t.get('kind') or '')
+        ebts_ru[key] = entry(ru, links, 'ru', t.get('kind') or '')
         added += 1
         with_link += bool(links)
         forms = by_base.get(norm(name), set())
