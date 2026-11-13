@@ -29,6 +29,10 @@ function getNotificationText() {
 // copy have no click point, so they fall back to the first matching [lang] element instead.
 function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
   let textParts = [];
+  // Only what is on the screen (settings.js dgShown/dgShownClone, the reader's Copy/TXT/MD/PDF use the same): a language
+  // switched off, the full line under the first letters in Memorization when it is hidden (owner 2026-11-13)
+  const shown = el => (typeof dgShown === 'function' ? dgShown(el) : true);
+  const shownClone = el => (typeof dgShownClone === 'function' ? dgShownClone(el) : el.cloneNode(true));
   // Several Pali editions (megareader.js .dg-ed-line): one line each, named as on screen - "BJT: ..." (owner 2026-11-07,
   // via Ultra: the lines came out glued, "...migadāye.evaṃ me sutaṃ..."); the translations then named too.
   const edLines = parentSpan.querySelectorAll('.dg-ed-line').length > 1;
@@ -40,8 +44,9 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
   piElements.forEach(piElement => {
     // Проверка на вложенность: если родитель тоже имеет lang="pi", пропускаем (чтобы избежать дублирования)
     if (piElement.parentElement.closest('[lang="pi"]')) return;
+    if (!shown(piElement)) return;
 
-    const piClone = piElement.cloneNode(true);
+    const piClone = shownClone(piElement);
     // Удаляем только скрытые варианты
     piClone.querySelectorAll('.hidden-variant').forEach(el => el.remove());
 
@@ -76,19 +81,19 @@ function getSegmentTextParts(parentSpan, clickedLang, clickedElement) {
   if (clickedLang !== 'pi') {
     const translationElement = clickedElement
       ? clickedElement.closest('[lang]:not([lang="pi"])')
-      : parentSpan.querySelector('[lang]:not([lang="pi"])');
+      : Array.from(parentSpan.querySelectorAll('[lang]:not([lang="pi"])')).find(shown);
     // Owner (paragraph copy): a segment with no real translation still has an EMPTY [lang]
     // element (untranslated), and pushing "" here left a doubled blank line once textParts got
     // joined with '\n\n' across a multi-segment paragraph — truthy check, same as otherTranslations
     // already does below.
-    if (translationElement && translationElement.textContent.trim()) {
+    if (translationElement && shown(translationElement) && translationElement.textContent.trim()) {
       textParts.push(named(translationElement) + translationElement.textContent.trim());
     }
 
     const otherTranslations = Array.from(
       parentSpan.querySelectorAll('[lang]:not([lang="pi"]):not([lang="' + clickedLang + '"])')
     )
-      .filter(el => !el.closest('.hidden-variant'))
+      .filter(el => !el.closest('.hidden-variant') && shown(el))
       .map(el => el.textContent.trim() && named(el) + el.textContent.trim())
       .filter(Boolean);
 

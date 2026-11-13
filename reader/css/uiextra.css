@@ -411,6 +411,18 @@
     display: none;
   }
 
+  /* Columns need two texts: with the translation switched off (the Pāḷi/Рус pill, Pāḷi only) or a line that has none, the
+     Pāḷi takes the whole width instead of the left half with an empty right one (owner 2026-11-13, sn12.63 in the app:
+     «режим для двух колонок не работает для одного текста»). Whatever path left .column-view on. Not the editions grid,
+     whose columns are the editions themselves. The reader and the search results' quotes alike (the pill hides there too). */
+  .column-view.hide-russian.hide-english:not(.dg-grid) .pli-lang:not(:empty),
+  .column-view:not(.dg-grid) :is(p, li, h1, h2, h3, h4, h5, h6):not(:has(.right-column > [class*="-lang"]:not(:empty))) > .pli-lang:not(:empty) {
+    width: 100%;
+    max-width: none;
+    padding-right: 0;
+  }
+  .column-view.hide-russian.hide-english:not(.dg-grid) .right-column { display: none; }
+
   /* Pali editions (megareader.js editionLines, owner 2026-10-29..31). Lines: one line per chosen edition, a small
      quiet plate with its short name at the start, "—" where the edition lacks the line, no plates on headings.
      One other edition: its text, a line it lacks taken from Mahāsaṅgīti and plated "MS". The plates are the

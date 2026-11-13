@@ -4011,8 +4011,8 @@ document.addEventListener('click', function (e) {
         var bylineParts = [];
         var bylineEl = suttaArea.querySelector('#trn');
         if (bylineEl) {
-            var bPali = bylineEl.querySelector('.pli-lang');
-            var bTrans = bylineEl.querySelector('[class*="-lang"]:not(.pli-lang)');
+            var bPali = dgFirstShown(bylineEl, '.pli-lang');
+            var bTrans = dgFirstShown(bylineEl, '[class*="-lang"]:not(.pli-lang)');
             if (bPali && bPali.textContent.trim()) bylineParts.push({ text: bPali.textContent.trim() + '   ', color: '#000' });
             if (bTrans && bTrans.textContent.trim()) bylineParts.push({ text: bTrans.textContent.trim(), color: '#666' });
         }
@@ -4025,7 +4025,8 @@ document.addEventListener('click', function (e) {
         // Хелпер: клонировать элемент, убрать .copyLink, вернуть чистый текст
         function cleanText(el) {
             if (!el) return '';
-            var clone = el.cloneNode(true);
+            if (!dgShown(el)) return '';
+        var clone = dgShownClone(el);
             clone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
             return clone.textContent.replace(/\s+/g, ' ').trim();
         }
@@ -4034,19 +4035,19 @@ document.addEventListener('click', function (e) {
         suttaArea.querySelectorAll('span[id]').forEach(function (node) {
             // Пропускаем служебные контейнеры
             if (node.closest('#trn, #top-links-container, #bottom-links-container')) return;
-            var transElAny = node.querySelector('[class*="-lang"]:not(.pli-lang)');
-            if (!node.querySelector('.pli-lang') && !transElAny) return;
+            var transElAny = dgFirstShown(node, '[class*="-lang"]:not(.pli-lang)');
+            if (!dgFirstShown(node, '.pli-lang') && !transElAny) return;
 
             // Контекст заголовка: span[id] может лежать внутри h1/h2/h3
             var headingEl = node.closest('h1, h2, h3');
 
-            var paliEl = node.querySelector('.pli-lang');
+            var paliEl = dgFirstShown(node, '.pli-lang');
             var transEl = transElAny;
 
             // Чистый пали + вариант (вытаскиваем .variant перед cleanText)
             var pali = '', variant = '';
             if (paliEl) {
-                var paliClone = paliEl.cloneNode(true);
+                var paliClone = dgShownClone(paliEl);
                 paliClone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
                 var varEl = paliClone.querySelector('.variant');
                 if (varEl) {
@@ -4131,6 +4132,33 @@ document.addEventListener('click', function (e) {
 // A segment's Pali (a clone, copy markers and variant taken out): several editions (megareader.js .dg-ed-line) one line
 // each, named as on screen - "BJT: ..." (owner 2026-11-07, via Ultra: the lines came out glued, "...migadāye.evaṃ me
 // sutaṃ..."); one text as it was, its spaces collapsed.
+// Only what is on the screen goes out (Copy / TXT / MD / PDF of the reader): a language switched off with the Pāḷi/Рус pill,
+// the variants when they are off, the editions' lines not shown - the export took the first Pāḷi and the first translation
+// whatever was hidden (owner 2026-11-13: «единственный способ скопировать только пали… удалить весь русский текст»; the
+// search results' export has done this since 2026-11-09). The page's own rules decide: computed display/visibility.
+function dgShown(el) {
+    for (var e = el; e && e.id !== 'sutta' && e !== document.body; e = e.parentElement) {
+        var cs = getComputedStyle(e);
+        if (cs.display === 'none' || cs.visibility === 'hidden') return false;
+    }
+    return !!el;
+}
+function dgFirstShown(node, sel) {
+    var all = node.querySelectorAll(sel);
+    for (var i = 0; i < all.length; i++) if (dgShown(all[i])) return all[i];
+    return null;
+}
+// a copy of el without what the page hides inside it (the live and the copied trees are walked side by side)
+function dgShownClone(el) {
+    var clone = el.cloneNode(true);
+    var live = el.querySelectorAll('*'), copy = clone.querySelectorAll('*'), drop = [];
+    for (var i = 0; i < live.length; i++) {
+        var cs = getComputedStyle(live[i]);
+        if (cs.display === 'none' || cs.visibility === 'hidden') drop.push(copy[i]);
+    }
+    drop.forEach(function (d) { d.remove(); });
+    return clone;
+}
 function dgPaliText(paliClone, sep) {
     var lines = Array.prototype.slice.call(paliClone.querySelectorAll('.dg-ed-line:not(.is-gap):not(.is-empty)'));
     if (lines.length < 2) return paliClone.textContent.replace(/\s+/g, ' ').trim();
@@ -4154,7 +4182,8 @@ function dgSuttaText(plain) {
 
     function cleanText(el) {
         if (!el) return '';
-        var clone = el.cloneNode(true);
+        if (!dgShown(el)) return '';
+        var clone = dgShownClone(el);
         clone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
         return clone.textContent.replace(/\s+/g, ' ').trim();
     }
@@ -4176,7 +4205,7 @@ function dgSuttaText(plain) {
     var bylineEl = suttaArea.querySelector('#trn');
     if (bylineEl) {
         var byline = [cleanText(bylineEl.querySelector('.pli-lang')),
-                      cleanText(bylineEl.querySelector('[class*="-lang"]:not(.pli-lang)'))]
+                      cleanText(dgFirstShown(bylineEl, '[class*="-lang"]:not(.pli-lang)'))]
                      .filter(Boolean).join(' — ');
         if (byline) { md.push(plain ? byline : '*' + byline + '*'); md.push(''); }
     }
@@ -4189,13 +4218,13 @@ function dgSuttaText(plain) {
 
     suttaArea.querySelectorAll('span[id]').forEach(function (node) {
         if (node.closest('#trn, #top-links-container, #bottom-links-container')) return;
-        var paliEl = node.querySelector('.pli-lang');
-        var transEl = node.querySelector('[class*="-lang"]:not(.pli-lang)');
+        var paliEl = dgFirstShown(node, '.pli-lang');
+        var transEl = dgFirstShown(node, '[class*="-lang"]:not(.pli-lang)');
         if (!paliEl && !transEl) return;
 
         var pali = '', variant = '';
         if (paliEl) {
-            var paliClone = paliEl.cloneNode(true);
+            var paliClone = dgShownClone(paliEl);
             paliClone.querySelectorAll('.copyLink, a.copyLink-start').forEach(function (a) { a.remove(); });
             var varEl = paliClone.querySelector('.variant');
             if (varEl) { variant = varEl.textContent.replace(/\s+/g, ' ').trim(); varEl.remove(); }

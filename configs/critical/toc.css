@@ -795,7 +795,6 @@ opacity: 0;
 transform: translateY(-6px);
 transition: opacity 0.35s ease, transform 0.35s ease;
 }
-#dg-announce.dg-announce-in { display: flex; opacity: 1; transform: none; }
 body:not(.dg-state-home) #dg-announce { display: none; }
 .dg-announce-box {
 display: flex;
