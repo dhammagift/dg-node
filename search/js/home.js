@@ -5347,12 +5347,13 @@
         // 2022 — год начала проекта, второй год всегда текущий (на проде date("Y")).
         host.appendChild(document.createTextNode('© 2022–' + new Date().getFullYear() + ' dhamma.gift · '));
 
+        // «Условия» -> the docs' terms, where the licences are (owner 2026-11-13)
         var terms = document.createElement('a');
-        terms.href = 'javascript:void(0)';
-        terms.setAttribute('role', 'button');
         terms.className = 'dg-footer-link';
+        terms.target = '_blank';
+        terms.rel = 'noopener';
+        terms.href = menuLang() === 'ru' ? '/ru/docs/policies#условия-использования' : '/docs/policies#terms';
         terms.textContent = short ? t('footer.termsShort', 'Условия') : t('footer.terms', 'Условия использования');
-        terms.addEventListener('click', openTerms);
         host.appendChild(terms);
 
         host.appendChild(document.createTextNode(' · '));
