@@ -116,7 +116,7 @@ async function main() {
             await page.waitForFunction(() => !document.querySelector('#sutta[data-ssr="1"]'), null, { timeout: 30000 }).catch(() => {});
             await page.waitForTimeout(2500);
             const { ruleUsage } = await cdp.send('CSS.stopRuleUsageTracking');
-            const docOrder = await page.evaluate(() => [...document.styleSheets].map(s => s.href || (s.ownerNode && s.ownerNode.id === 'dg-critical' ? 'critical' : 'inline')));
+            const docOrder = await page.evaluate(() => [...document.styleSheets].map(s => s.href || (s.ownerNode && s.ownerNode.hasAttribute('data-dg-critical') ? 'critical' : 'inline')));
             for (const href of headLinked) linked.add(href);
             for (const [id, h] of headers) {
                 if (h.origin !== 'regular') continue;

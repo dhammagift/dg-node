@@ -4103,7 +4103,9 @@ function withCritical(html, state) {
     }
     let first = true;
     head = head.replace(/<link rel="stylesheet"([^>]*?)>/g, (tag, attrs) => {
-        const style = first ? `<style id="dg-critical">${crit.css}</style>\n` : '';
+        // a data attribute, not an id: the apps refuse a site page with an id their bundled page lacks (dg-apps native-bridge.js
+        // gate) - this one, added here only, stopped every update of the apps' files ("Актуально", owner 2026-11-13)
+        const style = first ? `<style data-dg-critical>${crit.css}</style>\n` : '';
         first = false;
         // the full stylesheets: the reader's text resizes once they apply, so they come at high priority (preload);
         // home/results/contents are complete with the cut, so theirs load at low priority (media=print swap) and
