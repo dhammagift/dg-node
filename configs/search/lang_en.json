@@ -302,11 +302,7 @@
     "warnBody": "Translations, dictionaries and commentaries do not originate directly from the Buddha himself! Approach them with scrutiny and critical thinking."
   },
   "footer": {
-    "terms": "Terms of use",
-    "privacy": "Privacy Policy",
-    "termsShort": "Terms",
-    "privacyShort": "Privacy",
-    "copyright": "The materials on this website are distributed under the %s license, but Pali texts and English Translations from SuttaCentral.net, the works of A. Y. Syrkin and TheBuddhasWords.net are subject to different terms. Please check with the copyright holders for their usage conditions.",
+    "licenses": "Licenses",
     "links": "Apps and extensions",
     "contacts": "Contacts",
     "howto": "How to search",
