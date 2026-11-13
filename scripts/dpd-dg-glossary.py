@@ -50,7 +50,8 @@ def load_glossary(path):
         out = []
         for t in data.get('terms', []):
             canon = t.get('canon') or {}
-            # every place the term is defined (canon.where), the main link first (owner 2026-11-05: all of them, at most 4)
+            # every place the term is defined (canon.where), the main link first; all of them (owner 2026-11-13: at most 4
+            # hid most of dukkha's 9; the most any term has is 12, a line and a half)
             where = ['/' + w.lstrip('/') for w in (canon.get('where') or []) if w]
             link = canon.get('link') or ''
             links = ([link] if link else []) + [w for w in where if w != link]
@@ -76,9 +77,6 @@ def load_glossary(path):
     sys.exit(f'{path}: neither glossary.json nor a page with a DefinedTermSet')
 
 
-MAX_LINKS = 4
-
-
 # Owner 2026-11-13: the canon's special definitions (ariyassa vinaye) go in like the others, but marked, so nobody takes
 # them for the word's ordinary sense. The mark is the Pali phrase itself, as on the dg-docs glossary badge.
 SPECIAL = ('ariyassa vinaye', 'assutavā puthujjano bhāsati')
@@ -99,8 +97,6 @@ def entry(meaning, links, lang, kind=''):
         seen.add(sutta)
         # class dg-seg: the reader keeps it a link (paliLookup.js linkify) and opens it in the reader itself
         shown.append(f'<a class="dg-seg" href="{seg}" target="_top">{sutta}</a>')
-        if len(shown) == MAX_LINKS:
-            break
     if shown:
         # "def." / "опред." in italics says what the links are: the suttas where the term is defined (owner 2026-11-05)
         out += (' ' if special else f' <i class="dg-def">{"опред." if lang == "ru" else "def."}</i> ') + ', '.join(shown)
