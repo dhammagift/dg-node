@@ -29,7 +29,6 @@
     "chapterReader": "/toc?lang=th",
     "dictionaryHelp": "/docs/dictionary",
     "contacts": "/#contacts",
-    "abbreviationsSuttaCentral": "https://suttacentral.net/abbreviations?lang=en",
     "history": "/4as",
     "translationEditor": "/assets/lbl-en.html",
     "copyright": "/#copyrightnote"
@@ -175,8 +174,6 @@
     "editionCodes": "ms, pts1ed, sya-all, mr",
     "editionAbbreviationsMiddle": "ฯลฯ ใน",
     "editionAbbreviationsLink": "«อักษรย่อฉบับ»",
-    "editionAbbreviationsOr": "หรือ",
-    "editionAbbreviationsHere": "ที่นี่",
     "reportError": "รายงานข้อผิดพลาด",
     "linksDescriptionButton": "คำอธิบายลิงก์"
   },

@@ -29,7 +29,6 @@
     "chapterReader": "/toc",
     "dictionaryHelp": "/docs/dictionary",
     "contacts": "/#contacts",
-    "abbreviationsSuttaCentral": "https://suttacentral.net/abbreviations?lang=en",
     "history": "/4as",
     "translationEditor": "/assets/lbl-en.html",
     "copyright": "/#copyrightnote"
@@ -176,8 +175,6 @@
     "editionCodes": "ms, pts1ed, sya-all, mr",
     "editionAbbreviationsMiddle": "etc. in",
     "editionAbbreviationsLink": "\"Edition Abbreviations\"",
-    "editionAbbreviationsOr": "or",
-    "editionAbbreviationsHere": "here",
     "reportError": "Report error",
     "linksDescriptionButton": "Links Description"
   },
