@@ -40,7 +40,8 @@
       "tag": "New",
       "delayMs": 4000,
       "ru": "Теперь можно читать и без интернета. <a href=\"#offline-download\">Скачать офлайн-библиотеку</a>",
-      "en": "Reading offline is here. <a href=\"#offline-download\">Download the offline library</a>"
+      "en": "Reading offline is here. <a href=\"#offline-download\">Download the offline library</a>",
+      "enabled": false
     }
   ]
 }

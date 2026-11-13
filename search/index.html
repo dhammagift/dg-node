@@ -1597,6 +1597,26 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
 
 <!-- Объявление (текст — configs/search/announcements.json, показ и «закрыть» — home.js). -->
 <div id="dg-announce" hidden></div>
+<script>
+  // The announcement as the page's own, from the first paint (the server puts the enabled ones into data-items): drawn here
+  // unless closed before, so nothing moves when it comes (owner 2026-11-13: «главная сама двигается», «сразу должно
+  // появиться»); home.js only wires its buttons. Same markup as home.js renderAnnounce.
+  (function () {
+    try {
+      var a = document.getElementById('dg-announce'), items = JSON.parse(a.getAttribute('data-items') || '[]');
+      var done = JSON.parse(localStorage.getItem('dgAnnounceDismissed') || '[]'), it = null;
+      for (var i = 0; i < items.length && !it; i++) if (done.indexOf(items[i].flag || items[i].id) < 0) it = items[i];
+      if (!it) return;
+      var ru = /^\/ru(\/|$)/.test(location.pathname) || (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage')) === 'ru';
+      var text = (ru ? it.ru : it.en) || it.en || it.ru || '';
+      var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
+      a.innerHTML = '<div class="dg-announce-box" role="status">' + (it.tag ? '<span class="dg-announce-tag">' + esc(it.tag) + '</span>' : '') +
+        '<span>' + text + '</span><button type="button" class="dg-announce-close" aria-label="' + (ru ? 'Закрыть' : 'Dismiss') + '">' +
+        '<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>';
+      a.hidden = false; a.classList.add('dg-announce-in'); a.dataset.inlined = it.flag || it.id;
+    } catch (e) {}
+  })();
+</script>
 
 </div><!-- /.dg-hero-inner -->
 </div><!-- /#dg-hero-band -->

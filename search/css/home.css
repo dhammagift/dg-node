@@ -758,7 +758,7 @@ body.dg-skin-minimal .dg-drawer * { font-family: var(--dg-font); }
     /* body.dg-state-home prefix: the base tile/announce rules sit further down this file at the
        same specificity, so plain selectors here would lose on source order. */
     /* Values below: the reference's own body[data-view="mobile"] rule set. */
-    body.dg-state-home #dg-announce { margin-top: 0; }
+    body.dg-state-home #dg-announce { margin-top: 14px; }
     body.dg-state-home .dg-announce-box { width: 100%; max-width: none; padding: 6px 6px 6px 10px; gap: 7px; font-size: 12px; border-radius: 10px; line-height: 1.4; }
     body.dg-state-home .dg-announce-tag { font-size: 9.5px; padding: 2px 6px; }
     body.dg-state-home #dg-hero-band { padding-bottom: 4px; }
@@ -1714,19 +1714,6 @@ body.dg-state-home #home-scope-summary { display: flex; }
     transition: opacity 0.35s ease, transform 0.35s ease;
 }
 #dg-announce.dg-announce-in { display: flex; opacity: 1; transform: none; }
-/* Over the page at the bottom of the screen, not in its flow: shown 4 s after load between the field and the tiles, it
-   pushed everything below 66 px down while the reader was already scrolling (owner 2026-11-13: «главная сама двигается»,
-   «я скроллю вниз — она возвращается вверх»). */
-body.dg-state-home #dg-announce {
-    position: fixed;
-    left: 12px; right: 12px;
-    bottom: calc(16px + env(safe-area-inset-bottom, 0px));
-    margin: 0 auto;
-    max-width: 560px;
-    z-index: 1040;
-    transform: translateY(8px);
-}
-body.dg-state-home #dg-announce.dg-announce-in { transform: none; }
 @media (prefers-reduced-motion: reduce) {
     #dg-announce { transition: none; transform: none; }
 }

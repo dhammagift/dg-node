@@ -4699,6 +4699,10 @@
         var item = pendingAnnounce();
         if (!item) { host.hidden = true; host.innerHTML = ''; return; }
 
+        // Drawn already with the page (search/index.html, from the announcement the server puts into it): kept as it is, so it
+        // does not move anything; only its buttons are wired below (owner 2026-11-13: «сразу должно появиться»)
+        var drawn = host.dataset.inlined === announceFlag(item) && host.querySelector('.dg-announce-box');
+        if (drawn) { delete host.dataset.inlined; wireAnnounce(host, item); return; }
         var text = item[menuLang()] || item.en || item.ru || '';
         // Optional short badge before the text ("Beta"), see announcements.json.
         var tag = item.tag ? '<span class="dg-announce-tag">' + esc(item.tag) + '</span>' : '';
@@ -4715,6 +4719,9 @@
         // первом элемент получает display, во втором — стартует transition.
         host.style.display = 'flex';
         requestAnimationFrame(function () { host.classList.add('dg-announce-in'); host.style.display = ''; });
+        wireAnnounce(host, item);
+    }
+    function wireAnnounce(host, item) {
         function dismissAnnounce() {
             var list = dismissedAnnounces();
             var flag = announceFlag(item);
@@ -4746,6 +4753,8 @@
     }
 
     function scheduleAnnounce() {
+        var host = document.getElementById('dg-announce');
+        if (host && host.dataset.inlined) return renderAnnounce();   // on the page from the first paint: wire it now
         var start = function () { setTimeout(renderAnnounce, announceDelay()); };
         if (document.readyState === 'complete') start();
         else window.addEventListener('load', start, { once: true });

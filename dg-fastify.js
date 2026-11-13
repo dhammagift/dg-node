@@ -455,10 +455,22 @@ function stripInlineComments(html) {
     strippedHtmlCache.set(key, out);
     return out;
 }
+// The home page's announcement goes into the page itself (data-items on #dg-announce), so the page draws it with its first
+// paint instead of 4 s later pushing the tiles down (owner 2026-11-13: «главная сама двигается»; search/index.html draws it
+// unless closed before). The enabled ones from configs/search/announcements.json, re-read with the page (VERSIONED_HTML_TTL).
+function announceItemsAttr() {
+    try {
+        const data = JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'search', 'announcements.json'), 'utf8'));
+        const items = (data.items || []).filter(i => i && i.enabled !== false)
+            .map(i => ({ id: i.id, flag: i.flag, tag: i.tag, en: i.en, ru: i.ru }));
+        return JSON.stringify(items).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    } catch (e) { return '[]'; }
+}
 function buildVersionedHtml(absHtmlPath) {
     let html;
     try { html = fsSync.readFileSync(absHtmlPath, 'utf8'); }
     catch { return null; }
+    html = html.replace('<div id="dg-announce" hidden></div>', () => `<div id="dg-announce" hidden data-items="${announceItemsAttr()}"></div>`);
     html = stripHtmlComments(html);
     const rewritten = stripInlineComments(html.replace(
         // Also stamps the lazy loadScript('/reader/megareader.js') / ('/spa/toc.js') calls in
