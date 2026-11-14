@@ -3055,7 +3055,7 @@ function getPlayerHtml() {
         <a href="javascript:void(0)" id="tts-settings-toggle" class="tts-ib" aria-expanded="false" title="${t.settings}">${gi('gear.svg')}</a>
         <div class="tts-controls-row tts-tr">
           <a href="javascript:void(0)" title="← ↑" class="prev-main-button tts-ib">${gi('backward-step.svg')}</a>
-          <a href="javascript:void(0)" title="Space" class="play-main-button tts-play"><svg class="pp" viewBox="0 0 24 24" aria-hidden="true"><path class="pp-l" d="M7.7 4.5L14.2 8.25L14.2 15.75L7.7 19.5Z"/><path class="pp-r" d="M14.2 8.25L20.7 12L20.7 12L14.2 15.75Z"/></svg></a>
+          <a href="javascript:void(0)" title="Space" class="play-main-button tts-play"><svg class="pp" viewBox="0 0 24 24" width="40" height="40" fill="currentColor" aria-hidden="true"><path class="pp-l" d="M7.7 4.5L14.2 8.25L14.2 15.75L7.7 19.5Z"/><path class="pp-r" d="M14.2 8.25L20.7 12L20.7 12L14.2 15.75Z"/></svg></a>
           <a href="javascript:void(0)" title="→ ↓" class="next-main-button tts-ib">${gi('forward-step.svg')}</a>
         </div>
         <a href="javascript:void(0)" title="Esc" class="tts-ib close-tts-btn">&times;</a>
@@ -3165,6 +3165,8 @@ function ttsUiText() {
 }
 
 
+// The play button's svg carries its own size (40, as voice.css .tts-play .pp): without voice.css (the app's Memo
+// page offline, owner 2026-11-13 Trello «Мемо старый баг с кнопкой плей») a bare svg took the whole screen width.
 function getOrBuildPlayer() {
     const playerId = 'voice-player-container';
     let playerContainer = document.getElementById(playerId);
