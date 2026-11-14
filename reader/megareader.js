@@ -320,6 +320,8 @@ const READER_EDITIONS = [
 ];
 window.dgEditionLabel = (ed, ru) => ed[ru ? 'ru' : 'en'] + (ed.country ? ` (${ed.country[ru ? 'ru' : 'en']})` : '');
 window.DG_EDITIONS = READER_EDITIONS;
+// the editions whose majority decides Differences: the national canons; MS, MS05 and PTS are made from them (diffMarks)
+const VOTING_EDITIONS = new Set(['bjt', 'my', 'th']);
 function cleanEditions(list) {
     const ids = READER_EDITIONS.map(e => e.id);
     const out = (Array.isArray(list) ? list : []).filter((e, i, a) => ids.includes(e) && a.indexOf(e) === i);
@@ -462,7 +464,7 @@ function runEditionDiffs() {
             const els = lines[i] || [];
             // the lines' text as drawn: a search hit's own marks (<b>) inside it are kept, the comparison reads past them
             const nodes = els.map(el => el.classList.contains('is-gap') ? null : textNodesOf(el));
-            const marks = diffMarks(nodes.map(ns => ns && ns.map(n => n.nodeValue).join('')));
+            const marks = diffMarks(nodes.map(ns => ns && ns.map(n => n.nodeValue).join('')), els.map(el => VOTING_EDITIONS.has(el.dataset.ed) ? 1 : 0));
             els.forEach((el, k) => { if (nodes[k] && marks[k]) paintMarks(el, marks[k]); });
         } while (left && deadline.timeRemaining() > 2);
         if (left) idle(slice); else if (edDiffSets === sets) edDiffSets = [];   // all drawn: nothing left to do
@@ -685,14 +687,19 @@ function dropIslands(m, a, b) {
     }
     return m;
 }
-function diffMarks(texts) {
+// weights: per text its vote (default 1 each). The reader gives the national canons 1 and the editions made from them 0
+// (VOTING_EDITIONS): a derived edition is marked where it differs from them but does not vote - three Burmese-based
+// texts (VRI, MS, MS05) against BJT, SR, PTS outvoted Sri Lanka and Thailand (owner 2026-11-14: «остальные это
+// производные»). No voter shown: every text votes.
+function diffMarks(texts, weights) {
     const lines = texts.map(t => typeof t === 'string' && t.trim() ? diffUnits(t) : null);
-    const n = lines.filter(Boolean).length;
-    if (n < 2) return texts.map(() => null);
+    if (lines.filter(Boolean).length < 2) return texts.map(() => null);
+    const wt = weights && lines.some((us, i) => us && weights[i] > 0) ? i => weights[i] || 0 : () => 1;
+    const n = lines.reduce((s, us, i) => s + (us ? wt(i) : 0), 0);
     // the same letters in the same words are one reading, counted as many times as it is shown; the readings in the
     // order of their letters (not of the editions)
     const byKey = new Map();
-    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + (x && u.sp === null ? '-' : x && u.sp ? "'" : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c++; byKey.get(k).at.push(i); });
+    lines.forEach((us, i) => { if (!us) return; const k = us.map((u, x) => (x && u.w !== us[x - 1].w ? ' ' : '') + (x && u.sp === null ? '-' : x && u.sp ? "'" : '') + u.k).join('\u0001'); (byKey.get(k) || byKey.set(k, { us, c: 0, at: [] }).get(k)).c += wt(i); byKey.get(k).at.push(i); });
     const rs = [...byKey.keys()].sort().map(k => byKey.get(k));
     rs.forEach(r => { r.support = r.us.map(() => r.c); r.gap = r.us.concat([0]).map(() => ({ c: 0, whole: 0, next: 0, words: new Set() })); r.split = r.us.map(() => ({ v: 0, a: 0 })); });
     const count = (r, o, match) => {   // what reading o says of reading r's letters

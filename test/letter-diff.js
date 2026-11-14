@@ -58,6 +58,16 @@ eq(['Bhagavā etadavoca:', 'bhagavā etadavoca', 'Bhagavā etad avoca:'], ['Bhag
 // other scripts: a vowel sign is part of its letter, the Thai ฯ is no letter
 eq(['सावत्थियं', 'सावत्थिं', 'सावत्थियं'], ['सावत्थियं', 'साव[त्थिं]', 'सावत्थियं']);   // त्थि: one glyph, one unit
 eq(['โส ภควา ฯ', 'โส ภควา', 'โส ภควโต'], ['โส ภควา ฯ', 'โส ภควา', 'โส ภคว[โต]']);
+// weighted (owner 2026-11-14): only BJT, VRI, SR vote (1), MS, MS05, PTS are marked against them (0). Three Burmese-based
+// texts against three others was a tie that marked everyone; now SR and BJT decide, VRI and its MS copies are marked
+const W = [1, 1, 1, 0, 0, 0], showW = (texts, w) => ctx.diffMarks(texts, w).map((r, i) => (r || []).slice().sort((a, b) => b[0] - a[0])
+    .reduce((t, [a, b]) => t.slice(0, a) + '[' + t.slice(a, b) + ']' + t.slice(b), texts[i]));
+assert.deepStrictEqual(showW(['bhagavā kho etadavoca', 'bhagavā etadavoca', 'bhagavā kho etadavoca', 'bhagavā etadavoca', 'bhagavā etadavoca', 'bhagavā kho etadavoca'], W),
+    ['bhagavā kho etadavoca', 'bhagavā[ ]etadavoca', 'bhagavā kho etadavoca', 'bhagavā[ ]etadavoca', 'bhagavā[ ]etadavoca', 'bhagavā kho etadavoca']);
+// one voter shown: the others are marked where they differ from it, it never is
+assert.deepStrictEqual(showW(['sāvatthiyaṁ', 'sāvatthiṃ', 'sāvatthiṃ'], [1, 0, 0]), ['sāvatthiyaṁ', 'sāvatthi[ṃ]', 'sāvatthi[ṃ]']);
+// no voter shown (MS and PTS only): every text votes, as before
+assert.deepStrictEqual(showW(['rūpupādāna', 'rūpūpādāna'], [0, 0]), ['rūp[u]pādāna', 'rūp[ū]pādāna']);
 // one text or none: nothing to compare
 assert.deepStrictEqual(ctx.diffMarks(['evaṁ', undefined, '  ']), [null, null, null]);
 console.log('letter-diff: ok');
