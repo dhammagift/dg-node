@@ -242,6 +242,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // the Pātimokkha's place is put back by toc.js: the browser's own restoring of the old scroll on a reload jumped in between
       var pm = /^\/(?:ru\/)?toc\/(?:(b[iu])-?pm|pm)\b/.exec(location.pathname);
       if (pm && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
+      // the results put their row back themselves (search-render.js): the browser's pixel restore came first, a few rows off
+      if (/[?&]q=/.test(location.search) && 'scrollRestoration' in history) history.scrollRestoration = 'manual';
       if (pm && window.dgPmPlacing) window.dgPmPlacing(pm[1] || 'bu');
       var m = /^\/[^\/?#:]+:([\w.-]+)/.exec(location.pathname);
       if (m && !location.hash) window.dgHoldLine(window.dgFindLine(m[1]), window.dgLinePlace, m[1]);

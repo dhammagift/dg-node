@@ -1919,3 +1919,40 @@ window.DgSearchRender = (function () {
         window.dgNavigateInternal(href);
     }, true);
 })();
+
+/* The place in the results comes back after a reload or a Back (2026-11-14, the «not fixed everywhere» list: the reader and
+   the Pātimokkha kept their line, the results came back a few rows off - the browser's own pixel restore over a table that is
+   drawn later). Kept per address: the row a third down the screen (by its text id), the pixels below its top, the page. */
+(function () {
+    if (!window.jQuery) return;
+    var $ = window.jQuery, timer = 0;
+    function key() { return 'dgResultsPlace:' + location.pathname + location.search; }
+    function rowId(tr) { var a = tr && tr.querySelector('td a'); return a ? a.textContent.trim() : ''; }
+    function save() {
+        if (!document.body.classList.contains('dg-state-results') || (window.dgHolding && window.dgHolding())) return;
+        var line = window.innerHeight / 3, el = document.elementFromPoint(window.innerWidth / 2, line);
+        var tr = el && el.closest && el.closest('#search-pane tbody tr');
+        if (!tr || !rowId(tr)) return;
+        var api = $.fn.dataTable.tables({ visible: true, api: true });
+        try { sessionStorage.setItem(key(), JSON.stringify({ id: rowId(tr), dy: Math.round(line - tr.getBoundingClientRect().top), page: api.page ? api.page() : 0 })); } catch (e) { /* private mode */ }
+    }
+    window.addEventListener('scroll', function () { clearTimeout(timer); timer = setTimeout(save, 400); }, { passive: true });
+    window.addEventListener('pagehide', save);
+    $(document).on('init.dt', function (e, settings) {
+        var nav = (performance.getEntriesByType && performance.getEntriesByType('navigation')[0]) || {};
+        if (nav.type !== 'reload' && nav.type !== 'back_forward') return;
+        var place = null;
+        try { place = JSON.parse(sessionStorage.getItem(key()) || 'null'); } catch (x) { return; }
+        if (!place || !place.id || typeof window.dgHoldLine !== 'function') return;
+        var api = new $.fn.dataTable.Api(settings);
+        if (place.page && api.page.info().pages > place.page) api.page(place.page).draw('page');
+        var find = function () {
+            var rows = document.querySelectorAll('#search-pane tbody tr');
+            for (var i = 0; i < rows.length; i++) if (rowId(rows[i]) === place.id) return rows[i];
+            return null;
+        };
+        if (!find()) return;
+        var hold = window.dgHoldLine(find, function () { return window.innerHeight / 3 - place.dy; }, 'results');
+        setTimeout(function () { hold.ready(); }, 800);
+    });
+})();
