@@ -2580,11 +2580,15 @@ window.buildSutta = async function(rawSlug, opts) {
         }
         const texts = lineEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
         const dd = !heading && texts.filter(t => typeof t === 'string' && t.trim()).length > 1 ? ` data-dd="${edDiffSets.push(texts) - 1}"` : '';
+        // a heading line only one edition has (the MS "Majjhima Nikāya 10"): in the first Pali column, not under its edition's
+        // name further right with the columns before it empty (the national canons came first from 2026-11-14)
+        const lone = heading && texts.filter(t => typeof t === 'string' && t.trim()).length === 1;
+        const firstEdCol = Math.min(...lineEds.map((e, k) => colIndex[`ed:${e}`] || k + 1));
         return lineEds.map((e, k) => {
             const t = texts[k];
             const tag = ` data-tag="${edInfo(e).tag}"${dd}`;
             const cls = 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'; a heading's too
-            const c = colIndex[`ed:${e}`] || k + 1;
+            const c = lone && typeof t === 'string' && t.trim() ? firstEdCol : (colIndex[`ed:${e}`] || k + 1);
             if (t === undefined) return `<span class="${cls} is-gap${heading ? ' is-empty' : ''}" data-ed="${e}" style="--c:${c}"${tag}>${heading ? '' : '—'}</span>`;
             return `<span class="${cls}" data-ed="${e}" style="--c:${c}"${tag}>${linkStart}${typeof t === 'string' ? t.trim() : t}${linkEnd}</span>`;
         }).join('');
