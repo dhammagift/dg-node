@@ -257,8 +257,26 @@
 
     // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
     // it back once the tree (and the open fragment) is rebuilt — see restoreScrollY.
-    var tocLeaveY = null, tocBackY = null, tocBackAt = 0;
-    window.addEventListener('popstate', function () { tocBackY = tocLeaveY; tocBackAt = Date.now(); });
+    var tocLeaveY = null, tocBackY = null, tocBackAt = 0, tocLeaveLink = null, tocBackLink = null;
+    window.addEventListener('popstate', function () { tocBackY = tocLeaveY; tocBackLink = tocLeaveLink; tocBackAt = Date.now(); });
+    // Back from the reader: the link that was tapped comes back to where it was on the screen, held there while the rebuilt
+    // contents settle (dgHoldLine, the same as a text opened at a line) - the old way, the same pixel offset retried for two
+    // seconds, landed elsewhere when anything above had changed its height (2026-11-14, «недоделанное» list). No such link
+    // in the rebuilt tree yet: the pixel offset as before.
+    function restoreLeftPlace(container) {
+        var back = tocBackLink, y = tocBackY;
+        var find = function () {
+            if (!back) return null;
+            var all = container.querySelectorAll('a[href]');
+            for (var i = 0; i < all.length; i++) if (all[i].getAttribute('href') === back.href && all[i].getClientRects().length) return all[i];
+            return null;
+        };
+        // the tapped link's book is opened again (revealTarget) and draws a moment later: the hold waits for the link
+        if (back && typeof window.dgHoldLine === 'function') {
+            var hold = window.dgHoldLine(find, function () { return back.top; }, 'toc-back');
+            setTimeout(function () { if (find()) hold.ready(); else { hold.stop(); restoreScrollY(y); } }, 1500);
+        } else restoreScrollY(y);
+    }
     function restoreScrollY(y) {
         var tries = 0, stop = false;
         var cancel = function () { stop = true; };
@@ -796,7 +814,9 @@
     // Twice, ~half a second apart: the page is still settling when a target opens (the home hero
     // collapses into TOC state on its own transition, ~140px above the tree), so a single scroll
     // lands that much too far down. The repeat is a no-op once nothing moved.
+    var tocNoScrollUntil = 0;   // Back from the reader: the book opens again without its scroll to the title (restoreLeftPlace)
     function scrollTo(elem) {
+        if (Date.now() < tocNoScrollUntil) return;
         elem.scrollIntoView({ block: 'start', behavior: 'smooth' });
         setTimeout(function () { elem.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 500);
     }
@@ -1277,7 +1297,12 @@
             // even when there's no filter at all, or a previously OFF toggle would stay ignored
             // until the user touches something that happens to call refreshFilterEffects().
             else applyPatimokkhaVisibility();
-            if (tocBackY != null && Date.now() - tocBackAt < 3000) { restoreScrollY(tocBackY); tocBackY = null; }
+            if (tocBackY != null && Date.now() - tocBackAt < 3000) {
+                // the book left from is opened again as the address says (it stayed closed: the link was not there to come back to)
+                tocNoScrollUntil = Date.now() + 3000;
+                if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
+                restoreLeftPlace(container); tocBackY = null; tocBackLink = null;
+            }
             else if (target) revealTarget(target, bookEntries, groupEntries, langs, filter);
         }).catch(function (e) {
             container.innerHTML = '';
@@ -1303,6 +1328,7 @@
         if (u.origin !== window.location.origin) return;
         e.preventDefault();
         tocLeaveY = Math.round(window.pageYOffset);
+        tocLeaveLink = { href: href, top: a.getBoundingClientRect().top };
 
         // Owner: "toc и фильтр переводчиков разлетались в свои стороны, в центре — сутта в
         // ридер-режиме". #reader-pane's own "grow from center" entrance lives in home.css

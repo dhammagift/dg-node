@@ -2505,9 +2505,11 @@
                 }).join('') + '</div></div>';
         }).join('');
         document.body.appendChild(m);
-        var r = anchor.getBoundingClientRect();
-        m.style.top = Math.round(r.bottom + 4) + 'px';
-        m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth - 8))) + 'px';
+        // the name's box is on-screen px, the menu's top/left are CSS px multiplied by the page's zoom (the text size): at 110 %
+        // the menu opened 62 px below the name, at 150 % 280 px (2026-11-14)
+        var r = anchor.getBoundingClientRect(), z = dgZ();
+        m.style.top = Math.round((r.bottom + 4) / z) + 'px';
+        m.style.left = Math.round(Math.max(8, Math.min(r.left, window.innerWidth - m.offsetWidth * z - 8)) / z) + 'px';
         anchor.setAttribute('aria-expanded', 'true');
     }
     window.addEventListener('scroll', colMenuClose, { passive: true });
