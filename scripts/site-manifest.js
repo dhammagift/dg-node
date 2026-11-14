@@ -49,7 +49,10 @@ const SKIP_DIRS = new Set(['texts', 'shots', 'bak', 'unusedcode', 'node_modules'
 const ROUTED = new Set(['/reader/mode-table.json', '/assets/js/translators.json',
     // built on each host with its own time stamp (npm run build-offline): F1's hash never matched f3's file, and one file that
     // does not match stops the apps' whole update («Не удалось», owner 2026-11-13, DG 615)
-    '/offline/build-id.json']);
+    '/offline/build-id.json',
+    // written by the site's server on its first page (externalizeMainScript), for the site's page only: the apps keep the
+    // script inline, and a host signing before its first page would list last build's copy
+    '/assets/js/dg-main.js']);
 const MAX_BYTES = 8 * 1024 * 1024;   // DgSite.put's limit
 
 const hashes = {};

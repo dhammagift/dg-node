@@ -163,6 +163,7 @@ var PRECACHE_URLS = [
     '/assets/js/datatables/datatables.min.js',
     '/assets/js/datatables-slim.js', // the cut the site's page loads instead (dg-fastify.js slimDataTables)
     '/assets/css/dg-all.css', // the site's page links its head stylesheets as this one file (bundleHeadCss)
+    '/assets/js/dg-main.js', // the site's page loads its main script from this file (externalizeMainScript)
     '/assets/js/search-render.js',
     '/assets/js/natural.js',
     '/assets/js/strip-html.js',

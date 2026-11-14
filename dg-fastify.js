@@ -488,7 +488,7 @@ function buildVersionedHtml(absHtmlPath) {
             return v ? `${pre}${url}?v=${v}${post}` : m;
         }
     ));
-    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? slimDataTables(deferOfflineScripts(bundleHeadCss(rewritten))) : rewritten;
+    const out = absHtmlPath === path.join(__dirname, 'search', 'index.html') ? externalizeMainScript(slimDataTables(deferOfflineScripts(bundleHeadCss(rewritten)))) : rewritten;
     const etag = '"' + crypto.createHash('md5').update(out).digest('hex') + '"';
     return { at: Date.now(), rewritten: out, etag };
 }
@@ -578,6 +578,25 @@ const DT_SLIM_OK = (() => { try { return buildSlimDataTables(); } catch (e) { co
 function slimDataTables(html) {
     if (!DT_SLIM_OK) return html;
     return html.replace(/\/assets\/js\/datatables\/datatables\.min\.js(\?v=\w+)?/g, `${DT_SLIM_URL}?v=${getAssetVersion(DT_SLIM_PATH)}`);
+}
+// Speed (owner 2026-11-14: «скрипт сделайте»): the page's main inline script - 150 KB, 50 KB of the home page's 86 KB
+// gzipped - came again with every page view. Served as a file it is downloaded once (versioned, cached for a year) and
+// the browser keeps its compiled code. A plain <script src> in the same place, not defer: it runs where it ran, before
+// the deferred scripts after it. Comments dropped (stripInlineComments passes it by: its type='text/javascript').
+// Served page only: the apps build from search/index.html and keep it inline.
+const MAIN_JS_URL = '/assets/js/dg-main.js';
+const MAIN_JS_PATH = path.join(__dirname, 'public', 'overrides', 'js', 'dg-main.js');
+function externalizeMainScript(html) {
+    let big = null;
+    for (const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)) if (m[1].length > 50000 && (!big || m[1].length > big[1].length)) big = m;
+    if (!big) return html;
+    let code = big[1];
+    try { code = terserSync(code, { compress: false, mangle: false, format: { comments: false } }).code; }
+    catch (e) { console.warn(`dg-main.js: comments kept (${e.message})`); }
+    let current = null;
+    try { current = fsSync.readFileSync(MAIN_JS_PATH, 'utf8'); } catch { /* first build */ }
+    if (current !== code) fsSync.writeFileSync(MAIN_JS_PATH, code);
+    return html.slice(0, big.index) + `<script src="${MAIN_JS_URL}?v=${getAssetVersion(MAIN_JS_PATH)}"></script>` + html.slice(big.index + big[0].length);
 }
 const cssBundleCache = { key: '', html: '' };
 function bundleHeadCss(html) {
