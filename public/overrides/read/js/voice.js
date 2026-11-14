@@ -706,7 +706,15 @@ function highlightAndScrollToItem(item) {
     item.element.classList.add('active-word');
   }
 
-  const segmentContainer = document.getElementById(item.id);
+  // An expanded search result shows a copy of its quote in Responsive's child row (search-render.js details renderer:
+  // the same markup, the same segment ids), while the hidden td.none keeps the original the playlist was built from.
+  // getElementById finds that hidden original, so an open result lit up its title row instead of the line being read
+  // (owner 2026-11-14). The copy on the screen is taken when there is one; a collapsed result keeps the row.
+  const shown = el => el && el.offsetParent !== null;
+  let segmentContainer = document.getElementById(item.id);
+  if (segmentContainer && !shown(segmentContainer)) {
+    segmentContainer = Array.from(document.querySelectorAll(`[id="${CSS.escape(item.id)}"]`)).find(shown) || segmentContainer;
+  }
   let scrollTarget = item.element;
 
   if (segmentContainer) {
@@ -1572,6 +1580,7 @@ async function prepareTextData(slug) {
 
   let container = getSuttaContainer();
   let scopeRoots = [container];
+  let resultRows = false;  // reading the search results: each result's title goes before its quotes
 
   // Search results page has no .sutta-container/.sutta, so getSuttaContainer() falls back to the
   // whole document. td.none (search-render.js's Quote column, the only column with that
@@ -1592,11 +1601,15 @@ async function prepareTextData(slug) {
   // below, avoided here by construction instead of by another exclusion filter.
   if (container === document) {
       const activeWord = document.querySelector('.active-word');
-      const singleRowScope = activeWord && (activeWord.closest('td.none') || activeWord.closest('tr'));
+      // No .active-word (it is only kept on a Pali line, so a translation being read has none): the results page still
+      // reads its results, not the whole document (a mode switch Trn -> Pāḷi took the intro and the Title column).
+      const singleRowScope = (activeWord && (activeWord.closest('td.none') || activeWord.closest('tr')))
+          || (document.body.classList.contains('dg-state-results') && document.querySelector('#results-tbody td.none'));
       if (singleRowScope) {
           const resultsTbody = singleRowScope.closest('#results-tbody');
           const allCells = resultsTbody ? Array.from(resultsTbody.querySelectorAll('td.none')) : [];
           scopeRoots = allCells.length ? allCells : [singleRowScope];
+          resultRows = !!resultsTbody;
       }
   }
 
@@ -1621,7 +1634,10 @@ async function prepareTextData(slug) {
   if (paliElements.length === 0 && translationElements.length === 0) {
       return prepareGeneralArticleData();
   }
-  const paliJsonData = await fetchSegmentsData(slug);
+  // Search results: the quotes are read as they stand in the table. The JSON is one sutta's (the slug's), and its
+  // look-ahead below glued the rest of that sutta to its quote, as no later id of it is on the page: the dn1 quote of
+  // kacchapa became 50 852 characters, ~390 DG requests at once and an hour of DN 1 (f3-ultra 2026-11-14, prod too).
+  const paliJsonData = resultRows ? null : await fetchSegmentsData(slug);
 
   const allIds = new Set();
   const allNodesInOrder = queryAllRoots('.pli-lang, .rus-lang, .tha-lang, .eng-lang, .second-translation-row, .lang-2nd, [lang]');
@@ -1675,7 +1691,32 @@ async function prepareTextData(slug) {
   const trnCol = startsOnPali ? 0 : columnOf(translationElements);
   const paliCol = startsOnPali ? columnOf(paliElements) : 0;
 
+  // Search results: the sutta's name is read before its quotes (owner 2026-11-14: the suttas repeat each other, and
+  // without it one cannot hear that another sutta has begun) - the Pali name for Pali, the translated name for the
+  // translation, both from the row's Title column. Its id <sutta>:0 is a title line: no pause after it
+  // (dgNoPauseBetween), and no element has it, so the name itself is lit (highlightAndScrollToItem).
+  let lastRow = null;
+  const pushTitle = (row) => {
+    const pEl = row.querySelector('.dg-title-pali');
+    const tEl = row.querySelector('.dg-title-lang:not(.dg-title-pali)');
+    const pRaw = pEl ? pEl.textContent.trim() : '';
+    const tRaw = tEl ? tEl.textContent.trim() : '';
+    const sutta = row.querySelector('a.mainLink')?.dataset.slug || pRaw;
+    if (!pRaw && !tRaw) return;
+    textData.push({
+      id: `${sutta}:0`, isTitle: true,
+      paliDev: pRaw ? cleanTextForTTS(window.convertPaliToDevanagari ? window.convertPaliToDevanagari(pRaw) : pRaw) : '',
+      paliIast: pRaw ? stripForPaliVoice(pRaw) : '',
+      translation: tRaw ? cleanTextForTTS(tRaw) : '', translation2: '',
+      paliElement: pEl, translationElement: tEl, translationElement2: null
+    });
+  };
+
   allIds.forEach(id => {
+    if (resultRows) {
+      const row = allNodesInOrder.find(el => getElementId(el) === id)?.closest('tr');
+      if (row && row !== lastRow) { lastRow = row; pushTitle(row); }
+    }
     const segPali = Array.from(paliElements).filter(el => getElementId(el) === id);
     const paliElement = segPali[paliCol] || segPali[0] || null;
     const segTranslations = Array.from(translationElements).filter(el => getElementId(el) === id);
@@ -1794,7 +1835,7 @@ function createPlaylistFromData(textData, mode) {
         if (item.paliDev) {
             let lang = detectDynamicLang(item.paliDev, 'pi-dev', true);
             playlist.push({
-              text: item.paliDev, iast: item.paliIast, lang: lang, element: item.paliElement, id: item.id
+              text: item.paliDev, iast: item.paliIast, lang: lang, element: item.paliElement, id: item.id, isTitle: item.isTitle
             });
         }
     };
@@ -1802,7 +1843,7 @@ function createPlaylistFromData(textData, mode) {
         if (item.translation) {
             let lang = elementLang(item.translationElement) || detectDynamicLang(item.translation, translationLang, false);
             playlist.push({
-              text: item.translation, lang: lang, element: item.translationElement, id: item.id
+              text: item.translation, lang: lang, element: item.translationElement, id: item.id, isTitle: item.isTitle
             });
         }
     };
@@ -1810,7 +1851,7 @@ function createPlaylistFromData(textData, mode) {
         if (item.translation2) {
             let lang = elementLang(item.translationElement2) || detectDynamicLang(item.translation2, translationLang, false);
             playlist.push({
-              text: item.translation2, lang: lang, element: item.translationElement2, id: item.id
+              text: item.translation2, lang: lang, element: item.translationElement2, id: item.id, isTitle: item.isTitle
             });
         }
     };
@@ -2691,13 +2732,38 @@ function stopPlayback() {
 // so callers outside this file (megareader.js) don't need to know about ttsState internals.
 // Returns false without changing anything if there is no active/paused session, or the rebuilt
 // playlist comes back empty.
-async function rebuildActivePlaylist(newMode) {
+// Search results while reading (f3-ultra's check, 2026-11-14):
+// - a result opened during its line lit the collapsed row until the next line: Responsive's responsive-display is
+//   fired without bubbling, so a click on the row's toggle re-lights the line being read once the child row is in;
+// - another page of the table (or a new page length, sort, filter) kept reading the old page with nothing on the
+//   screen: when the line being read is gone from the table, the reading starts again from the top of what is shown.
+//   The quotes of a new page come a moment later (search/index.html draw.enrich), so it waits for them.
+if (window.jQuery) {
+  const reading = () => typeof ttsState !== 'undefined' && (ttsState.speaking || ttsState.paused) && ttsState.playlist.length;
+  jQuery(document).on('click keyup', '#results-tbody td.dtr-control', () => {
+    // twice: the child row comes and goes a moment after the click (a collapse lit the row being removed)
+    if (reading()) [50, 400].forEach(ms => setTimeout(() => reading() && highlightAndScrollToItem(ttsState.playlist[ttsState.currentIndex]), ms));
+  });
+  let redrawTimer = null;
+  jQuery(document).on('draw.dt', (e) => {
+    if (!e.target.querySelector || !e.target.querySelector('#results-tbody') || !reading()) return;
+    clearTimeout(redrawTimer);
+    redrawTimer = setTimeout(() => {
+      if (!reading() || document.querySelector('#results-tbody td.none .text-muted.small')) return;  // quotes still loading
+      const cur = ttsState.playlist[ttsState.currentIndex];
+      if (cur && cur.element && cur.element.isConnected) highlightAndScrollToItem(cur);
+      else rebuildActivePlaylist(ttsState.langSettings, true);
+    }, 400);
+  });
+}
+
+async function rebuildActivePlaylist(newMode, fromStart) {
   newMode = newMode || ttsState.langSettings || localStorage.getItem(MODE_STORAGE_KEY) || 'trn';
   if (!(ttsState.speaking || ttsState.paused)) return false;
 
   const wasPaused = ttsState.paused;
-  const currentId = ttsState.playlist[ttsState.currentIndex]?.id;
-  const pausedIndex = ttsState.currentIndex;
+  const currentId = fromStart ? null : ttsState.playlist[ttsState.currentIndex]?.id;
+  const pausedIndex = fromStart ? 0 : ttsState.currentIndex;
 
   synth.cancel();
   if (ttsState.googleAudio) {
@@ -2800,7 +2866,7 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
     if (activeId) {
       const foundIndex = playlist.findIndex(item => item.id === activeId);
       if (foundIndex !== -1) {
-        actualStartIndex = foundIndex;
+        actualStartIndex = foundIndex > 0 && playlist[foundIndex - 1].isTitle ? foundIndex - 1 : foundIndex;
       } else {
         const sourceIndex = textData.findIndex(item => item.id === activeId);
         if (sourceIndex !== -1) {

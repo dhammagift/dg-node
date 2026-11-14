@@ -1447,6 +1447,10 @@ if (event.altKey && event.code === "KeyR") {
     // Owner: Alt+R must start/toggle TTS regardless of input focus (unlike Alt+F/Alt+N above,
     // which intentionally skip when typing) — no input-focus exception here on purpose.
     event.preventDefault();
+    // The player's own keys (Space, arrows, 1-4) skip a focused field, so after Alt+R from the search box they went
+    // into it ("kacchapa3", f3-ultra 2026-11-14): the field lets go of the focus once the reading is asked for.
+    const typing = document.activeElement;
+    if (typing && (typing.tagName === 'INPUT' || typing.tagName === 'TEXTAREA')) typing.blur();
 
     // Results page with nothing picked and nothing playing: read the results from the first quote, as its «Слушать» does
     // (search/index.html dgPlayResultLine) — so a search can be listened to from the keyboard alone (owner).
