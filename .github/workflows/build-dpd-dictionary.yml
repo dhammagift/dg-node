@@ -172,8 +172,9 @@ jobs:
           # the glossary as dg-docs keeps it, synced daily from the Google Sheet (dg-docs glossary-sync.yml)
           curl -fsSL https://raw.githubusercontent.com/dhammagift/dg-docs/main/src/data/glossary.json -o glossary.json
           python3 scripts/dpd-dg-glossary.py standalone-dpd glossary.json | tee -a "$GITHUB_STEP_SUMMARY"
-          # the script also writes standalone-dpd/dg-glossary.json: the same file with each term's forms, for the online
-          # Dictionary's DG card (ddg-ui ui.js reads it from dhamma.gift; owner 2026-11-13: «максимально в одном месте»)
+          # the same file, as it is, for the online Dictionary's DG card (ddg-ui ui.js reads it from dhamma.gift): one glossary,
+          # one job, no copy kept by hand in ddg-ui (owner 2026-11-13: «максимально в одном месте»)
+          cp glossary.json standalone-dpd/dg-glossary.json
       - name: Compare with the files in this repo
         run: |
           python3 - <<'EOF' | tee -a "$GITHUB_STEP_SUMMARY"
@@ -199,7 +200,6 @@ jobs:
           cp standalone-dpd/dpd_i2h.js standalone-dpd/dpd_ebts.js standalone-dpd/dpd_deconstructor.js $DST/
           cp standalone-dpd/ru/dpd_ebts.js $DST/ru/
           if [ -f standalone-dpd/dg-glossary.json ]; then cp standalone-dpd/dg-glossary.json $DST/; fi
-          rm -f $DST/dg-glossary-forms.json   # 2026-11-14: the forms are in dg-glossary.json now
           # what this dictionary is built from: the next check compares against it; a rollback is a git revert of this commit
           python3 -c "import json,sys,datetime;json.dump({'key':sys.argv[1],'built_at':datetime.datetime.utcnow().isoformat()+'Z','run':sys.argv[2]},open(sys.argv[3],'w'),indent=1)" "${{ needs.check.outputs.key }}" "${{ github.run_id }}" $DST/build-info.json
           git config user.name "github-actions[bot]"

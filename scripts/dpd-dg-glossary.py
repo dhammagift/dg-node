@@ -134,7 +134,6 @@ def main():
     nig = 'ṃ' if any('ṃ' in k for k in list(i2h)[:5000]) else 'ṁ'
 
     added = linked_forms = own_forms = with_link = 0
-    term_forms = {}   # term -> its forms (samudda -> samuddo...): the online Dictionary's DG card finds a form at once
     for t in terms:
         name = (t.get('name') or '').strip()
         if not name:
@@ -151,20 +150,11 @@ def main():
             forms = {norm(name).replace('ṁ', nig)}
             own_forms += 1
         for form in forms:
-            term_forms.setdefault(norm(name), set()).add(norm(form))
             lst = i2h.setdefault(form, [])
             if key not in lst:
                 lst.insert(0, key)
                 linked_forms += 1
 
-    # the glossary as dg-docs keeps it, each term with its forms whose DPD headwords include it (samudda: samuddo...), for
-    # the online Dictionary's DG card (ddg-ui ui.js): one glossary file, online and downloaded (owner 2026-11-14)
-    if sys.argv[2].endswith('.json'):
-        data = json.loads(Path(sys.argv[2]).read_text(encoding='utf-8'))
-        for t in data.get('terms', []):
-            key = norm(t.get('pali') or '')
-            t['forms'] = sorted(term_forms.get(key, set()) - {key})
-        (base / 'dg-glossary.json').write_text(json.dumps(data, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     write_js(base / 'dpd_i2h.js', n_i2h, i2h)
     write_js(base / 'dpd_ebts.js', n_en, ebts_en)
     write_js(base / 'ru' / 'dpd_ebts.js', n_ru, ebts_ru)
