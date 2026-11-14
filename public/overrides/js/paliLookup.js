@@ -906,44 +906,26 @@ function createPopup() {
     // PWA shortcut icon.
     dictBtn.innerHTML = `<svg width="21" height="17" viewBox="252 262 633 518" style="display:block" aria-hidden="true"><g fill="none" stroke="#fff" stroke-width="60" stroke-linejoin="miter"><path d="M410 381H282V600C282 690 330 721 372 721C420 721 462 690 462 612"/><path d="M608 690V545H738V380H855V292"/></g><circle cx="608" cy="712" r="38" fill="#fff"/></svg>`;
 
-    // Обработчик правого клика
-    dictBtn.addEventListener('contextmenu', (e) => {
-        e.preventDefault();
+    // Right-click, long tap or middle click: the word's grammar in DharmaMitra. Once per gesture: a long tap on Android fires
+    // both contextmenu and our timer, and in the apps window.open is the Browser plugin, so it opened the tab twice and the
+    // second one put the first away as a small card (owner 2026-11-14: on the site it opens, in the app it does not) - a
+    // browser blocks the timer's popup, which is why the site worked. The tap's click after it does not open the dictionary.
+    let grammarOpenedAt = 0;
+    const openGrammar = () => {
         const word = dictBtn.dataset.grammarWord || '';
-        if (word) {
-            const url = `https://dharmamitra.org/translate?translate_mode=explain-grammar&input_sentence=${encodeURIComponent(word)}`;
-            window.open(url, '_blank');
-        }
-    });
-
-    // Forced long-tap handler for mobile — mirrors legacy assets/js/paliLookup.js, was
-    // missing here so mobile users had no way to reach the grammar parse.
+        if (!word || Date.now() - grammarOpenedAt < 1500) return;
+        grammarOpenedAt = Date.now();
+        window.open(`https://dharmamitra.org/translate?translate_mode=explain-grammar&input_sentence=${encodeURIComponent(word)}`, '_blank');
+    };
+    dictBtn.addEventListener('contextmenu', (e) => { e.preventDefault(); openGrammar(); });
     let longPressTimer;
-    dictBtn.addEventListener('touchstart', (e) => {
-        longPressTimer = setTimeout(() => {
-            e.preventDefault();
-            const word = dictBtn.dataset.grammarWord || '';
-            if (word) {
-                const url = `https://dharmamitra.org/translate?translate_mode=explain-grammar&input_sentence=${encodeURIComponent(word)}`;
-                window.open(url, '_blank');
-            }
-        }, 600);
-    });
-
+    dictBtn.addEventListener('touchstart', () => { longPressTimer = setTimeout(openGrammar, 600); }, { passive: true });
     dictBtn.addEventListener('touchend', () => clearTimeout(longPressTimer));
     dictBtn.addEventListener('touchmove', () => clearTimeout(longPressTimer));
-
-    // Обработчик клика колесиком мыши
-    dictBtn.addEventListener('auxclick', (e) => {
-        if (e.button === 1) {
-            e.preventDefault();
-            const word = dictBtn.dataset.grammarWord || '';
-            if (word) {
-                const url = `https://dharmamitra.org/translate?translate_mode=explain-grammar&input_sentence=${encodeURIComponent(word)}`;
-                window.open(url, '_blank');
-            }
-        }
-    });
+    dictBtn.addEventListener('auxclick', (e) => { if (e.button === 1) { e.preventDefault(); openGrammar(); } });
+    dictBtn.addEventListener('click', (e) => {
+        if (Date.now() - grammarOpenedAt < 1500) { e.preventDefault(); e.stopImmediatePropagation(); }
+    }, true);
 
     const iframe = document.createElement('iframe');
     iframe.className = 'popup-iframe';
