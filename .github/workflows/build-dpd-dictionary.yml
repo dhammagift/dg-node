@@ -199,7 +199,7 @@ jobs:
           DST=public/overrides/js/standalone-dpd
           cp standalone-dpd/dpd_i2h.js standalone-dpd/dpd_ebts.js standalone-dpd/dpd_deconstructor.js $DST/
           cp standalone-dpd/ru/dpd_ebts.js $DST/ru/
-          if [ -f standalone-dpd/dg-glossary.json ]; then cp standalone-dpd/dg-glossary.json $DST/; fi
+          if [ -f standalone-dpd/dg-glossary.json ]; then cp standalone-dpd/dg-glossary.json standalone-dpd/dg-glossary-forms.json $DST/; fi
           # what this dictionary is built from: the next check compares against it; a rollback is a git revert of this commit
           python3 -c "import json,sys,datetime;json.dump({'key':sys.argv[1],'built_at':datetime.datetime.utcnow().isoformat()+'Z','run':sys.argv[2]},open(sys.argv[3],'w'),indent=1)" "${{ needs.check.outputs.key }}" "${{ github.run_id }}" $DST/build-info.json
           git config user.name "github-actions[bot]"

@@ -134,6 +134,7 @@ def main():
     nig = 'ṃ' if any('ṃ' in k for k in list(i2h)[:5000]) else 'ṁ'
 
     added = linked_forms = own_forms = with_link = 0
+    form_terms = {}   # form -> the glossary terms it is a form of: the online Dictionary's DG card, at once (dg-glossary-forms.json)
     for t in terms:
         name = (t.get('name') or '').strip()
         if not name:
@@ -150,11 +151,15 @@ def main():
             forms = {norm(name).replace('ṁ', nig)}
             own_forms += 1
         for form in forms:
+            form_terms.setdefault(norm(form), []).append(name)
             lst = i2h.setdefault(form, [])
             if key not in lst:
                 lst.insert(0, key)
                 linked_forms += 1
 
+    # every form whose DPD headwords include a glossary term (samuddo -> samudda): the Dictionary's card finds the term
+    # without waiting for its online DPD lookup, and offline from the downloaded files (owner 2026-11-14)
+    (base / 'dg-glossary-forms.json').write_text(json.dumps(form_terms, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     write_js(base / 'dpd_i2h.js', n_i2h, i2h)
     write_js(base / 'dpd_ebts.js', n_en, ebts_en)
     write_js(base / 'ru' / 'dpd_ebts.js', n_ru, ebts_ru)
