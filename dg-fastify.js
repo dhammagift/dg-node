@@ -4114,13 +4114,37 @@ function searchEarly() {
 // while this page links exactly those stylesheets (their ?v= hashes, listed on the file's first line): an edited
 // stylesheet changes its ?v=, and the page keeps the plain blocking links instead of a stale cut. Read at start;
 // regenerate with `npm run critical -- --state <state>`.
-const CRITICAL = Object.fromEntries(['reader', 'home', 'results', 'toc'].map(state => {
+function readCritical(state) {
     try {
         const t = fsSync.readFileSync(path.join(__dirname, 'configs', 'critical', state + '.css'), 'utf8');
         const m = new RegExp(`^/\\* dg-critical ${state} sources: (\\[.*?\\]) \\*/\\n`).exec(t);
-        return [state, m ? { css: t.slice(m[0].length).replace(/<\/style/gi, '<\\/style'), sources: JSON.parse(m[1]).sort().join(' '), stale: false } : null];
-    } catch { return [state, null]; }
-}));
+        return m ? { css: t.slice(m[0].length).replace(/<\/style/gi, '<\\/style'), sources: JSON.parse(m[1]).sort().join(' '), stale: false } : null;
+    } catch { return null; }
+}
+const CRITICAL = Object.fromEntries(['reader', 'home', 'results', 'toc'].map(state => [state, readCritical(state)]));
+// The test host cuts a stale file again by itself (owner 2026-11-14: nobody runs `npm run critical` by hand; a cut missed
+// after an edit went to prod without it). Only where configs/local/critical-auto.json exists, holding the site's address
+// ({"base": "https://test.dhamma.gift"}): prod never runs a browser. One state at a time, niced, in the background; the page takes the new
+// cut as soon as it is written. Two tries per state per start, so a cut that still does not match cannot loop.
+const CRITICAL_AUTO = (() => { try { return JSON.parse(fsSync.readFileSync(path.join(__dirname, 'configs', 'local', 'critical-auto.json'), 'utf8')).base || null; } catch { return null; } })();
+const criticalQueue = [], criticalTries = {};
+function recutCritical(state) {
+    if (!CRITICAL_AUTO || criticalQueue.includes(state) || (criticalTries[state] = (criticalTries[state] || 0) + 1) > 2) return;
+    criticalQueue.push(state);
+    if (criticalQueue.length === 1) recutNext();
+}
+function recutNext() {
+    const state = criticalQueue[0];
+    if (!state) return;
+    console.log(`critical CSS (${state}): cutting again from ${CRITICAL_AUTO}`);
+    require('child_process').execFile('nice', ['-n', '10', process.execPath, path.join(__dirname, 'scripts', 'critical-css.js'), '--state', state, '--base', CRITICAL_AUTO],
+        { cwd: __dirname, timeout: 20 * 60000 }, (err) => {
+            if (err) console.warn(`critical CSS (${state}): the cut failed (${err.message.split('\n')[0]})`);
+            else { CRITICAL[state] = readCritical(state); console.log(`critical CSS (${state}): new cut in use`); }
+            criticalQueue.shift();
+            recutNext();
+        });
+}
 function withCritical(html, state) {
     const crit = CRITICAL[state];
     if (!crit) return html;
@@ -4130,6 +4154,7 @@ function withCritical(html, state) {
     if (hrefs !== crit.sources) {
         if (!crit.stale) console.warn(`critical CSS (${state}) is stale: the page links ${hrefs}, the file was cut from ${crit.sources} - blocking stylesheets until "npm run critical -- --state ${state}"`);
         crit.stale = true;
+        recutCritical(state);
         return html;
     }
     let first = true;
