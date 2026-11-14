@@ -1692,8 +1692,13 @@
             // !important: langswitch.css unconditionally forces `.dg-title-lang { display: inline
             // !important }` (keeps the Pali+translation title on one line) — a plain rule here
             // would lose to that regardless of this rule's own specificity.
-            .map(function (l) { return '#search-pane [lang="' + l + '"].quote{display:none}\n#search-pane .' + l + '-lang.dg-title-lang{display:none !important}'; })
-            .join('\n');
+            .map(function (l) { return '#search-pane [lang="' + l + '"].quote{display:none !important}\n#search-pane .' + l + '-lang.dg-title-lang{display:none !important}'; })
+            .join('\n')
+            // !important on the quote too: the two-column layout's own display:block (search/index.html, .quote-segment
+            // > .right-column span) outranked it and the hidden translation stayed. In columns a line left with no shown
+            // translation gives the Pāḷi the whole row, as in the reader
+            + (resultsHiddenLangs.length ? '\n#search-pane.column-view .quote-segment:not(:has(> .right-column > span.quote' +
+                resultsHiddenLangs.map(function (l) { return ':not([lang="' + l + '"])'; }).join('') + ')){grid-template-columns:100%}' : '');
     }
     function dgApplyLangSelection(menu, forceMainLang) {
         var st = currentState();

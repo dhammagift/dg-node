@@ -1020,6 +1020,16 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     #search-pane.column-view .quote-segment > br.quote {
         display: none;
     }
+    /* One text on screen takes the whole row, as in the reader (owner 2026-11-13: «режим для двух колонок не работает
+       для одного текста»): a line with no translation, or Pāḷi switched off - the translation then moves into the first
+       column. Translations hidden by language: home.js dgSetResultsLangVisibility adds the same rule for them. */
+    #search-pane.column-view .quote-segment:not(:has(> .right-column > span.quote)),
+    #search-pane.column-view.hide-pali .quote-segment {
+        grid-template-columns: 100%;
+    }
+    #search-pane.column-view.hide-pali .quote-segment > .right-column {
+        grid-column: 1;
+    }
     /* Контекстное меню цитаты. Ридеровское #segment-context-menu живёт в reader/css/uiextra.css,
        которую эта страница не подключает — здесь свой минимальный вид на переменных Bootstrap,
        чтобы меню жило в текущей теме, а не было прибито к светлой. */
