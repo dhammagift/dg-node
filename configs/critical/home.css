@@ -708,11 +708,6 @@ background-color: var(--dg-page);
 #toc-pane { max-width: 1100px; margin: 0 auto; color: var(--dg-text); }
 #ai-pane { display: none; }
 body.dg-state-home #variants-hint { display: none !important; }
-body.dg-no-anim,
-body.dg-no-anim * {
-transition: none !important;
-animation: none !important;
-}
 #dg-hero-heading {
 display: none;
 text-align: center;
