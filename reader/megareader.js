@@ -1493,7 +1493,16 @@ document.addEventListener('click', function (event) {
         dgCloseExternalLinks(dropdown);
         dropdown.classList.toggle('is-open', willOpen);
         toggle.setAttribute('aria-expanded', String(willOpen));
-        dropdown.querySelector('.dg-external-links-menu').hidden = !willOpen;
+        const menu = dropdown.querySelector('.dg-external-links-menu');
+        menu.hidden = !willOpen;
+        // kept on the screen whatever the text size: at 150 % on a desktop it hung 15 px past the left edge (2026-11-14 zoom
+        // matrix). Moved by the overflow, in its own (zoomed) pixels.
+        menu.style.transform = '';
+        if (willOpen) {
+            const r = menu.getBoundingClientRect(), z = (window.dgZoom && window.dgZoom()) || 1;
+            const dx = r.left < 8 ? 8 - r.left : r.right > window.innerWidth - 8 ? window.innerWidth - 8 - r.right : 0;
+            if (dx) menu.style.transform = `translateX(${(dx / z).toFixed(1)}px)`;
+        }
         return;
     }
     if (event.target.closest('.dg-external-links-menu a')) dgCloseExternalLinks();

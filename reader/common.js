@@ -279,6 +279,11 @@ onReady(() => {
             if (top + menuRect.height > window.innerHeight + window.scrollY) {
                 top = btnRect.top + window.scrollY - menuRect.height - 10;
             }
+            // never past the top of the screen: at 150 % the menu is taller than the room above the line and went off the
+            // top (2026-11-14 zoom matrix); taller than the screen itself, it scrolls inside
+            menu.style.maxHeight = menuRect.height > window.innerHeight - 16 ? `${(window.innerHeight - 16) / zoom}px` : '';
+            menu.style.overflowY = menuRect.height > window.innerHeight - 16 ? 'auto' : '';
+            if (top < window.scrollY + 8) top = window.scrollY + 8;
 
             menu.style.left = `${left / zoom}px`;
             menu.style.top = `${top / zoom}px`;
