@@ -307,11 +307,14 @@ const EDITIONS_KEY = 'dgEditions';
 // the country a caption of its own - beside the name in a tight menu (dgEditionLabel), left out in the columns' names.
 // The canons' names are Pali names and stay in Latin letters in Russian too (owner 2026-11-08: «каноны пусть остаются на
 // латинице»); the countries and everything about translators are translated.
+// The order is the one shown everywhere (Compare's columns, the menus): the national canons first, the Mahāsaṅgīti after
+// them (owner 2026-11-09: «махасангити не должна ни в коем случае идти первой… первыми должны идти национальные»; the
+// settings and the offline library have this order since 2026-11-05)
 const READER_EDITIONS = [
-    { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
     { id: 'bjt', tag: 'BJT', ru: 'Buddha Jayanti', en: 'Buddha Jayanti', country: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
     { id: 'my', tag: 'VRI', ru: 'Chaṭṭha Saṅgāyana', en: 'Chaṭṭha Saṅgāyana', country: { ru: 'Мьянма', en: 'Myanmar' } },
     { id: 'th', tag: 'SR', ru: 'Siam Rath', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
+    { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
     { id: 'mso', tag: 'MS05', ru: 'Mahāsaṅgīti 2005', en: 'Mahāsaṅgīti 2005' },
     { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', country: { ru: 'Великобритания', en: 'UK' } },
 ];
@@ -2492,6 +2495,11 @@ window.buildSutta = async function(rawSlug, opts) {
     const colKeys = window.dgColOrder((edMulti ? shownEds : [shownEds[0]]).map(e => `ed:${e}`).concat(trnCols.map(({ entry }) => `tr:${entry.key}`)));
     const colIndex = {};   // column key ("ed:pts", "tr:ru_o") -> its grid column
     colKeys.forEach((k, i) => { colIndex[k] = i + 1; });
+    // The order the columns were put in (moved or switched in the header, dgColOrder) is the order of the lines too: in the
+    // lines view the editions' lines and the translations stayed in their old order (owner 2026-11-08: «смена колонок в
+    // сравнить не меняет порядок в режиме в строку»). The editions' Differences compare them in this order in both views.
+    const lineEds = edMulti ? colKeys.filter(k => k.startsWith('ed:')).map(k => k.slice(3)).filter(e => shownEds.includes(e)) : shownEds;
+    const lineTrn = orderedEntries.slice().sort((a, b) => (colIndex[`tr:${a.entry.key}`] || 999) - (colIndex[`tr:${b.entry.key}`] || 999));
     const colOf = {};   // translation key -> its grid column
     orderedEntries.forEach(({ entry }, k) => { colOf[entry.key] = colIndex[`tr:${entry.key}`] || (edMulti ? shownEds.length : 1) + k + 1; });
     let editionsHead = '', colsHead = '';
@@ -2561,9 +2569,9 @@ window.buildSutta = async function(rawSlug, opts) {
             if (t !== undefined) return `<span class="dg-ed-line dg-tag" data-ed="${shownEds[0]}" data-tag="${edInfo(shownEds[0]).tag}">${linkStart}${t.trim()}${linkEnd}</span>`;
             return `<span class="dg-ed-fill dg-tag" data-tag="MS" title="${uiRu ? 'Этой строки нет в издании, она из Mahāsaṅgīti' : 'Not in this edition: the Mahāsaṅgīti line'}">${linkStart}${msText}${linkEnd}</span>`;
         }
-        const texts = shownEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
+        const texts = lineEds.map(e => e === 'ms' ? msText : (edMaps[e] || {})[segment]);
         const dd = !heading && texts.filter(t => typeof t === 'string' && t.trim()).length > 1 ? ` data-dd="${edDiffSets.push(texts) - 1}"` : '';
-        return shownEds.map((e, k) => {
+        return lineEds.map((e, k) => {
             const t = texts[k];
             const tag = ` data-tag="${edInfo(e).tag}"${dd}`;
             const cls = 'dg-ed-line dg-tag';   // the plate: .dg-tag::before from data-tag (home.css), as the translators'; a heading's too
@@ -2686,7 +2694,7 @@ window.buildSutta = async function(rawSlug, opts) {
             // .lang-2nd на второй и далее переводчик (позиционный маркер стиля, не языковой —
             // uiextra.css/rus-multi.css красят .lang-2nd приглушённым цветом).
             let transIndex = 0;
-            orderedEntries.forEach(({ lang, entry }) => {
+            lineTrn.forEach(({ lang, entry }) => {
                 const val = entry.data[segment];
                 if (val !== undefined) {
                     const posClass = transIndex === 0 ? '' : ' lang-2nd';
@@ -2740,7 +2748,7 @@ window.buildSutta = async function(rawSlug, opts) {
         ? `${firstTranslator}<button type="button" class="dg-trn-star" aria-expanded="false" title="${window.isRuPath ? 'Другие переводчики' : 'Other translators'}">*</button><span class="dg-trn-rest" hidden>${moreTranslators.join('<br>')}</span>`
         : (firstTranslator || '');
     const translatorByline = `<div id="trn" class="byline${edMulti ? ' dg-eds-byline' : ''}">
-    <p><span class="pli-lang" lang="pi">Pāḷi ${shownEds.map(e => e === 'ms'
+    <p><span class="pli-lang" lang="pi">Pāḷi ${lineEds.map(e => e === 'ms'
         ? '<a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a>'
         : `<span title="${window.dgEditionLabel(edInfo(e), uiRu)}">${edInfo(e).tag}</span>`).join(' · ')}</span>
     <span class="right-column">${bylineTranslators}</span></p></div>`;
