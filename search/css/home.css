@@ -4446,7 +4446,9 @@ body.dg-state-toc .toc-filter-patimokkha.dg-toggle-row { font-size: 12.5px; padd
 @keyframes dg-out-up { to { opacity: 0; transform: translateY(-14px); } }
 body.dg-state-results:not(.dg-busy) #dynamicHeader { animation: dg-in-left 300ms var(--dg-ease) backwards; }
 body.dg-state-results:not(.dg-busy) #results-toolbar { animation: dg-rise 300ms var(--dg-ease) 60ms backwards; }
-body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child) { animation: dg-rise 260ms var(--dg-ease) 310ms backwards; }
+/* a row rises once: DataTables re-attaches its rows on every draw (quotes landing, sort, read marks), and a
+   re-attached row would replay the cascade - search-render.js marks a row whose rise has begun .dg-shown */
+body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):not(.dg-shown) { animation: dg-rise 260ms var(--dg-ease) 310ms backwards; }
 body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(1) { animation-delay: 100ms; }
 body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(2) { animation-delay: 130ms; }
 body.dg-state-results #search-pane table.dataTable > tbody > tr:not(.child):nth-child(3) { animation-delay: 160ms; }

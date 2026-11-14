@@ -4027,11 +4027,14 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     // result set (one chunk) is enriched as soon as the fast answer lands, while those scripts still load,
     // so the table's first draw already has its titles. Only with no table on the page yet - a previous
     // search's table would take the redraws. ensureEnrichmentStarted then finds these ids enriched or in flight.
+    var ENRICH_WAIT_MS = 600;
     function enrichBeforeTable(json) {
         var ids = Object.keys((json && json.data) || {});
-        if (currentTable || reportMode !== 'suttas' || !ids.length || ids.length > ENRICH_CHUNK_SIZE) return;
+        if (currentTable || reportMode !== 'suttas' || !ids.length || ids.length > ENRICH_CHUNK_SIZE) return Promise.resolve();
         lastSearchJson = json;
-        enrichIds(ids);
+        // the table waits for these quotes (up to ENRICH_WAIT_MS), so it is drawn once with them: drawn before, it
+        // showed the bare searched word for a moment and was then redrawn with the found forms (owner 2026-11-14)
+        return Promise.race([enrichIds(ids), new Promise(function (resolve) { setTimeout(resolve, ENRICH_WAIT_MS); })]);
     }
 
     function ensureEnrichmentStarted() {
@@ -5310,7 +5313,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                     (earlyRes || fetch(searchUrl)).then(function (r) {
                         if (!r.ok) throw new Error("Ошибка сети при получении данных");
                         return r.json();
-                    }).then(function (json) { if (gen === searchGen) enrichBeforeTable(json); return json; }),
+                    }).then(function (json) { return (gen === searchGen ? enrichBeforeTable(json) : Promise.resolve()).then(function () { return json; }); }),
                     ensureSearchAssets()
                 ]);
                 return json;

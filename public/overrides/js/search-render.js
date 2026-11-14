@@ -17,6 +17,16 @@
 // .clear().rows.add(data).draw(false) — сохраняет текущую страницу/сортировку/фильтр
 // автоматически, без единой строчки ручной консервации state.
 window.DgSearchRender = (function () {
+    // a result row rises once (home.css dg-rise): every draw re-attaches the rows (quotes landing, sort, read marks),
+    // and a re-attached row would rise again. A row whose rise has begun is marked in the draw's own task, before
+    // the browser restarts its animation; a row drawn while still waiting (hidden screen, delay) rises as planned
+    var risenRows = new WeakSet();
+    document.addEventListener('animationstart', function (e) {
+        if (e.animationName === 'dg-rise' && e.target.tagName === 'TR') risenRows.add(e.target);
+    });
+    $(document).on('draw.dt', function (e) {
+        $(e.target).children('tbody').children('tr').each(function () { if (risenRows.has(this)) this.classList.add('dg-shown'); });
+    });
 
     // Строки интерфейса тянем из window.DHAMMA_I18N.config (см. public/overrides/js/dhamma-i18n.js
     // + configs/search/lang_{ru,en}.json) — этот файл не завязан на конкретную HTML-страницу, поэтому читает
