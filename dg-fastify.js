@@ -3950,9 +3950,9 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     for (const seg of order) {
         const [open = '', close = ''] = htmlData[seg].split(/{}/);
         const anchor = isRange ? seg : seg.slice(seg.indexOf(':') + 1);
-        const url = segUrl(anchor).replace(/'/g, '%27');
-        const start = `<a class="text-decoration-none copyLink copyLink-start" role="none" onclick="copyToClipboard('${url}')"></a>`;
-        const end = `<a class="text-decoration-none copyLink" role="none" onclick="copyToClipboard('${url}')"></a>`;
+        // no onclick with the address (reader/common.js works it out from the line): 536 KB of dn16's 2.4 MB
+        const start = `<a class="text-decoration-none copyLink copyLink-start" role="none"></a>`;
+        const end = `<a class="text-decoration-none copyLink" role="none"></a>`;
         if (pali[seg] === undefined && trans[seg] === undefined) continue;
         let inner = '';
         if (pali[seg] !== undefined) {

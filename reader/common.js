@@ -206,6 +206,19 @@ onReady(() => {
     const menu = document.getElementById('segment-context-menu');
     let currentContext = null;
 
+    // The copy links carry no onclick with the line's full address any more: 9 156 of them on dn16 were 536 KB of its
+    // 2.4 MB page (2026-11-14). The address is the line's own (its span's id on this page), worked out on a click; the
+    // menu's «Цитата» replays a click on the link (isSimulated), answered here as the inline onclick used to.
+    window.dgCopyLinkUrl = function (el) {
+        const span = el && el.closest('span[id]');
+        return span && window.dgSegmentUrl ? window.dgSegmentUrl(window.location.href, span.id) : window.location.href;
+    };
+    document.addEventListener('click', (e) => {
+        if (!e.isSimulated) return;
+        const a = e.target.closest && e.target.closest('.copyLink');
+        if (a && !a.hasAttribute('onclick') && typeof window.copyToClipboard === 'function') window.copyToClipboard(window.dgCopyLinkUrl(a));
+    });
+
     // 2. Открытие меню по клику на .copyLink — capture-фаза: перехватывает ДО инлайнового
     // onclick="copyToClipboard(...)" на самой ссылке (см. megareader.js), иначе клик срабатывал
     // бы дважды (инлайн + меню). "Цитата" в меню сама переигрывает клик с isSimulated=true, чтобы
@@ -245,7 +258,7 @@ onReady(() => {
 
             const onclickAttr = copyBtn.getAttribute('onclick') || '';
             const urlMatch = onclickAttr.match(/copyToClipboard\('([^']*)'\)/);
-            let rawUrl = urlMatch ? urlMatch[1] : window.location.href;
+            let rawUrl = urlMatch ? urlMatch[1] : window.dgCopyLinkUrl(copyBtn);
 
             currentContext = {
                 element: copyBtn,

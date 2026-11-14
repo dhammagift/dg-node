@@ -254,11 +254,13 @@ function fallbackCopy(text) {
     // ИЗМЕНЕНИЕ: Используем ID найденного родителя как хеш и приводим к нижнему регистру
     const hash = anchorElement.id.toLowerCase();
 
-    const onclickAttr = copyLinkElem.getAttribute('onclick');
+    // the line's address: from an old link's onclick, or worked out from the line (reader/common.js dgCopyLinkUrl)
+    const onclickAttr = copyLinkElem.getAttribute('onclick') || '';
     const urlMatch = onclickAttr.match(/copyToClipboard\('([^']*)'\)/);
-    if (!urlMatch || !urlMatch[1]) return;
+    const rawUrl = urlMatch && urlMatch[1] ? urlMatch[1] : (window.dgCopyLinkUrl ? window.dgCopyLinkUrl(copyLinkElem) : '');
+    if (!rawUrl) return;
 
-    const baseUrl = new URL(urlMatch[1]);
+    const baseUrl = new URL(rawUrl);
 
     // ИЗМЕНЕНИЕ: Приводим параметр q к нижнему регистру перед копированием ссылки
     if (baseUrl.searchParams.has('q')) {

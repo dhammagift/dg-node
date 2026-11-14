@@ -2604,10 +2604,7 @@ window.buildSutta = async function(rawSlug, opts) {
             anchor = segment;
         }
 
-        var fullUrlWithAnchor = window.dgSegmentUrl
-            ? window.dgSegmentUrl(window.location.href, anchor)
-            : window.location.href.split('#')[0] + '#' + anchor;
-        fullUrlWithAnchor = fullUrlWithAnchor.replace(/'/g, '%27'); // goes into onclick="copyToClipboard('…')"
+        // (the line's address is worked out on a click now: reader/common.js dgCopyLinkUrl)
 
         window.applyRemovePunct(paliData, segment);
         // Matches prod's devanagari.js (applyRemovePunct called on BOTH lines) — the ISO/Latin
@@ -2638,8 +2635,9 @@ window.buildSutta = async function(rawSlug, opts) {
             } catch (error) {}
         }
 
-        const linkToCopyStart = `<a class="text-decoration-none copyLink copyLink-start" role="none" onclick="copyToClipboard('${fullUrlWithAnchor}')"></a>`;
-        let linkToCopy = `<a class="text-decoration-none copyLink" role="none" onclick="copyToClipboard('${fullUrlWithAnchor}')"></a>`;
+        // no onclick with the address: reader/common.js works it out from the line on a click (536 KB of dn16's page)
+        const linkToCopyStart = `<a class="text-decoration-none copyLink copyLink-start" role="none"></a>`;
+        let linkToCopy = `<a class="text-decoration-none copyLink" role="none"></a>`;
 
         let hasAnyContent = paliData[segment] !== undefined || allTransData.some(data => data[segment] !== undefined);
         if (!hasAnyContent) continue;
