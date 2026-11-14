@@ -643,6 +643,7 @@ ScrollManager.init();
     const isHome = () => /^\/(ru\/?)?$/.test(location.pathname) && !/[?&]q=/.test(location.search) && !location.hash;
     const save = () => {
         if (/^\/(assets|settings|login)\//.test(location.pathname)) return;   // a page of its own, not the reader's place
+        if (/[?&]_(nativeRoute|deepLink)=/.test(location.search)) return;   // the app's hand-off address, not a place
         // a text without the line it was opened at (/mn77:1.1 -> /mn77): the reading progress takes the reader to where they
         // read to, not to the line of the link they came by (owner 2026-11-12); other places keep their address as it is
         let route = location.pathname + location.search + location.hash;
@@ -653,8 +654,17 @@ ScrollManager.init();
     };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
     window.addEventListener('pagehide', save);
+    // The store apps (Capacitor) tell the page it goes to the background with a 'pause' event and need not fire visibilitychange:
+    // on Android only a full page change (pagehide) kept the place, so a search was lost while a text was not (owner 2026-11-14:
+    // «последний поиск не сохраняется»). Kept on every move inside the page too - a search, a text, the contents
+    document.addEventListener('pause', save);
+    for (const k of ['pushState', 'replaceState']) {
+        const orig = history[k];
+        history[k] = function () { const r = orig.apply(this, arguments); save(); return r; };
+    }
+    window.addEventListener('popstate', save);
     try {
-        if (sessionStorage.getItem(RUN)) return;   // only the first page of a run
+        if (sessionStorage.getItem(RUN)) { save(); return; }   // only the first page of a run; a later one is the place now
         sessionStorage.setItem(RUN, '1');
     } catch (e) { return; }
     let last = null;

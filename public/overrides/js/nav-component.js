@@ -66,4 +66,6 @@ customElements.define('top-nav-icons', TopNavIcons);
     const save = () => { try { localStorage.setItem('dgLastRoute', JSON.stringify({ route: location.pathname + location.search + location.hash, at: Date.now() })); } catch (e) { /* private mode */ } };
     document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
     window.addEventListener('pagehide', save);
+    document.addEventListener('pause', save);   // the store apps' going to the background (smoothScroll.js resumeLastPlace)
+    save();   // opened = the place: a page of its own has one address
 })();
