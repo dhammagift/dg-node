@@ -340,8 +340,10 @@ kbd{font:inherit;font-size:12.5px;background:var(--line);border:1px solid var(--
 @media (max-width:560px){
   /* Switches and buttons stay beside the label while it fits (base .row wrap rules); a select
      takes its own full-width line under the label. */
-  .row-control:has(> select){flex:1 1 100%}
-  select.control{max-width:none;flex:1 1 12em}
+  .row-control:has(> select){flex:1 1 100%;min-width:0;max-width:100%}
+  /* min-width:0: a select is as wide as its longest option by default, wider than the screen at a big text size (250 % on a
+     phone: the Script select reached 834 px on a 412 px screen, 2026-11-14) */
+  select.control{max-width:100%;min-width:0;flex:1 1 12em}
 
   /* Drop the desktop fixed-width column for scope group rows (4 Nikāyas/Khuddaka/Vinaya) — no
      room for a 200px+44px+gaps layout on a phone. Back to flexible full-width, triangle pinned
