@@ -259,6 +259,21 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
   })();
 </script>
 <script>
+  // Cold load of a search (?q=): the results table's scripts were asked for only once the page's own scripts had run and
+  // the search had started - they came in at 2.4-3 s on a phone while the answer itself was ready at 0.8 s (2026-11-13
+  // measurement). Preloaded from here, they come with the page; ensureSearchAssets' loadScript('…') of the same stamped
+  // URLs is then served from the preload.
+  (function () {
+    try {
+      if (!/[?&]q=/.test(location.search)) return;
+      var dgPreload = function (href, as) { var l = document.createElement('link'); l.rel = 'preload'; l.href = href; l.as = as; document.head.appendChild(l); };
+      dgPreload('/assets/js/datatables/datatables.min.css', 'style');
+      dgPreload('/assets/js/datatables/datatables.min.js', 'script');
+      dgPreload('/assets/js/search-render.js', 'script');
+      dgPreload('/assets/js/natural.js', 'script');
+      dgPreload('/assets/js/strip-html.js', 'script');
+    } catch (e) {}
+  })();
   // Cold load of a sutta URL (/dn22, /dn22:2.2/word): the reader code and its text used to start
   // loading only after the page scripts had run (~1.4 s in), and the text request only after all of
   // them (~2.1 s). Preloading them from here overlaps that wait with the page's own startup; the
