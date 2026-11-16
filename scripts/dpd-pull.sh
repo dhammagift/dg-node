@@ -5,8 +5,10 @@
 # test host). Run from cron after the sync.
 #
 # Usage: scripts/dpd-pull.sh <checkout> [--test <pm2 name>]
-#   prod:   fast-forwards ONLY when everything new on origin/main is the dictionary (static files,
-#           no restart); any other commit waits for the normal prod rollout.
+#   prod:   the dictionary always comes (static files, no restart). When it is all that is new, a
+#           fast-forward; when other commits wait for a prod rollout, only the dictionary's files are
+#           taken from origin/main (owner 2026-11-17: «словарь - это словарь… он должен обновляться»).
+#           The rollout's fast-forward later finds those files already as they are on main.
 #   --test: a test tree follows main - fast-forward whatever is new and restart its pm2 process
 #           if more than the dictionary changed. Uncommitted work in the tree is left alone
 #           (git refuses the merge if it would touch it).
@@ -20,7 +22,9 @@ git fetch -q origin main || { log "fetch failed"; exit 1; }
 git merge-base --is-ancestor HEAD origin/main || { log "not a fast-forward of origin/main, skipped"; exit 0; }
 other=$(git diff --name-only HEAD origin/main | grep -v "^$DPD" || true)
 if [ -n "$other" ] && [ "$MODE" != --test ]; then
-    log "behind with more than the dictionary ($(echo "$other" | wc -l) files), waits for a prod rollout"
+    git diff --quiet origin/main -- "$DPD" && exit 0   # the tree has this dictionary already
+    git checkout origin/main -- "$DPD" || { log "dictionary checkout failed"; exit 1; }
+    log "dictionary from $(git rev-parse --short origin/main); $(echo "$other" | wc -l) other files wait for a prod rollout"
     exit 0
 fi
 git merge -q --ff-only origin/main || { log "ff merge refused (local changes in its way)"; exit 1; }
