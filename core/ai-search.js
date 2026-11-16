@@ -7,9 +7,9 @@
 // segment from the search results, not model output. Forcing a single tool call (tool_choice)
 // keeps the model from answering in free text no matter what the user asks it.
 //
-// Three providers, tried in order, first success wins (see docs/AI_SEARCH_BRIEF.md — org part):
-// Groq (free, high daily limit) -> Gemini Flash-Lite (free, smaller limit) -> DeepSeek (paid,
-// fractions of a cent per query). All three speak the OpenAI chat-completions wire format, so one
+// Four providers, tried in order, first success wins (see docs/AI_SEARCH_BRIEF.md — org part):
+// Z.ai GLM Flash (free, CAC-filed) -> Groq (free, high daily limit) -> Gemini Flash-Lite (free,
+// smaller limit) -> DeepSeek (paid, fractions of a cent per query). All four speak the OpenAI chat-completions wire format, so one
 // request builder covers all of them — Gemini via its OpenAI-compatibility endpoint.
 const fs = require('fs');
 const path = require('path');
@@ -80,6 +80,17 @@ const TOOL = {
 // model rosters rotate without notice (see docs/AI_SEARCH_BRIEF.md research), so a rename on the
 // provider's side is a .env edit, not a code change.
 const PROVIDERS = [
+    // First: Zhipu's GLM through Z.ai - free (GLM-4.5-Flash), and filed with China's CAC
+    // (智谱清言 ChatGLM, Beijing-ChatGLM-20230821), which the App Store's China declaration asks for
+    // (owner 2026-11-17). Without ZAI_TOKEN it is skipped like any provider without a key. Z.ai takes only
+    // tool_choice "auto", and the one tool is the dispatcher anyway; no chain of thought for a dispatch.
+    {
+        name: 'zai',
+        url: 'https://api.z.ai/api/paas/v4/chat/completions',
+        key: () => process.env.ZAI_TOKEN,
+        model: () => process.env.ZAI_MODEL || 'glm-4.7-flash',
+        body: { tool_choice: 'auto', thinking: { type: 'disabled' } },
+    },
     {
         name: 'groq',
         url: 'https://api.groq.com/openai/v1/chat/completions',
@@ -115,6 +126,7 @@ async function callProvider(provider, userQuery) {
             tools: [TOOL],
             tool_choice: { type: 'function', function: { name: 'dispatch_search' } },
             temperature: 0,
+            ...provider.body,
         }),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
