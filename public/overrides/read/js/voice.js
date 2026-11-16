@@ -2955,6 +2955,8 @@ async function startPlayback(container, mode, slug, startIndex = 0) {
 
 function showVoiceHint(title, message, storageKey) {
   if (localStorage.getItem(storageKey)) return;
+  // Embedded in another page (the docs' live demo frames): the tip would cover the frame's player (owner 2026-11-16)
+  if (window.self !== window.top) return;
   if (document.getElementById('active-voice-hint')) return;
 
   const notification = document.createElement('div');
