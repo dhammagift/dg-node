@@ -4400,7 +4400,13 @@
         // loaded its page; coming back reloads this one): the overlay is gone, the entry is the
         // same page as the one below it — step over it.
         if (history.state && history.state.dgOverlay) { history.back(); return; }
-        function push() { history.pushState(Object.assign({}, history.state, { dgOverlay: true }), ''); ours = true; }
+        // The page stays where it is when the entry is taken back: the browser put back the scroll it had when the overlay
+        // opened - a size changed in the menu went back to the old pixels, not the line (Cakkhu's prod check 2026-11-15)
+        var prevRestoration = null;
+        function push() {
+            if (prevRestoration == null && 'scrollRestoration' in history) { prevRestoration = history.scrollRestoration; history.scrollRestoration = 'manual'; }
+            history.pushState(Object.assign({}, history.state, { dgOverlay: true }), ''); ours = true;
+        }
         function sync() {
             var open = anyOpen();
             if (open && !wasOpen && !ours) push();
@@ -4412,6 +4418,8 @@
                 var href = location.href;
                 setTimeout(function () {
                     if (!ours && !navigating && !anyOpen() && location.href === href && history.state && history.state.dgOverlay) { swallow = true; history.back(); }
+                    // closed by a link that navigates: no step back here, the page's own restoring as it was
+                    else if (!ours && prevRestoration != null) { history.scrollRestoration = prevRestoration; prevRestoration = null; }
                 }, 500);
             }
             wasOpen = open;
@@ -4432,6 +4440,10 @@
         // Capture: runs before the router's popstate (search/index.html), which must not re-route
         // for a pop that only closed an overlay.
         window.addEventListener('popstate', function (e) {
+            if (prevRestoration != null && !(e.state && e.state.dgOverlay)) {
+                var was = prevRestoration; prevRestoration = null;
+                setTimeout(function () { if (prevRestoration == null && !(history.state && history.state.dgOverlay)) history.scrollRestoration = was; }, 100);
+            }
             if (swallow) { swallow = false; e.stopImmediatePropagation(); return; }
             // Landed on a leftover overlay entry (its overlay was closed by a link that navigated):
             // it is the same page as the one below it — step over it rather than spend a back on it.
@@ -5747,7 +5759,14 @@
             var under = document.elementsFromPoint(window.innerWidth / 2, window.innerHeight / 3);
             for (var i = 0; i < under.length && !keep; i++) {
                 var el = under[i];
-                if (el.closest('#sutta')) { while (el && !(el.id && el.parentElement && el.parentElement.closest('#sutta'))) el = el.parentElement; keep = el; }
+                if (el.closest('#sutta')) {
+                    while (el && !(el.id && el.parentElement && el.parentElement.closest('#sutta'))) el = el.parentElement;
+                    // the point fell between two lines: the block holding them (a paragraph, the article) is not the line - its last
+                    // segment begun above the point is (Cakkhu's prod check 2026-11-15: mn10 14.0 -> 12.3 on the second step)
+                    var segs = el ? el.querySelectorAll('[id]') : [], y3 = window.innerHeight / 3;
+                    for (var j = 0; j < segs.length; j++) { var r = segs[j].getBoundingClientRect(); if (!r.height) continue; if (r.top > y3) break; el = segs[j]; }
+                    keep = el;
+                }
                 else if (el.closest('#toc-pane')) keep = el.closest('.level4, .level3, .level2, li, .toc-book') || el;
             }
             if (keep) keepAt = keep.getBoundingClientRect().top / window.innerHeight;
