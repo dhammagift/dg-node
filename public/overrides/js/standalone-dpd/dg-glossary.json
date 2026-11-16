@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-14",
+  "updatedAt": "2026-11-16",
   "source": {
     "sheetId": "1s7n7ogJhdtSIweVO9aad63_k7lWrZgyPRUFg34AobMg",
     "gid": "0",
@@ -678,18 +678,18 @@
       "en": "internal space-dhatu",
       "canon": {
         "where": [
-          "mn140:18.1",
-          "mn140:18.3",
           "mn62:12.1",
-          "mn62:12.3"
+          "mn62:12.3",
+          "mn140:18.1",
+          "mn140:18.3"
         ],
         "link": "/mn140:18.1",
         "definition": "Katamā ca, bhikkhu, ākāsadhātu? Ākāsadhātu siyā ajjhattikā siyā bāhirā. Katamā ca, bhikkhu, ajjhattikā ākāsadhātu? Yaṁ ajjhattaṁ paccattaṁ ākāsaṁ ākāsagataṁ upādinnaṁ, seyyathidaṁ— kaṇṇacchiddaṁ nāsacchiddaṁ mukhadvāraṁ yena ca asitapītakhāyitasāyitaṁ ajjhoharati, yattha ca asitapītakhāyitasāyitaṁ santiṭṭhati, yena ca asitapītakhāyitasāyitaṁ adhobhāgaṁ nikkhamati, yaṁ vā panaññampi kiñci ajjhattaṁ paccattaṁ ākāsaṁ ākāsagataṁ aghaṁ aghagataṁ vivaraṁ vivaragataṁ asamp …",
         "patterns": [
-          "mn140:18.1",
-          "mn140:18.3",
           "mn62:12.1",
-          "mn62:12.3"
+          "mn62:12.3",
+          "mn140:18.1",
+          "mn140:18.3"
         ]
       }
     },
@@ -701,22 +701,22 @@
       "en": "internal water-dhatu",
       "canon": {
         "where": [
-          "mn140:15.1",
-          "mn140:15.3",
           "mn28:11.1",
           "mn28:11.3",
           "mn62:9.1",
-          "mn62:9.3"
+          "mn62:9.3",
+          "mn140:15.1",
+          "mn140:15.3"
         ],
         "link": "/mn140:15.1",
         "definition": "Katamā ca, bhikkhu, āpodhātu? Āpodhātu siyā ajjhattikā siyā bāhirā. Katamā ca, bhikkhu, ajjhattikā āpodhātu? Yaṁ ajjhattaṁ paccattaṁ āpo āpogataṁ upādinnaṁ seyyathidaṁ— pittaṁ semhaṁ pubbo lohitaṁ sedo medo assu vasā kheḷo siṅghāṇikā lasikā muttaṁ, yaṁ vā panaññampi kiñci ajjhattaṁ paccattaṁ āpo āpogataṁ upādinnaṁ— ayaṁ vuccati, bhikkhu, ajjhattikā āpodhātu.",
         "patterns": [
-          "mn140:15.1",
-          "mn140:15.3",
           "mn28:11.1",
           "mn28:11.3",
           "mn62:9.1",
-          "mn62:9.3"
+          "mn62:9.3",
+          "mn140:15.1",
+          "mn140:15.3"
         ]
       }
     },
@@ -728,18 +728,18 @@
       "en": "internal earth-dhatu",
       "canon": {
         "where": [
-          "mn140:14.1",
-          "mn140:14.3",
           "mn28:6.1",
-          "mn28:6.3"
+          "mn28:6.3",
+          "mn140:14.1",
+          "mn140:14.3"
         ],
         "link": "/mn140:14.1",
         "definition": "Katamā ca, bhikkhu, pathavīdhātu? Pathavīdhātu siyā ajjhattikā siyā bāhirā. Katamā ca, bhikkhu, ajjhattikā pathavīdhātu? Yaṁ ajjhattaṁ paccattaṁ kakkhaḷaṁ kharigataṁ upādinnaṁ, seyyathidaṁ— kesā lomā nakhā dantā taco maṁsaṁ nhāru aṭṭhi aṭṭhimiñjaṁ vakkaṁ hadayaṁ yakanaṁ kilomakaṁ pihakaṁ papphāsaṁ antaṁ antaguṇaṁ udariyaṁ karīsaṁ, yaṁ vā panaññampi kiñci ajjhattaṁ paccattaṁ kakkhaḷaṁ kharigataṁ upādinnaṁ— ayaṁ vuccati, bhikkhu, ajjhattikā pathavīdhātu.",
         "patterns": [
-          "mn140:14.1",
-          "mn140:14.3",
           "mn28:6.1",
-          "mn28:6.3"
+          "mn28:6.3",
+          "mn140:14.1",
+          "mn140:14.3"
         ]
       }
     },
@@ -751,22 +751,22 @@
       "en": "internal fire-dhatu",
       "canon": {
         "where": [
-          "mn140:16.1",
-          "mn140:16.3",
           "mn28:16.1",
           "mn28:16.3",
           "mn62:10.1",
-          "mn62:10.3"
+          "mn62:10.3",
+          "mn140:16.1",
+          "mn140:16.3"
         ],
         "link": "/mn140:16.1",
         "definition": "Katamā ca, bhikkhu, tejodhātu? Tejodhātu siyā ajjhattikā siyā bāhirā. Katamā ca, bhikkhu, ajjhattikā tejodhātu? Yaṁ ajjhattaṁ paccattaṁ tejo tejogataṁ upādinnaṁ, seyyathidaṁ— yena ca santappati, yena ca jīrīyati, yena ca pariḍayhati, yena ca asitapītakhāyitasāyitaṁ sammā pariṇāmaṁ gacchati, yaṁ vā panaññampi kiñci ajjhattaṁ paccattaṁ tejo tejogataṁ upādinnaṁ— ayaṁ vuccati, bhikkhu, ajjhattikā tejodhātu.",
         "patterns": [
-          "mn140:16.1",
-          "mn140:16.3",
           "mn28:16.1",
           "mn28:16.3",
           "mn62:10.1",
-          "mn62:10.3"
+          "mn62:10.3",
+          "mn140:16.1",
+          "mn140:16.3"
         ]
       }
     },
@@ -778,22 +778,22 @@
       "en": "internal air-dhatu",
       "canon": {
         "where": [
-          "mn140:17.1",
-          "mn140:17.3",
           "mn28:21.1",
           "mn28:21.3",
           "mn62:11.1",
-          "mn62:11.3"
+          "mn62:11.3",
+          "mn140:17.1",
+          "mn140:17.3"
         ],
         "link": "/mn140:17.1",
         "definition": "Katamā ca, bhikkhu, vāyodhātu? Vāyodhātu siyā ajjhattikā siyā bāhirā. Katamā ca, bhikkhu, ajjhattikā vāyodhātu? Yaṁ ajjhattaṁ paccattaṁ vāyo vāyogataṁ upādinnaṁ, seyyathidaṁ— uddhaṅgamā vātā adhogamā vātā kucchisayā vātā koṭṭhāsayā vātā aṅgamaṅgānusārino vātā assāso passāso iti, yaṁ vā panaññampi kiñci ajjhattaṁ paccattaṁ vāyo vāyogataṁ upādinnaṁ— ayaṁ vuccati, bhikkhu, ajjhattikā vāyodhātu.",
         "patterns": [
-          "mn140:17.1",
-          "mn140:17.3",
           "mn28:21.1",
           "mn28:21.3",
           "mn62:11.1",
-          "mn62:11.3"
+          "mn62:11.3",
+          "mn140:17.1",
+          "mn140:17.3"
         ]
       }
     },
@@ -2020,16 +2020,16 @@
       "en": "diligence in preservation",
       "canon": {
         "where": [
+          "dn33:1.11.99",
           "an4.14:4.1",
-          "an4.69:4.1",
-          "dn33:1.11.99"
+          "an4.69:4.1"
         ],
         "link": "/an4.14:4.1",
         "definition": "Katamañca, bhikkhave, anurakkhaṇāppadhānaṁ? Idha, bhikkhave, bhikkhu uppannaṁ bhaddakaṁ samādhinimittaṁ anurakkhati aṭṭhikasaññaṁ puḷavakasaññaṁ vinīlakasaññaṁ vicchiddakasaññaṁ uddhumātakasaññaṁ. Idaṁ vuccati, bhikkhave, anurakkhaṇāppadhānaṁ.",
         "patterns": [
+          "dn33:1.11.99",
           "an4.14:4.1",
-          "an4.69:4.1",
-          "dn33:1.11.99"
+          "an4.69:4.1"
         ]
       }
     },
@@ -2041,14 +2041,14 @@
       "en": "wonder of instruction",
       "canon": {
         "where": [
-          "an3.60:13.1",
-          "dn11:8.1"
+          "dn11:8.1",
+          "an3.60:13.1"
         ],
         "link": "/an3.60:13.1",
         "definition": "Katamañca, brāhmaṇa, anusāsanīpāṭihāriyaṁ? Idha, brāhmaṇa, ekacco evamanusāsati: ‘evaṁ vitakketha, mā evaṁ vitakkayittha; evaṁ manasi karotha, mā evaṁ manasākattha; idaṁ pajahatha, idaṁ upasampajja viharathā’ti. Idaṁ vuccati, brāhmaṇa, anusāsanīpāṭihāriyaṁ.",
         "patterns": [
-          "an3.60:13.1",
-          "dn11:8.1"
+          "dn11:8.1",
+          "an3.60:13.1"
         ]
       }
     },
@@ -2911,6 +2911,15 @@
       "en": "path leading to the unconstituted",
       "canon": {
         "where": [
+          "sn43.1:1.7",
+          "sn43.2:1.6",
+          "sn43.3:1.1",
+          "sn43.4:1.1",
+          "sn43.5:1.1",
+          "sn43.6:1.1",
+          "sn43.7:1.1",
+          "sn43.8:1.1",
+          "sn43.9:1.1",
           "sn43.10:1.1",
           "sn43.11:1.1",
           "sn43.12:1.6",
@@ -2948,20 +2957,20 @@
           "sn43.12:11.1",
           "sn43.12:11.4",
           "sn43.12:11.13",
-          "sn43.12:11.14",
-          "sn43.1:1.7",
-          "sn43.2:1.6",
-          "sn43.3:1.1",
-          "sn43.4:1.1",
-          "sn43.5:1.1",
-          "sn43.6:1.1",
-          "sn43.7:1.1",
-          "sn43.8:1.1",
-          "sn43.9:1.1"
+          "sn43.12:11.14"
         ],
         "link": "/sn43.10:1.1",
         "definition": "“Katamo ca, bhikkhave, asaṅkhatagāmimaggo? Satta bojjhaṅgā. Ayaṁ vuccati, bhikkhave, asaṅkhatagāmimaggo …pe….",
         "patterns": [
+          "sn43.1:1.7",
+          "sn43.2:1.6",
+          "sn43.3:1.1",
+          "sn43.4:1.1",
+          "sn43.5:1.1",
+          "sn43.6:1.1",
+          "sn43.7:1.1",
+          "sn43.8:1.1",
+          "sn43.9:1.1",
           "sn43.10:1.1",
           "sn43.11:1.1",
           "sn43.12:1.6",
@@ -2999,16 +3008,7 @@
           "sn43.12:11.1",
           "sn43.12:11.4",
           "sn43.12:11.13",
-          "sn43.12:11.14",
-          "sn43.1:1.7",
-          "sn43.2:1.6",
-          "sn43.3:1.1",
-          "sn43.4:1.1",
-          "sn43.5:1.1",
-          "sn43.6:1.1",
-          "sn43.7:1.1",
-          "sn43.8:1.1",
-          "sn43.9:1.1"
+          "sn43.12:11.14"
         ]
       }
     },
@@ -3103,24 +3103,24 @@
       "en": "worse than an impure person",
       "canon": {
         "where": [
+          "sn45.26:2.1",
           "an4.201:3.1",
           "an4.202:3.1",
           "an4.203:3.1",
           "an4.204:3.1",
           "an4.205:3.1",
-          "an4.206:3.1",
-          "sn45.26:2.1"
+          "an4.206:3.1"
         ],
         "link": "/an4.201:3.1",
         "definition": "Katamo ca, bhikkhave, asappurisena asappurisataro? Idha, bhikkhave, ekacco attanā ca pāṇātipātī hoti, parañca pāṇātipāte samādapeti; attanā ca adinnādāyī hoti, parañca adinnādāne samādapeti; attanā ca kāmesumicchācārī hoti, parañca kāmesumicchācāre samādapeti; attanā ca musāvādī hoti, parañca musāvāde samādapeti; attanā ca surāmerayamajjapamādaṭṭhāyī hoti, parañca surāmerayamajjapamādaṭṭhāne samādapeti. Ayaṁ vuccati, bhikkhave, asappurisena asappurisataro.",
         "patterns": [
+          "sn45.26:2.1",
           "an4.201:3.1",
           "an4.202:3.1",
           "an4.203:3.1",
           "an4.204:3.1",
           "an4.205:3.1",
-          "an4.206:3.1",
-          "sn45.26:2.1"
+          "an4.206:3.1"
         ]
       }
     },
@@ -3228,14 +3228,14 @@
       "en": "outflows to be abandoned by enduring",
       "canon": {
         "where": [
-          "an6.58:5.1",
-          "mn2:18.1"
+          "mn2:18.1",
+          "an6.58:5.1"
         ],
         "link": "/an6.58:5.1",
         "definition": "Katame ca, bhikkhave, āsavā adhivāsanā pahātabbā ye adhivāsanāya pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso khamo hoti sītassa uṇhassa, jighacchāya, pipāsāya, ḍaṁsamakasavātātapasarīsapasamphassānaṁ, duruttānaṁ durāgatānaṁ vacanapathānaṁ, uppannānaṁ sārīrikānaṁ vedanānaṁ dukkhānaṁ tibbānaṁ kharānaṁ kaṭukānaṁ asātānaṁ amanāpānaṁ pāṇaharānaṁ adhivāsakajātiko hoti. Yaṁ hissa, bhikkhave, anadhivāsato uppajjeyyuṁ āsavā vighātapariḷāhā, adhivāsato evaṁsa te  …",
         "patterns": [
-          "an6.58:5.1",
-          "mn2:18.1"
+          "mn2:18.1",
+          "an6.58:5.1"
         ]
       }
     },
@@ -3247,14 +3247,14 @@
       "en": "outflows to be abandoned by development",
       "canon": {
         "where": [
-          "an6.58:8.1",
-          "mn2:21.1"
+          "mn2:21.1",
+          "an6.58:8.1"
         ],
         "link": "/an6.58:8.1",
         "definition": "Katame ca, bhikkhave, āsavā bhāvanā pahātabbā ye bhāvanāya pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso satisambojjhaṅgaṁ bhāveti vivekanissitaṁ virāganissitaṁ nirodhanissitaṁ vosaggapariṇāmiṁ, … Ime vuccanti, bhikkhave, āsavā bhāvanā pahātabbā ye bhāvanāya pahīnā honti.",
         "patterns": [
-          "an6.58:8.1",
-          "mn2:21.1"
+          "mn2:21.1",
+          "an6.58:8.1"
         ]
       }
     },
@@ -3266,14 +3266,14 @@
       "en": "outflows to be abandoned by avoiding",
       "canon": {
         "where": [
-          "an6.58:6.1",
-          "mn2:19.1"
+          "mn2:19.1",
+          "an6.58:6.1"
         ],
         "link": "/an6.58:6.1",
         "definition": "Katame ca, bhikkhave, āsavā parivajjanā pahātabbā ye parivajjanāya pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso caṇḍaṁ hatthiṁ parivajjeti, caṇḍaṁ assaṁ parivajjeti, caṇḍaṁ goṇaṁ parivajjeti, caṇḍaṁ kukkuraṁ parivajjeti, ahiṁ khāṇuṁ kaṇṭakaṭṭhānaṁ sobbhaṁ papātaṁ candanikaṁ oḷigallaṁ, yathārūpe anāsane nisinnaṁ, yathārūpe agocare carantaṁ, yathārūpe pāpake mitte bhajantaṁ viññū sabrahmacārī pāpakesu ṭhānesu okappeyyuṁ, so tañca anāsanaṁ tañca agocaraṁ te …",
         "patterns": [
-          "an6.58:6.1",
-          "mn2:19.1"
+          "mn2:19.1",
+          "an6.58:6.1"
         ]
       }
     },
@@ -3285,14 +3285,14 @@
       "en": "outflows to be abandoned by using",
       "canon": {
         "where": [
-          "an6.58:4.1",
-          "mn2:13.1"
+          "mn2:13.1",
+          "an6.58:4.1"
         ],
         "link": "/an6.58:4.1",
         "definition": "Katame ca, bhikkhave, āsavā paṭisevanā pahātabbā ye paṭisevanāya pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso cīvaraṁ paṭisevati: … Ime vuccanti, bhikkhave, āsavā paṭisevanā pahātabbā ye paṭisevanāya pahīnā honti.",
         "patterns": [
-          "an6.58:4.1",
-          "mn2:13.1"
+          "mn2:13.1",
+          "an6.58:4.1"
         ]
       }
     },
@@ -3304,14 +3304,14 @@
       "en": "outflows to be abandoned by restraint",
       "canon": {
         "where": [
-          "an6.58:3.1",
-          "mn2:12.1"
+          "mn2:12.1",
+          "an6.58:3.1"
         ],
         "link": "/an6.58:3.1",
         "definition": "Katame ca, bhikkhave, āsavā saṁvarā pahātabbā ye saṁvarena pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso cakkhundriyasaṁvarasaṁvuto viharati. … Ime vuccanti, bhikkhave, āsavā saṁvarā pahātabbā ye saṁvarena pahīnā honti.",
         "patterns": [
-          "an6.58:3.1",
-          "mn2:12.1"
+          "mn2:12.1",
+          "an6.58:3.1"
         ]
       }
     },
@@ -3323,14 +3323,14 @@
       "en": "outflows to be abandoned by dispelling",
       "canon": {
         "where": [
-          "an6.58:7.1",
-          "mn2:20.1"
+          "mn2:20.1",
+          "an6.58:7.1"
         ],
         "link": "/an6.58:7.1",
         "definition": "Katame ca, bhikkhave, āsavā vinodanā pahātabbā ye vinodanāya pahīnā honti? Idha, bhikkhave, bhikkhu paṭisaṅkhā yoniso uppannaṁ kāmavitakkaṁ nādhivāseti pajahati vinodeti byantīkaroti anabhāvaṁ gameti, paṭisaṅkhā yoniso uppannaṁ byāpādavitakkaṁ … uppannaṁ vihiṁsāvitakkaṁ … uppannuppanne pāpake akusale dhamme nādhivāseti pajahati vinodeti byantīkaroti anabhāvaṁ gameti. Yaṁ hissa, bhikkhave, avinodayato uppajjeyyuṁ āsavā vighātapariḷāhā, vinodayato evaṁsa te āsavā vigh …",
         "patterns": [
-          "an6.58:7.1",
-          "mn2:20.1"
+          "mn2:20.1",
+          "an6.58:7.1"
         ]
       }
     },
@@ -4123,14 +4123,14 @@
           "sn12.2:14.1",
           "sn22.113:1.4",
           "sn22.126:1.3",
-          "sn38.9:1.1",
-          "sn56.17:1.2",
           "sn22.127:1.5",
           "sn22.129:1.5",
           "sn22.131:1.4",
           "sn22.133:1.6",
           "sn22.134:1.4",
-          "sn22.135:1.5"
+          "sn22.135:1.5",
+          "sn38.9:1.1",
+          "sn56.17:1.2"
         ],
         "link": "/mn9:65.3",
         "definition": "Katamā panāvuso, avijjā, katamo avijjāsamudayo, katamo avijjānirodho, katamā avijjānirodhagāminī paṭipadā? Yaṁ kho, āvuso, dukkhe aññāṇaṁ, dukkhasamudaye aññāṇaṁ, dukkhanirodhe aññāṇaṁ, dukkhanirodhagāminiyā paṭipadāya aññāṇaṁ— ayaṁ vuccatāvuso, avijjā.",
@@ -4880,16 +4880,16 @@
       "en": "diligence in development",
       "canon": {
         "where": [
+          "dn33:1.11.90",
           "an4.14:3.1",
-          "an4.69:3.1",
-          "dn33:1.11.90"
+          "an4.69:3.1"
         ],
         "link": "/an4.14:3.1",
         "definition": "Katamañca, bhikkhave, bhāvanāppadhānaṁ? Idha, bhikkhave, bhikkhu satisambojjhaṅgaṁ bhāveti vivekanissitaṁ virāganissitaṁ nirodhanissitaṁ vossaggapariṇāmiṁ, … Idaṁ vuccati, bhikkhave, bhāvanāppadhānaṁ.",
         "patterns": [
+          "dn33:1.11.90",
           "an4.14:3.1",
-          "an4.69:3.1",
-          "dn33:1.11.90"
+          "an4.69:3.1"
         ]
       }
     },
@@ -6847,7 +6847,6 @@
       "en": "diversity of dhatus",
       "canon": {
         "where": [
-          "sn14.10:1.16",
           "sn14.1:2.1",
           "sn14.2:1.3",
           "sn14.3:1.3",
@@ -6856,12 +6855,12 @@
           "sn14.6:1.4",
           "sn14.7:1.3",
           "sn14.8:1.4",
-          "sn14.9:1.3"
+          "sn14.9:1.3",
+          "sn14.10:1.16"
         ],
         "link": "/sn14.10:1.16",
         "definition": "Katamañca, bhikkhave, dhātunānattaṁ? Rūpadhātu …pe… dhammadhātu— idaṁ vuccati, bhikkhave, dhātunānattaṁ.",
         "patterns": [
-          "sn14.10:1.16",
           "sn14.1:2.1",
           "sn14.2:1.3",
           "sn14.3:1.3",
@@ -6870,7 +6869,8 @@
           "sn14.6:1.4",
           "sn14.7:1.3",
           "sn14.8:1.4",
-          "sn14.9:1.3"
+          "sn14.9:1.3",
+          "sn14.10:1.16"
         ]
       }
     },
@@ -7352,9 +7352,9 @@
       "canon": {
         "where": [
           "mn9:15.1",
+          "mn9:17.1",
           "sn22.104:1.12",
-          "an6.63:43.1",
-          "mn9:17.1"
+          "an6.63:43.1"
         ],
         "link": "/mn9:17.1",
         "definition": "Katamo cāvuso, dukkhanirodho? Yo tassāyeva taṇhāya asesavirāganirodho cāgo paṭinissaggo mutti anālayo— ayaṁ vuccatāvuso, dukkhanirodho.",
@@ -7484,12 +7484,12 @@
           "dn22:17.3",
           "mn141:22.1",
           "sn56.11:4.6",
+          "sn56.13:4.1",
           "sn56.13:6.1",
+          "sn56.14:4.1",
           "sn56.14:6.1",
           "an3.61:13.6",
-          "an3.61:16.1",
-          "sn56.13:4.1",
-          "sn56.14:4.1"
+          "an3.61:16.1"
         ],
         "link": "/dn22:20.1",
         "definition": "Katamañca, bhikkhave, dukkhanirodhaṁ ariyasaccaṁ? Yo tassāyeva taṇhāya asesavirāganirodho cāgo paṭinissaggo mutti anālayo. Sā kho panesā, bhikkhave, taṇhā kattha pahīyamānā pahīyati, kattha nirujjhamānā nirujjhati?",
@@ -7749,8 +7749,8 @@
           "sn45.180:4.2",
           "an4.241:3.1",
           "an6.61:3.1",
-          "iti20:7.4",
-          "snp3.2:12.2"
+          "snp3.2:12.2",
+          "iti20:7.4"
         ],
         "broader": [
           "dn12:17.10",
@@ -8116,10 +8116,10 @@
       "canon": {
         "where": [
           "sn51.19:3.1",
-          "sn51.29:1.2",
-          "sn51.30:1.3",
           "sn51.27:3.1",
           "sn51.28:3.1",
+          "sn51.29:1.2",
+          "sn51.30:1.3",
           "sn51.30:3.1"
         ],
         "link": "/sn51.19:3.1",
@@ -9174,22 +9174,22 @@
       "en": "dark activity with dark result",
       "canon": {
         "where": [
+          "mn57:8.1",
           "an4.233:2.1",
           "an4.234:4.1",
           "an4.235:1.7",
           "an4.236:2.1",
-          "an4.237:2.1",
-          "mn57:8.1"
+          "an4.237:2.1"
         ],
         "link": "/an4.233:2.1",
         "definition": "Katamañca, bhikkhave, kammaṁ kaṇhaṁ kaṇhavipākaṁ? Idha, bhikkhave, ekacco sabyābajjhaṁ kāyasaṅkhāraṁ abhisaṅkharoti, sabyābajjhaṁ vacīsaṅkhāraṁ abhisaṅkharoti, sabyābajjhaṁ manosaṅkhāraṁ abhisaṅkharoti. So sabyābajjhaṁ kāyasaṅkhāraṁ abhisaṅkharitvā, sabyābajjhaṁ vacīsaṅkhāraṁ abhisaṅkharitvā, sabyābajjhaṁ manosaṅkhāraṁ abhisaṅkharitvā sabyābajjhaṁ lokaṁ upapajjati. Tamenaṁ sabyābajjhaṁ lokaṁ upapannaṁ samānaṁ sabyābajjhā phassā phusanti. So sabyābajjhehi phassehi ph …",
         "patterns": [
+          "mn57:8.1",
           "an4.233:2.1",
           "an4.234:4.1",
           "an4.235:1.7",
           "an4.236:2.1",
-          "an4.237:2.1",
-          "mn57:8.1"
+          "an4.237:2.1"
         ]
       }
     },
@@ -9201,24 +9201,24 @@
       "en": "dark-and-bright activity with dark-and-bright result",
       "canon": {
         "where": [
+          "mn57:10.1",
           "an4.233:4.1",
           "an4.234:6.1",
           "an4.235:3.1",
           "an4.236:4.1",
           "an4.237:4.1",
-          "an4.238:3.1",
-          "mn57:10.1"
+          "an4.238:3.1"
         ],
         "link": "/an4.233:4.1",
         "definition": "Katamañca, bhikkhave, kammaṁ kaṇhasukkaṁ kaṇhasukkavipākaṁ? Idha, bhikkhave, ekacco sabyābajjhampi abyābajjhampi kāyasaṅkhāraṁ abhisaṅkharoti, sabyābajjhampi abyābajjhampi vacīsaṅkhāraṁ abhisaṅkharoti, sabyābajjhampi abyābajjhampi manosaṅkhāraṁ abhisaṅkharoti. So sabyābajjhampi abyābajjhampi kāyasaṅkhāraṁ abhisaṅkharitvā, sabyābajjhampi abyābajjhampi vacīsaṅkhāraṁ abhisaṅkharitvā, sabyābajjhampi abyābajjhampi manosaṅkhāraṁ abhisaṅkharitvā sabyābajjhampi abyābajjhamp …",
         "patterns": [
+          "mn57:10.1",
           "an4.233:4.1",
           "an4.234:6.1",
           "an4.235:3.1",
           "an4.236:4.1",
           "an4.237:4.1",
-          "an4.238:3.1",
-          "mn57:10.1"
+          "an4.238:3.1"
         ]
       }
     },
@@ -9230,24 +9230,24 @@
       "en": "bright activity with bright result",
       "canon": {
         "where": [
+          "mn57:9.1",
           "an4.233:3.1",
           "an4.234:5.1",
           "an4.235:2.1",
           "an4.236:3.1",
           "an4.237:3.1",
-          "an4.238:2.1",
-          "mn57:9.1"
+          "an4.238:2.1"
         ],
         "link": "/an4.233:3.1",
         "definition": "Katamañca, bhikkhave, kammaṁ sukkaṁ sukkavipākaṁ? Idha, bhikkhave, ekacco abyābajjhaṁ kāyasaṅkhāraṁ abhisaṅkharoti, abyābajjhaṁ vacīsaṅkhāraṁ abhisaṅkharoti, abyābajjhaṁ manosaṅkhāraṁ abhisaṅkharoti. So abyābajjhaṁ kāyasaṅkhāraṁ abhisaṅkharitvā, abyābajjhaṁ vacīsaṅkhāraṁ abhisaṅkharitvā, abyābajjhaṁ manosaṅkhāraṁ abhisaṅkharitvā abyābajjhaṁ lokaṁ upapajjati. Tamenaṁ abyābajjhaṁ lokaṁ upapannaṁ samānaṁ abyābajjhā phassā phusanti. So abyābajjhehi phassehi phuṭṭho samā …",
         "patterns": [
+          "mn57:9.1",
           "an4.233:3.1",
           "an4.234:5.1",
           "an4.235:2.1",
           "an4.236:3.1",
           "an4.237:3.1",
-          "an4.238:2.1",
-          "mn57:9.1"
+          "an4.238:2.1"
         ]
       }
     },
@@ -9891,9 +9891,9 @@
       "canon": {
         "where": [
           "mn9:4.1",
+          "mn9:6.1",
           "an10.136:1.6",
-          "an10.180:2.1",
-          "mn9:6.1"
+          "an10.180:2.1"
         ],
         "link": "/mn9:6.1",
         "definition": "Katamañcāvuso, kusalaṁ? Pāṇātipātā veramaṇī kusalaṁ, adinnādānā veramaṇī kusalaṁ, kāmesumicchācārā veramaṇī kusalaṁ, musāvādā veramaṇī kusalaṁ, pisuṇāya vācāya veramaṇī kusalaṁ, pharusāya vācāya veramaṇī kusalaṁ, samphappalāpā veramaṇī kusalaṁ, anabhijjhā kusalaṁ, abyāpādo kusalaṁ, sammādiṭṭhi kusalaṁ— idaṁ vuccatāvuso, kusalaṁ.",
@@ -10076,18 +10076,57 @@
     },
     {
       "id": "loka",
-      "num": 739,
+      "num": 140,
       "pali": "loka",
-      "ru": "мир, свет",
-      "en": "world",
+      "ru": "свет - на свете. мир - в мире",
+      "en": "world - in the world",
       "canon": {
         "where": [
+          "sn35.68:1.1",
+          "sn35.82:2.3",
           "sn35.84:2.1",
           "sn35.116:8.5",
           "an9.38:5.1"
         ],
-        "link": "/sn35.84:2.3",
-        "definition": "Yaṁ kho, ānanda, palokadhammaṁ, ayaṁ vuccati ariyassa vinaye loko. … Yena kho, āvuso, lokasmiṁ lokasaññī hoti lokamānī— ayaṁ vuccati ariyassa vinaye loko. … Pañcime, brāhmaṇā, kāmaguṇā ariyassa vinaye lokoti vuccati."
+        "link": "/sn35.82:2.3",
+        "definition": "‘Lujjatī’ti kho, bhikkhu, tasmā lokoti vuccati. … Yaṁ kho, ānanda, palokadhammaṁ, ayaṁ vuccati ariyassa vinaye loko. … Yena kho, āvuso, lokasmiṁ lokasaññī hoti lokamānī— ayaṁ vuccati ariyassa vinaye loko. … Pañcime, brāhmaṇā, kāmaguṇā ariyassa vinaye lokoti vuccati.",
+        "compounds": [
+          "lokādhipateyyaṁ"
+        ],
+        "patterns": [
+          "sn35.68:1.1",
+          "sn35.82:2.1",
+          "sn35.84:2.1",
+          "sn35.85:1.2",
+          "sn35.228:3.4",
+          "an4.5:8.4",
+          "an9.38:5.1",
+          "iti104:2.9",
+          "iti109:12.6"
+        ],
+        "broader": [
+          "dn1:2.2.1",
+          "dn2:23.2",
+          "dn9:34.15",
+          "dn12:16.15",
+          "dn24:2.14.11",
+          "dn27:10.1",
+          "dn33:3.2.64",
+          "dn34:2.1.140",
+          "mn34:12.3",
+          "mn41:10.5",
+          "mn60:5.2",
+          "mn76:7.2",
+          "mn79:27.1",
+          "mn110:11.3",
+          "mn114:10.10",
+          "(+30)"
+        ],
+        "vinaya": [
+          "pli-tv-bi-vb-ss12:2.1.9",
+          "pli-tv-bu-vb-pc79:2.1.6",
+          "pli-tv-bu-vb-sk38:1.2"
+        ]
       },
       "dgNote": "Особое определение: Обычно: «Мир, мир» — так говорят (вопрос Ананды: насколько это называется миром?). В выведении благородного (ariyassa vinaye): Что разрушающееся (palokadhamma), то называется в выведении благородного «мир»: глаз, образы, глаза-распознавание, глаза-касание, чувствование, возникшее из глаза-касания, … ум-представление и всё остальное. • Обычно: Край мира, до которого нельзя дойти, идя ногами. В выведении благородного (ariyassa vinaye): Чем в мире воспринимают мир и мнят мир, то называется в выведении благородного «мир»: глазом, ухом, носом, языком, телом, умом-представлением. • Обычно: Брахманы-локаятики спорят о бесконечности или конечности мира. В выведении благородного (ariyassa vinaye): Пять желания-множителей называются в выведении благородного «мир»: глазом распознаваемые образы … телом распознаваемые касания, желанные, обожаемые, приятные, миловидные, связанные с желанием, очаровывающие.",
       "kind": "special: ariyassa vinaye",
@@ -10145,59 +10184,6 @@
         "lokavidū",
         "lokavidūna"
       ]
-    },
-    {
-      "id": "loko",
-      "num": 140,
-      "pali": "loko",
-      "ru": "свет - на свете. мир - в мире",
-      "en": "world - in the world",
-      "canon": {
-        "where": [
-          "sn35.68:1.1",
-          "sn35.82:2.1",
-          "sn35.84:2.1"
-        ],
-        "link": "/sn35.68:1.1",
-        "definition": "“‘Loko, loko’ti, bhante, vuccati. Kittāvatā nu kho, bhante, loko vā assa lokapaññatti vā”ti? “Yattha kho, samiddhi, atthi cakkhu, atthi rūpā, atthi cakkhuviññāṇaṁ, atthi cakkhuviññāṇaviññātabbā dhammā, atthi tattha loko vā lokapaññatti vāti …pe…",
-        "compounds": [
-          "lokādhipateyyaṁ"
-        ],
-        "patterns": [
-          "sn35.68:1.1",
-          "sn35.82:2.1",
-          "sn35.84:2.1",
-          "sn35.85:1.2",
-          "sn35.228:3.4",
-          "an4.5:8.4",
-          "an9.38:5.1",
-          "iti104:2.9",
-          "iti109:12.6"
-        ],
-        "broader": [
-          "dn1:2.2.1",
-          "dn2:23.2",
-          "dn9:34.15",
-          "dn12:16.15",
-          "dn24:2.14.11",
-          "dn27:10.1",
-          "dn33:3.2.64",
-          "dn34:2.1.140",
-          "mn34:12.3",
-          "mn41:10.5",
-          "mn60:5.2",
-          "mn76:7.2",
-          "mn79:27.1",
-          "mn110:11.3",
-          "mn114:10.10",
-          "(+30)"
-        ],
-        "vinaya": [
-          "pli-tv-bi-vb-ss12:2.1.9",
-          "pli-tv-bu-vb-pc79:2.1.6",
-          "pli-tv-bu-vb-sk38:1.2"
-        ]
-      }
     },
     {
       "id": "macchariya",
@@ -11626,8 +11612,8 @@
           "an9.48:1.1",
           "an9.50:1.1",
           "an9.51:1.1",
-          "iti44:3.1",
-          "snp5.14:4.4"
+          "snp5.14:4.4",
+          "iti44:3.1"
         ],
         "broader": [
           "dn1:3.20.2",
@@ -13374,15 +13360,15 @@
       "en": "phenomena to be understood",
       "canon": {
         "where": [
-          "sn22.106:1.4",
           "sn22.23:1.4",
+          "sn22.106:1.4",
           "sn23.4:2.5"
         ],
         "link": "/sn22.106:1.4",
         "definition": "Katame ca, bhikkhave, pariññeyyā dhammā? Rūpaṁ, bhikkhave, pariññeyyo dhammo. Vedanā …pe… saññā … saṅkhārā … viññāṇaṁ pariññeyyo dhammo. Ime vuccanti, bhikkhave, pariññeyyā dhammā.",
         "patterns": [
-          "sn22.106:1.4",
           "sn22.23:1.4",
+          "sn22.106:1.4",
           "sn23.4:2.5"
         ]
       }
@@ -15485,14 +15471,14 @@
       "en": "practice leading to the elimination of identity",
       "canon": {
         "where": [
-          "sn22.105:1.15",
-          "sn22.44:2.1"
+          "sn22.44:2.1",
+          "sn22.105:1.15"
         ],
         "link": "/sn22.105:1.15",
         "definition": "Katamā ca, bhikkhave, sakkāyanirodhagāminī paṭipadā? Ayameva ariyo aṭṭhaṅgiko maggo. Seyyathidaṁ—sammādiṭṭhi …pe… sammāsamādhi. Ayaṁ vuccati, bhikkhave, sakkāyanirodhagāminī paṭipadā”ti.",
         "patterns": [
-          "sn22.105:1.15",
-          "sn22.44:2.1"
+          "sn22.44:2.1",
+          "sn22.105:1.15"
         ]
       }
     },
@@ -17499,24 +17485,24 @@
       "en": "better than a pure person",
       "canon": {
         "where": [
+          "sn45.26:4.1",
           "an4.201:5.1",
           "an4.202:5.1",
           "an4.203:5.1",
           "an4.204:5.1",
           "an4.205:5.1",
-          "an4.206:5.1",
-          "sn45.26:4.1"
+          "an4.206:5.1"
         ],
         "link": "/an4.201:5.1",
         "definition": "Katamo ca, bhikkhave, sappurisena sappurisataro? Idha, bhikkhave, ekacco attanā ca pāṇātipātā paṭivirato hoti, parañca pāṇātipātā veramaṇiyā samādapeti; attanā ca adinnādānā paṭivirato hoti, parañca adinnādānā veramaṇiyā samādapeti; attanā ca kāmesumicchācārā paṭivirato hoti, parañca kāmesumicchācārā veramaṇiyā samādapeti; attanā ca musāvādā paṭivirato hoti, parañca musāvādā veramaṇiyā samādapeti; attanā ca surāmerayamajjapamādaṭṭhānā paṭivirato hoti, parañca surāme …",
         "patterns": [
+          "sn45.26:4.1",
           "an4.201:5.1",
           "an4.202:5.1",
           "an4.203:5.1",
           "an4.204:5.1",
           "an4.205:5.1",
-          "an4.206:5.1",
-          "sn45.26:4.1"
+          "an4.206:5.1"
         ]
       }
     },
@@ -18439,56 +18425,6 @@
       "pali": "sota",
       "ru": "ухо",
       "en": "ear",
-      "canon": {
-        "where": [
-          "sn55.5:2.1",
-          "an4.114:2.1",
-          "an5.140:2.1"
-        ],
-        "link": "/sn55.5:2.2",
-        "definition": "Katamo nu kho, sāriputta, soto”ti? “Ayameva hi, bhante, ariyo aṭṭhaṅgiko maggo soto, seyyathidaṁ— sammādiṭṭhi, sammāsaṅkappo, sammāvācā, sammākammanto, sammāājīvo, sammāvāyāmo, sammāsati, sammāsamādhī”ti. “Sādhu sādhu, sāriputta. Ayameva hi, sāriputta, ariyo aṭṭhaṅgiko maggo soto, seyyathidaṁ— sammādiṭṭhi …pe… sammāsamādhi. ‘Sotāpanno, sotāpanno’ti hidaṁ, sāriputta, vuccati.",
-        "compounds": [
-          "sottiyo",
-          "sotāpanno",
-          "sotāpattiyaṅgan"
-        ],
-        "patterns": [
-          "dn14:1.3.1",
-          "mn39:27.1",
-          "mn91:32.13",
-          "sn22.57:1.2",
-          "sn41.5:5.12",
-          "sn55.5:2.1",
-          "an4.35:7.4",
-          "an4.114:2.1",
-          "an5.140:2.1"
-        ],
-        "broader": [
-          "dn28:14.3",
-          "mn28:8.2",
-          "mn142:6.1",
-          "mn152:5.11",
-          "sn22.109:1.6",
-          "sn23.7:1.7",
-          "sn24.1:5.2",
-          "sn24.2:3.2",
-          "sn24.3:4.2",
-          "sn24.4:4.2",
-          "sn24.5:4.2",
-          "sn24.6:4.2",
-          "sn24.7:4.2",
-          "sn24.8:4.2",
-          "sn24.9:4.2",
-          "(+12)"
-        ],
-        "vinaya": [
-          "pli-tv-bu-vb-ay1:2.1.15",
-          "pli-tv-bu-vb-ay2:2.1.23",
-          "pli-tv-bu-vb-pc30:2.1.15",
-          "pli-tv-bu-vb-pc44:2.1.13",
-          "pli-tv-bu-vb-pc45:2.1.15"
-        ]
-      },
       "forms": [
         "sota",
         "sotasmimpi",
@@ -19969,9 +19905,9 @@
           "sn56.131:5.6",
           "an2.43:1.4",
           "an3.95:3.1",
-          "iti20:7.4",
           "snp1.12:17.4",
-          "snp3.12:66.4"
+          "snp3.12:66.4",
+          "iti20:7.4"
         ],
         "broader": [
           "an2.43:1.6",
