@@ -959,6 +959,28 @@ window.DgSearchRender = (function () {
         document.body.appendChild(btn);
     }
 
+    // Results ranked by meaning (opts.keepOrder) have no word matches: Words is empty and Ct is always 1, so both
+    // columns go while they are on screen (on a phone they pushed the table past the screen's edge), and the
+    // rank is the order. The table is one instance for both kinds of results, so this is switched on every
+    // render, not only at init: after a plain search the ranked rows were sorted by id (mn38 4th, not 2nd).
+    // Leaving brings back the plain search's order and whatever visibility the reader had for the two columns.
+    var rankedSaved = null;   // {order, vis} of the plain results while ranked ones are shown
+    function setRanked(api, ranked) {
+        if (ranked === !!rankedSaved) return;
+        if (ranked) {
+            rankedSaved = { order: api.order(), vis: [api.column(3).visible(), api.column(4).visible()] };
+            api.order([]);
+            api.columns([3, 4]).visible(false, false);
+        } else {
+            api.order(rankedSaved.order.length ? rankedSaved.order : [[7, 'asc'], [0, 'asc']]);
+            api.column(3).visible(rankedSaved.vis[0], false);
+            api.column(4).visible(rankedSaved.vis[1], false);
+            rankedSaved = null;
+        }
+        api.columns.adjust();
+        if (api.responsive) api.responsive.recalc();
+    }
+
     function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl, opts) {
         ensureVariantFilter();
         activeState.highlightWord = highlightWord;
@@ -987,6 +1009,7 @@ window.DgSearchRender = (function () {
             suttaTableApi.clear();
             suttaTableApi.rows.add(dataArray);
             applyHeaderTitles(suttaTableApi, suttaTableHeaderTitles());
+            setRanked(suttaTableApi, !!(opts && opts.keepOrder));
             suttaTableApi.draw(false);
             bindExpandCollapseButtons($(container));
 
@@ -1413,6 +1436,7 @@ window.DgSearchRender = (function () {
         });
 
         suttaTableApi = $table.DataTable(options);
+        if (opts && opts.keepOrder) { setRanked(suttaTableApi, true); suttaTableApi.draw(false); }
         bindExpandCollapseButtons($table);
         bindReadMarks($table);
         attachFilterPlusButton($table);
