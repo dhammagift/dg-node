@@ -1536,8 +1536,9 @@ a.quoteLink-start::before {
     border: 1px solid var(--bs-border-color);
     transition: opacity 0.3s ease, transform 0.3s ease;
     backdrop-filter: blur(5px);
-    min-width: 250px;
-    max-width: 90vw;
+    /* / --dg-zoom: the text size zooms <html>, vw included (a 150 % phone put the hint 26 px past each edge) */
+    min-width: min(250px, calc(90vw / var(--dg-zoom, 1)));
+    max-width: calc(90vw / var(--dg-zoom, 1));
     animation: fadeInUpToast 0.4s ease-out;
 }
 
