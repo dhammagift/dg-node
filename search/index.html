@@ -3429,8 +3429,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
         </div>
         <!-- Нижний ряд (.links-area) — портирован из reader-template.html почти дословно: там
              это по большей части голые внешние <a href>, которым скрипты не нужны вообще.
-             #pdf-btn и #shareOnline — единственные два, что зовут JS (settings.js/copyToClipboard.js,
-             оба уже грузятся ensureReaderAssets()/глобально) — и они, как и voice.css/smoothScroll.js
+             #pdf-btn — единственный, что зовёт JS (settings.js, уже грузится ensureReaderAssets()/глобально) — и он, как и voice.css/smoothScroll.js
              выше, были сломаны тем же id-конфликтом (#sutta), не самим отсутствием кода — теперь,
              когда #sutta свободен (см. переименование results-таблицы выше), просто заработают.
              routes.translationEditor из референса пропущен — вела на CAT-инструмент переводчиков
@@ -3470,7 +3469,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  appended on click (see .q-link handler below) since the current sutta id isn't known
                  at paint time and changes as the reader navigates without a repaint. -->
             <a href="/assets/lbl-en.html" data-href-en="/assets/lbl-en.html" data-href-ru="/assets/lbl.html" class="q-link" title="Edit Translation" target="_blank" rel="noreferrer"><img width="20px" alt="Edit Translation" src="/assets/svg/table-columns.svg"></a>
-            <a id="shareOnline" href="javascript:void(0)" role="button" onclick="copyToClipboard()" title="Copy Link"><img height="20px" alt="Copy" src="/assets/svg/copy.svg"></a>
             <a href="https://DharmaMitra.org/" title="DharmaMitra" target="_blank"><img width="20px" alt="DharmaMitra" src="/assets/svg/dharmachakra.svg"></a>
             <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24" height="24" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
             <a href="https://index.readingfaithfully.org" title="Sutta Name Search" target="_blank"><img width="20" height="20" alt="Sutta Name Search" src="/reader/images/favicon-name-black.png"></a>

@@ -4251,7 +4251,9 @@ body.dg-state-reader #reader-toolbar > a.sc-ext-link { width: auto; min-width: 0
     body.dg-state-reader #reader-toolbar .dg-external-links, body.dg-state-reader #reader-toolbar .dg-header-extra { order: 2; margin-left: 6px; }
     body.dg-state-reader #reader-toolbar #smart-toc-btn { order: 3; flex: 1 1 0; min-width: 0; max-width: 260px; margin-left: auto; margin-right: 6px; }
 }
-body.dg-state-reader #reader-pane .dg-external-links-menu a {
+/* .dg-external-links: above .navigation a (inline-flex) for the menu at the end of a text, whose rows inline-flex laid side
+   by side for max-content - a menu as wide as the page on a desktop */
+body.dg-state-reader #reader-pane .dg-external-links .dg-external-links-menu a {
     display: flex; width: 100%; min-width: 0; min-height: 0; padding: 8px 10px; border-radius: 7px;
     align-items: center; justify-content: space-between; color: var(--dg-text-2); font-size: 13px; line-height: 1.35;
 }

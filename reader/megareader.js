@@ -1506,9 +1506,16 @@ document.addEventListener('click', function (event) {
         // matrix). Moved by the overflow, in its own (zoomed) pixels.
         menu.style.transform = '';
         if (willOpen) {
-            const r = menu.getBoundingClientRect(), z = (window.dgZoom && window.dgZoom()) || 1;
+            const z = (window.dgZoom && window.dgZoom()) || 1;
+            // the CSS max-width (100vw - 24px) is zoomed too: at the phone's 110 % the menu came out 427 px on a 412 px
+            // screen and no shift could keep it whole (owner 2026-11-17, the end of a text: «4NT» cut to «NT»)
+            const cap = Math.floor((window.innerWidth - 24) / z);   // and the CSS min-width (220px) must not outgrow it
+            menu.style.maxWidth = `${cap}px`; menu.style.minWidth = `${Math.min(220, cap)}px`;
+            const r = menu.getBoundingClientRect();
             const dx = r.left < 8 ? 8 - r.left : r.right > window.innerWidth - 8 ? window.innerWidth - 8 - r.right : 0;
             if (dx) menu.style.transform = `translateX(${(dx / z).toFixed(1)}px)`;
+            // the one at the end of a text opens upwards: a button near the top of the screen left its first links above it
+            if (r.top < 0 || r.bottom > window.innerHeight) menu.scrollIntoView({ block: 'nearest' });
         }
         return;
     }

@@ -513,6 +513,7 @@ html[lang="ru"] .dg-external-links-ru { display: inline; }
   left: 50%;
   z-index: 1000;
   width: max-content;
+  box-sizing: border-box;   /* max-width is the whole box: megareader.js sets it to the screen less 24 px */
   min-width: 220px;
   max-width: calc(100vw - 24px);
   max-height: min(420px, calc(100vh - 140px));
@@ -567,6 +568,9 @@ html[lang="ru"] .dg-external-links-ru { display: inline; }
 .dark .dg-external-links-menu a { color: var(--dg-text-2, #ddd); }
 @media (max-width: 767.98px) {
   .dg-external-links-menu { left: 0; transform: none; }
+  /* a narrow screen: a long name wraps, so do the edition plates of a link that has many (4NT: four) */
+  .dg-external-links-menu a { white-space: normal; }
+  .dg-external-links-menu .dg-link-eds { flex-wrap: wrap; justify-content: flex-end; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dg-external-links-toggle, .dg-external-links-chevron { transition: none; }

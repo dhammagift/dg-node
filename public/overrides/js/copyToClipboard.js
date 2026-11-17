@@ -223,10 +223,9 @@ function fallbackCopy(text) {
 // 2026-11-04, Trello CeXBxDe7: «при долгом нажатии на невидимые ссылки было какое-то действие... пропало»). It runs now
 // whenever the file arrives.
 (function (init) { if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init(); })(function() {
-  const shareOnlineElement = document.getElementById('shareOnline');
-  if (shareOnlineElement && window.location.href.includes('dhamma.gift')) {
-    shareOnlineElement.style.display = 'none';
-  }
+  // the footer's «copy link» is gone from the page (owner 2026-11-17); the apps keep their built page until the next build
+  // and take this file from the site, so it goes there now too
+  document.getElementById('shareOnline')?.remove();
 
 
 
