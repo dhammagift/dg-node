@@ -73,6 +73,10 @@ const EDITIONS = {
     mso: { name: 'Mahāsaṅgīti Tipiṭaka as printed (World Tipiṭaka Edition, 2005)', source: 'tipitaka2500.github.io, Dhamma Society', license: 'CC0' },
     pts: { name: 'Pali Text Society editions', source: 'GRETIL, input by the Dhammakaya Foundation', license: 'CC BY-SA 4.0, © Pali Text Society and Dhammakaya Foundation' },
 };
+// Siam Rath has no Pātimokkha: th for pli-tv-bu-pm is Mahāmakuṭa's Bhikkhupāṭimokkhapāli (offline-data root/build README).
+// The one text whose th is another edition, so a plain exception, not an edition of its own (owner 2026-11-17).
+const TH_PM = { name: 'Bhikkhupāṭimokkhapāli of Mahāmakuṭarājavidyālaya (Thailand)', source: 'uisp/dhamma-book-for-general-public (Hugging Face)', license: 'no data license stated; attribution Mahāmakuṭarājavidyālaya' };
+const edMeta = (ed, suttaId) => (ed === 'th' && suttaId === 'pli-tv-bu-pm' ? TH_PM : EDITIONS[ed]);
 // edition -> Map(segment_id -> text) for one sutta; empty maps where the db has no such edition (or no table yet)
 function editionRows(suttaId, eds) {
     const out = {};
@@ -479,7 +483,7 @@ function getServer() {
                 }
                 if (Object.keys(row).length) sg.editions = row;
             }
-            data.editions = eds.map(ed => ({ id: ed, ...EDITIONS[ed], segments: byEd[ed] ? byEd[ed].size : 0, missing_segments: missing[ed] || 0 }));
+            data.editions = eds.map(ed => ({ id: ed, ...edMeta(ed, id), segments: byEd[ed] ? byEd[ed].size : 0, missing_segments: missing[ed] || 0 }));
         }
         if (suppressed) {
             data.suppressed = { en_sujato: `${suppressed} segments — pass translators:["en_sujato"] to include it` };
@@ -507,7 +511,7 @@ function getServer() {
         if (!eds.some(ed => byEd[ed].size)) return asText({ error: `No other edition has ${t.sutta} (see https://dhamma.gift/docs/compare for each edition's gaps).` }, true);
         const part = sid => sid.slice(sid.indexOf(':') + 1);
         const inRange = r => !t.from || (segCmp(part(r.segment_id), t.from) >= 0 && segCmp(part(r.segment_id), t.to) <= 0);
-        const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...EDITIONS[ed], lines_present: 0, lines_missing: 0, lines_differing_reading: 0, lines_differing_spelling: 0 }]));
+        const summary = Object.fromEntries(eds.map(ed => [ed, { id: ed, ...edMeta(ed, t.sutta), lines_present: 0, lines_missing: 0, lines_differing_reading: 0, lines_differing_spelling: 0 }]));
         const lines = [];
         let compared = 0, differing = 0, differingReading = 0;
         for (const [i, r] of rows.entries()) {
@@ -584,7 +588,7 @@ function getServer() {
         // the other Pali editions' wording of this line, after the Mahāsaṅgīti root and its variants
         const sid = seg.split(':')[0];
         const eds = editionRows(sid, Object.keys(EDITIONS));
-        const edTexts = Object.keys(EDITIONS).filter(ed => eds[ed] && eds[ed].get(seg)).map(ed => ({ kind: 'edition', edition: ed, name: EDITIONS[ed].name, license: EDITIONS[ed].license, text: eds[ed].get(seg) }));
+        const edTexts = Object.keys(EDITIONS).filter(ed => eds[ed] && eds[ed].get(seg)).map(ed => ({ kind: 'edition', edition: ed, name: edMeta(ed, sid).name, license: edMeta(ed, sid).license, text: eds[ed].get(seg) }));
         if (edTexts.length) out.texts.splice(out.texts.findIndex(t => t.kind === 'translation') === -1 ? out.texts.length : out.texts.findIndex(t => t.kind === 'translation'), 0, ...edTexts);
         if (suppressed) out.suppressed = { en_sujato: `${suppressed} text(s) — pass translators:["en_sujato"] to include it` };
         return asText(out);

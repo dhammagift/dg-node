@@ -2496,7 +2496,11 @@ window.buildSutta = async function(rawSlug, opts) {
     if (!shownEds.length) shownEds = ['ms'];
     const edSingle = shownEds.length === 1 && shownEds[0] !== 'ms';   // the text read in one other edition
     const edMulti = shownEds.length > 1;                              // a line per edition / a column per edition
-    const edInfo = id => READER_EDITIONS.find(e => e.id === id);
+    // Siam Rath has no Pātimokkha: th for pli-tv-bu-pm is Mahāmakuṭa's Bhikkhupāṭimokkhapāli (offline-data root/build
+    // README); the one such text, so an exception here, not an edition of its own (owner 2026-11-17)
+    const edInfo = id => (id === 'th' && suttaData.sutta_id === 'pli-tv-bu-pm'
+        ? { id: 'th', tag: 'MM', ru: 'Mahāmakuṭa', en: 'Mahāmakuṭa', country: { ru: 'Таиланд', en: 'Thailand' } }
+        : READER_EDITIONS.find(e => e.id === id));
     // the interface's language (dhamma-i18n.js), not the reading one: an English page with a Russian translation (or a
     // Thai one) read "Отличия" and Russian column names (owner 2026-10-31)
     const uiLang = readerUiLang();

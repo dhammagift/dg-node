@@ -1305,7 +1305,9 @@ function textRoster(suttaId) {
 const textEditions = (suttaId) => searchCore.textEditions(suttaId);
 // their names for the text's JSON-LD (textHead workExample), as /docs/compare names them
 const EDITION_NAMES = { ms: 'Mahāsaṅgīti Tipiṭaka', bjt: 'Buddha Jayanti Tipiṭaka (Sri Lanka)', my: 'Chaṭṭha Saṅgāyana Tipiṭaka (Myanmar)',
-    th: 'Syāmaraṭṭha Tipiṭaka (Siam Rath, 1927)', mso: 'Mahāsaṅgīti Tipiṭaka as printed (2005)', pts: 'Pali Text Society editions' };
+    th: 'Syāmaraṭṭha Tipiṭaka (Siam Rath, 1927)', mso: 'Mahāsaṅgīti Tipiṭaka as printed (2005)', pts: 'Pali Text Society editions',
+    // Siam Rath has no Pātimokkha: th for pli-tv-bu-pm is Mahāmakuṭa's (offline-data root/build README; owner 2026-11-17)
+    thPm: 'Bhikkhupāṭimokkhapāli of Mahāmakuṭarājavidyālaya (Thailand)' };
 const addEditions = (data, suttaId, wanted) => searchCore.addEditions(data, suttaId, wanted);
 // The parts of /api/text the apps' own SQLite cannot give (it is a ru+en slice with no audio index): the audio line and
 // the text's languages and translators in the whole corpus (a Thai text, the popover's "нет перевода"). The apps ask
@@ -3937,7 +3939,7 @@ async function textHead(dataId, urlId, reqLang) {
         keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
-            workExample: eds.length ? ['ms', ...eds].map(e => ({ '@type': 'Book', name: EDITION_NAMES[e], inLanguage: 'pi' })) : undefined,
+            workExample: eds.length ? ['ms', ...eds].map(e => ({ '@type': 'Book', name: e === 'th' && dataId === 'pli-tv-bu-pm' ? EDITION_NAMES.thPm : EDITION_NAMES[e], inLanguage: 'pi' })) : undefined,
             subjectOf: eds.length ? { '@type': 'WebPage', name: `${eds.length + 1} Pali editions side by side`, url: SITE + (lang === 'ru' ? '/ru/docs/compare' : '/docs/compare/') } : undefined,
             audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
                 contentUrl: a.url, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
