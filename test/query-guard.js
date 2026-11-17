@@ -43,6 +43,8 @@ for (const query of [
     'kamma-kamma-kamma', 'kacchapa', 'satipaṭṭhāna', 'satipattana', 'kachcapxyz',
     'притча про слепую черепаху', 'сострадание', 'что такое nibbana?', '四念处', 'धम्म',
     'an 10.72', 'dvipadako', 'dhammacakkappavattana', 'the raft simile',
+    // typographic quotes and the ellipsis are punctuation too (a hint with «я» was dropped as junk, 2026-11-17)
+    'Почему пять блоков — не «я»', '«Всё» — шесть органов чувств и их объекты', '“The all”: the six senses', 'what the Buddha’s…',
 ]) {
     assert.strictEqual(nonQueryReason(query), null, `${query} НЕ должен блокироваться (получили ${nonQueryReason(query)})`);
 }

@@ -48,8 +48,9 @@ const URL_PATH = /\.(?:php\d?|html?|aspx?|jsp|cgi|xml|json|js|css|txt|csv|pdf|zi
 // Whitelist, not a blacklist of "bad symbols": everything a query can legitimately be made of is
 // letters (any script — Chinese and Russian queries are valid input here, docs/AI_SEARCH_BRIEF.md),
 // combining marks (Pali diacritics, Devanagari matras), digits, whitespace and ordinary
-// punctuation. Anything else is a mangled URL, not language.
-const ALLOWED_CHARS = /^[\p{L}\p{M}\p{N}\s.,;:!?'"()\-–—/+*]+$/u;
+// punctuation, typographic quotes and the ellipsis included («я», “all”, ’s, … - a Russian query with «»
+// was thrown away as junk, owner's search hints 2026-11-17). Anything else is a mangled URL, not language.
+const ALLOWED_CHARS = /^[\p{L}\p{M}\p{N}\s.,;:!?'"()\-–—/+*«»„“”‘’‹›…]+$/u;
 
 const VOWEL = /[aeiouyāīūаеёиоуыэюя]/i;
 // Only pure latin/cyrillic tokens are judged by vowels — a Chinese/Japanese token has no latin

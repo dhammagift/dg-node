@@ -73,5 +73,31 @@ function randPlaceholderOnMain() {
 const randomW = Math.floor(Math.random() * words.length);
 const randomS = Math.floor(Math.random() * suttas.length);
 // console.log(words[randomW], suttas[randomS]);
-document.getElementById('paliauto').placeholder = example + words[randomW] + or + suttas[randomS];
+// Mixed in: questions in one's own words, which the search by meaning answers (owner 2026-11-17: show that one can
+// search by meaning, not only words and numbers). Wording approved by the owner; each one finds its sutta among the
+// first three on dhamma.gift (checked 2026-11-17), no other phrase goes here without that check.
+var byMeaning = theLanguage == "ru"
+    ? ["Где определена dukkha", "Беседа с пятью монахами в Оленьем парке", "Что такое благородный восьмеричный путь",
+       "Как возникает dukkha: зависимое возникновение", "Почему пять блоков — не «я»", "Пример с плотом",
+       "«Всё» — шесть органов чувств и их объекты", "Ночь пробуждения Будды", "Как развивать дыхания-памятование",
+       "Четыре установления памятования", "Что прекращается в ниббане", "Пример с пилой"]
+    : ["Where dukkha is defined", "The talk with the five monks in the Deer Park", "What is the noble eightfold path",
+       "How dukkha arises, link by link", "The five blocks are not self", "The simile of the raft",
+       "\"The all\": the six senses and their objects", "The night of the Buddha's awakening", "How to develop breath-remembrance",
+       "The four establishments of remembrance", "What ceases in nibbana", "The simile of the saw"];
+var input = document.getElementById('paliauto');
+// only a hint that fits the box whole: on a phone «Беседа с пятью монахами в О…» was cut mid-word
+function fits(text) {
+    try {
+        var cs = getComputedStyle(input), ctx = (fits.c = fits.c || document.createElement('canvas')).getContext('2d');
+        ctx.font = cs.fontStyle + ' ' + cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+        return ctx.measureText(text).width <= input.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight) - 4;
+    } catch (e) { return text.length <= 24; }
+}
+var meaningHint = null;
+if (Math.random() < 0.4) {
+    var fitting = byMeaning.filter(fits);
+    if (fitting.length) meaningHint = fitting[Math.floor(Math.random() * fitting.length)];
+}
+input.placeholder = meaningHint || example + words[randomW] + or + suttas[randomS];
 }
