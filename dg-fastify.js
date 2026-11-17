@@ -2956,8 +2956,9 @@ app.get('/api/ai-search', async (req, res) => {
     try {
         const local = hasLocalIndex();
         const recall = local ? recallSuttas(q) : null;
-        const sem = local ? await semanticSearch(q, { limit: 10, recall }) : await remoteSearch(q, { limit: 10 });
-        // the index holds the suttas only (no Vinaya yet): a scope it cannot answer goes on to the old pipeline
+        // 20 asked, 10 shown: the index holds Vinaya too, and the scope filter below may drop some
+        const sem = local ? await semanticSearch(q, { limit: 20, recall }) : await remoteSearch(q, { limit: 20 });
+        // a scope it cannot answer (nothing near in it) goes on to the old pipeline
         const rows = sem.length ? hitsToSuttaRows(sem.map(h => semanticHit(h, lang)), scope, { limit: 10, keepOrder: true }) : [];
         if (rows.length) {
             const responseBody = {
