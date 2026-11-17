@@ -131,7 +131,8 @@ const LEGACY_READERS = {
     '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
     '/rev': {}, '/frev': {}, '/rv': {},
     // the old site's home pages and its TTS reader (Google still lists them; without this they were a search for "tts.php")
-    '/en': {}, '/ru': { lang: 'ru' }, '/tts.php': {},
+    // /en names its language like /ru: a reader who had been on /ru/ got the Russian home at /en/ (Cakkhu 2026-11-17)
+    '/en': { lang: 'en' }, '/ru': { lang: 'ru' }, '/tts.php': {},
 };
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');

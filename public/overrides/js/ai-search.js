@@ -449,6 +449,7 @@
         const pane = document.getElementById('ai-pane');
         if (!pane || !query) return;
         cancelAiRun();
+        window.dgRankedQuery = null;
         const run = aiRun;
 
         // Owner: "переходи в ai режим когда это точно необходимо" — don't decide from word count;
@@ -540,6 +541,8 @@
                 noteEl.classList.remove('d-none');
             }
             // «не найдено» by the query, then a table of results: the note above already says no exact match (Cakkhu 2026-11-17)
+            // and the header's own «не найдено» may come after this (it waits for the language file): it checks dgRankedQuery
+            window.dgRankedQuery = query;
             document.querySelectorAll('.rh-notfound').forEach(el => { el.hidden = true; });
             // Owner: "не показывает raw запрос. в футере" — a real sutta table has its own real
             // footer row (Main/History/Export/Read/...), the natural home for a debug link once

@@ -4518,6 +4518,8 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 if (messageKey) {
                     let msgSpan = document.createElement('span');
                     msgSpan.className = 'rh-stats' + (messageKey === 'results.noResultsMessage' ? ' rh-notfound' : '');
+                    // results by meaning already on screen for this query (ai-search.js): no «не найдено» over them
+                    msgSpan.hidden = messageKey === 'results.noResultsMessage' && window.dgRankedQuery != null && String(window.dgRankedQuery).trim() === String(json.metadata.query).trim();
                     msgSpan.textContent = tFrom(config, messageKey, '');
                     $head[0].appendChild(msgSpan);
                 }
