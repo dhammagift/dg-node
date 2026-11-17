@@ -641,6 +641,8 @@ window.addEventListener('DOMContentLoaded', () => {
         if (document.getElementById('copy_input_btn')) document.getElementById('copy_input_btn').title = 'Скопировать';
         document.getElementById('btn_settings').title = 'Настройки';
         document.getElementById('btn_reset_tts').title = 'Сбросить настройки';
+        document.getElementById('btn_share_memo').title = 'Поделиться ссылкой';
+        document.getElementById('btn_download_audio').title = 'Скачать MP3';
         document.getElementById('lbl_result').innerText = 'Результат:';
 
         document.getElementById('edit_mode_label').innerText = 'Авто-курсор';
