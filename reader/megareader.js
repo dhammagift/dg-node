@@ -1504,16 +1504,21 @@ document.addEventListener('click', function (event) {
         menu.hidden = !willOpen;
         // kept on the screen whatever the text size: at 150 % on a desktop it hung 15 px past the left edge (2026-11-14 zoom
         // matrix). Moved by the overflow, in its own (zoomed) pixels.
-        menu.style.transform = '';
+        menu.style.marginLeft = '';
         if (willOpen) {
             const z = (window.dgZoom && window.dgZoom()) || 1;
             // the CSS max-width (100vw - 24px) is zoomed too: at the phone's 110 % the menu came out 427 px on a 412 px
             // screen and no shift could keep it whole (owner 2026-11-17, the end of a text: «4NT» cut to «NT»)
-            const cap = Math.floor((window.innerWidth - 24) / z);   // and the CSS min-width (220px) must not outgrow it
+            // the screen's width is clientWidth: a phone's innerWidth grows with whatever sticks out, the menu itself included
+            // (the columns view at 150 %: 456 on a 360 screen, so the menu «fit» it and stayed 96 px past the edge)
+            const vw = document.documentElement.clientWidth || window.innerWidth;
+            const cap = Math.floor((vw - 24) / z);   // and the CSS min-width (220px) must not outgrow it
             menu.style.maxWidth = `${cap}px`; menu.style.minWidth = `${Math.min(220, cap)}px`;
             const r = menu.getBoundingClientRect();
-            const dx = r.left < 8 ? 8 - r.left : r.right > window.innerWidth - 8 ? window.innerWidth - 8 - r.right : 0;
-            if (dx) menu.style.transform = `translateX(${(dx / z).toFixed(1)}px)`;
+            const dx = r.left < 8 ? 8 - r.left : r.right > vw - 8 ? vw - 8 - r.right : 0;
+            // a margin, not a transform: a transformed box still widens the page by where it stood (a phone's page
+            // scrolled 12 px sideways with the menu itself on the screen)
+            if (dx) menu.style.marginLeft = `${(dx / z).toFixed(1)}px`;
             // the one at the end of a text opens upwards: a button near the top of the screen left its first links above it
             if (r.top < 0 || r.bottom > window.innerHeight) menu.scrollIntoView({ block: 'nearest' });
         }

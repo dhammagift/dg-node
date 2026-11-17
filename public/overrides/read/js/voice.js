@@ -2975,7 +2975,8 @@ function showVoiceHint(title, message, storageKey) {
       padding: '12px 20px', borderRadius: '8px', fontSize: '14px', zIndex: '9999',
       boxShadow: '0 4px 12px rgba(0,0,0,0.3)', animation: 'fadeInUp 0.5s ease-out',
       // left:50% alone limits a fixed box to half the screen: on a phone the text stood in a narrow column
-      width: 'max-content', maxWidth: 'min(600px, calc(100vw - 32px))', boxSizing: 'border-box',
+      // vw is the screen, px are zoomed with the text size (--dg-zoom): divided, or at 150 % it ran past both edges
+      width: 'max-content', maxWidth: 'min(600px, calc(100vw / var(--dg-zoom, 1) - 32px))', boxSizing: 'border-box',
       minWidth: '200px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.1)'
   });
 
