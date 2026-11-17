@@ -959,7 +959,7 @@ window.DgSearchRender = (function () {
         document.body.appendChild(btn);
     }
 
-    function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl) {
+    function buildDataTable(container, dataArray, highlightWord, requestedLangs, langsFromUrl, opts) {
         ensureVariantFilter();
         activeState.highlightWord = highlightWord;
         activeState.langsFromUrl = !!langsFromUrl;
@@ -1408,7 +1408,8 @@ window.DgSearchRender = (function () {
             // (sortSuttaResults in dg-light.js), DataTables re-applies its own `order` on init
             // regardless of JSON key order, so it's repeated here as the single source of truth
             // for the default sort (see the file-level comment re: TODO.md поиск п.5's sort bug).
-            order: [[7, 'asc'], [0, 'asc']]
+            // opts.keepOrder: the rows come ranked (search by meaning, best first) - no re-sorting
+            order: opts && opts.keepOrder ? [] : [[7, 'asc'], [0, 'asc']]
         });
 
         suttaTableApi = $table.DataTable(options);

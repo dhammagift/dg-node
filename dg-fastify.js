@@ -47,6 +47,8 @@ const { normalizeQuery } = require('./core/ai-search.js');
 // dg-node issue #29 (crawler noise like "lzh-mg-bi-pm_pc127" was reaching DPD and the LLM).
 const { nonQueryReason } = require('./core/query-guard.js');
 const { searchHybrid } = require('./core/tipitaka-mcp-client.js');
+const { semanticSearch, remoteSearch, hasLocalIndex } = require('./core/semantic-search.js');
+const { recallSuttas } = require('./core/ai-search.js');
 const { verifyCandidates, lookupWord } = require('./core/dpd-lookup.js');
 const { mcpHandler, composeCensus } = require('./core/mcp-server.js');
 // Regex-keyword searches run in a worker thread with a hard deadline — see core/regex-runner.js
@@ -2750,7 +2752,19 @@ const AI_SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
 // (owner: "по-настоящему DataTable"). Fields the column renderers don't get from us (unique_words,
 // lb_context/la_context, variant/html) are left empty — cheap degradation, not required for a
 // single best-guess segment per sutta.
-function hitsToSuttaRows(hits, scope) {
+// A semantic hit's quote: the line's Pali and its translation in the page's language (a human one:
+// the 'o' translation first, as the reader does; never ai/gemini).
+const semRootStmt = searchDb.prepare("SELECT txt FROM texts WHERE segment_id = ? AND kind = 'root' LIMIT 1");
+const semTrStmt = searchDb.prepare(`SELECT translator, txt FROM texts WHERE segment_id = ? AND kind = 'translation' AND lang = ?
+    AND translator NOT IN ('ai', 'gemini') ORDER BY translator = 'o' DESC, translator LIKE '%+o' DESC, translator LIMIT 1`);
+function semanticHit(h, lang) {
+    const root = h.segment_id ? semRootStmt.get(h.segment_id) : null;
+    const tr = h.segment_id ? semTrStmt.get(h.segment_id, lang) : null;
+    return { sutta_id: h.sutta_id, segment_id: h.segment_id || '', rrf_score: h.score, text_pali: root ? root.txt : '',
+        translations: tr ? { [`${lang}_${tr.translator}`]: tr.txt } : {} };
+}
+
+function hitsToSuttaRows(hits, scope, { limit = 5, keepOrder = false } = {}) {
     // search_hybrid knows nothing about this site's scope filter (it searches the whole
     // Tipitaka) — filter its hits the same way plain /search already does, otherwise a scope
     // that excludes Abhidhamma/Vinaya can still surface them here (owner: "он выводит абхидхамму
@@ -2768,13 +2782,14 @@ function hitsToSuttaRows(hits, scope) {
         const existing = bySutta.get(hit.sutta_id);
         if (!existing || hit.rrf_score > existing.rrf_score) bySutta.set(hit.sutta_id, hit);
     }
-    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, 5);
+    const topHits = [...bySutta.values()].sort((a, b) => b.rrf_score - a.rrf_score).slice(0, limit);
     const forSort = {};
     for (const hit of topHits) {
         const meta = getSuttaMeta(hit.sutta_id);
         forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
     }
-    return Object.keys(sortSuttaResults(forSort)).map(suttaId => {
+    // keepOrder: the semantic search's own ranking is the answer (best first), not the canon order
+    return (keepOrder ? topHits.map(h => h.sutta_id) : Object.keys(sortSuttaResults(forSort))).map(suttaId => {
         const { hit, meta } = forSort[suttaId];
         return {
             sutta_id: suttaId,
@@ -2790,7 +2805,7 @@ function hitsToSuttaRows(hits, scope) {
                 root_text: hit.text_pali || '',
                 variant: '',
                 html: '',
-                translations: hit.text_english ? { en_sujato: hit.text_english } : {},
+                translations: hit.translations || (hit.text_english ? { en_sujato: hit.text_english } : {}),
                 lb_context: [],
                 la_context: [],
             }],
@@ -2815,6 +2830,24 @@ function logAiSearch(q, body) {
     const d = body.debug || {};
     console.log(`[ai-search] query="${q}" ok=${body.ok}${body.ok === false ? ` reason=${body.reason} detail="${body.detail}"` : ''} provider=${d.provider || '-'} normalized="${d.normalizedQuery || '-'}" candidates=[${(d.paliCandidates || []).join(', ')}] suttas=${body.suttas ? body.suttas.length : '-'} words=${body.wordSuggestions ? body.wordSuggestions.length : '-'}`);
 }
+
+// A wider limit than the AI search's 10 a minute: the other prod host asks from ONE address for all its readers (each of
+// them already limited there).
+const semRateLimited = makeRateLimiter(120, 60 * 1000);
+// The semantic search itself, for the hosts that do not hold the index (core/semantic-search.js remoteSearch): ranked
+// suttas with their best line, nothing else. Served only where the index is; same rate limit as the AI search.
+app.get('/api/semantic-search', async (req, res) => {
+    const q = String(req.query.q || '').trim().slice(0, 300);
+    if (!q) return res.code(400).send({ ok: false, reason: 'missing_query' });
+    if (!hasLocalIndex()) return res.code(503).send({ ok: false, reason: 'no_index' });
+    if (semRateLimited(req.ip)) return res.code(429).send({ ok: false, reason: 'rate_limited' });
+    try {
+        const limit = Math.min(20, Math.max(1, parseInt(req.query.limit, 10) || 10));
+        res.send({ ok: true, hits: await semanticSearch(q, { limit, recall: recallSuttas(q) }) });
+    } catch (err) {
+        res.code(502).send({ ok: false, reason: 'failed', detail: err.message });
+    }
+});
 
 app.get('/api/ai-search', async (req, res) => {
     const q = (req.query.q || '').trim();
@@ -2915,6 +2948,29 @@ app.get('/api/ai-search', async (req, res) => {
             // DPD unreachable (even after dpd-lookup.js's own retry) — not fatal, fall through to
             // the full pipeline rather than fail outright.
         }
+    }
+
+    // Search by meaning over our own index first (core/semantic-search.js, owner 2026-11-17): no chat
+    // model, the query itself in any language. The LLM + tripitaka-mcp pipeline below stays as the
+    // fallback for when the index or the embedding service is unavailable.
+    try {
+        const local = hasLocalIndex();
+        const recall = local ? recallSuttas(q) : null;
+        const sem = local ? await semanticSearch(q, { limit: 10, recall }) : await remoteSearch(q, { limit: 10 });
+        // the index holds the suttas only (no Vinaya yet): a scope it cannot answer goes on to the old pipeline
+        const rows = sem.length ? hitsToSuttaRows(sem.map(h => semanticHit(h, lang)), scope, { limit: 10, keepOrder: true }) : [];
+        if (rows.length) {
+            const responseBody = {
+                ok: true, query: q, suttas: rows,
+                wordSuggestions: [], debug: { normalizedQuery: q, provider: 'semantic', paliCandidates: [], ranked: sem.map(h => h.sutta_id),
+                    named: recall ? await Promise.race([recall, Promise.resolve(null)]) : 'remote' },
+            };
+            logAiSearch(q, responseBody);
+            aiCacheSet(cacheKey, responseBody);
+            return res.send(responseBody);
+        }
+    } catch (err) {
+        console.error('[ai-search] semantic search failed, falling back to the LLM pipeline:', err.message);
     }
 
     let dispatch;

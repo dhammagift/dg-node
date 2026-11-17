@@ -172,4 +172,39 @@ async function normalizeQuery(userQuery) {
     throw new Error(`All AI providers failed: ${errors.join(' | ')}`);
 }
 
-module.exports = { normalizeQuery };
+// Which suttas a chat model names for the query (owner 2026-11-17: «это просто базовая информация, на которой модель
+// обучена» — Gemini answers «ночь пробуждения» with MN 4, MN 19, MN 36). Only CANDIDATES: core/semantic-search.js keeps
+// the ones that exist in the index and whose text is near the query, so a made-up or wrong number never reaches the
+// reader. 26 known-answer queries (/root/work/sem/llm-recall.js): Gemini Flash-Lite 25, groq gpt-oss 9 (rate limits),
+// GLM-4.7-Flash 1. Gemini first; GLM (the model the App Store's China declaration names) and groq after it.
+const RECALL_PROMPT = 'You know the Pali Canon (Sutta Pitaka, SuttaCentral numbering). Given a reader\'s query in any language, ' +
+    'name the suttas that best match it. Answer ONLY a JSON array of up to 6 SuttaCentral ids, best first, e.g. ["mn21","sn56.11","an4.41"]. ' +
+    'Only DN, MN, SN, AN, Snp, Ud, Iti. No text.';
+const RECALL_ORDER = ['gemini', 'zai', 'groq'];
+async function recallSuttas(userQuery) {
+    const errors = [];
+    for (const name of RECALL_ORDER) {
+        const provider = PROVIDERS.find(p => p.name === name);
+        const key = provider && provider.key();
+        if (!key) continue;
+        try {
+            const res = await fetch(provider.url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+                body: JSON.stringify({ model: provider.model(), temperature: 0,
+                    messages: [{ role: 'system', content: RECALL_PROMPT }, { role: 'user', content: userQuery }],
+                    ...(name === 'zai' ? { thinking: { type: 'disabled' } } : {}) }),
+                signal: AbortSignal.timeout(8000),
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const text = (await res.json()).choices?.[0]?.message?.content || '';
+            const ids = JSON.parse((text.match(/\[[^\]]*\]/) || ['[]'])[0]).map(x => String(x).toLowerCase().replace(/\s+/g, ''));
+            return { provider: name, ids: ids.filter(x => /^(dn|mn|sn|an|snp|ud|iti)\d/.test(x)).slice(0, 6) };
+        } catch (err) {
+            errors.push(`${name}: ${err.message}`);
+        }
+    }
+    return { provider: null, ids: [], errors };
+}
+
+module.exports = { normalizeQuery, recallSuttas };
