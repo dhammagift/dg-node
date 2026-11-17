@@ -3929,6 +3929,10 @@
     // reason for a separate cooldown per subscription. Native OS notifications for the app
     // (album-art icon, translated text) are a separate, already-parked task — dg-apps#37.
     var DG_NOTIF_KEY = 'dg-daily-notif-date';
+    // The app's status-bar icon for a reading notification: its own white mark (dg-apps res/drawable/ic_tile, the
+    // download notification's icon). Without one, LocalNotifications falls back to Android's «i» (info) icon, which
+    // reads as an error (owner 2026-11-17).
+    var SUB_NOTIF_ICON = 'ic_tile';
     // The reader's own calendar day (was toISOString = UTC: at +5 the "day" turned over at 05:00).
     function localDay(d) { d = d || new Date(); return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
     // UI language, same source/logic as the langs-array builder above (line ~2232) — the
@@ -3949,7 +3953,7 @@
         function show(paliTitle, body, href) {
             var LN = nativeLN();
             if (LN) { // the app: a local notification (WebView has no Notification API)
-                LN.schedule({ notifications: [{ isExactNotification: false, id: SUB_NOTIF_OPEN + (idx % 90), title: subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''),
+                LN.schedule({ notifications: [{ isExactNotification: false, smallIcon: SUB_NOTIF_ICON, id: SUB_NOTIF_OPEN + (idx % 90), title: subLabel(sub) + ' * ' + id + (paliTitle ? ' ' + String(paliTitle).trim() : ''),
                     body: clip(body) || ' ', schedule: { at: new Date(Date.now() + 1500) }, extra: { url: href || '/' + id } }] }).catch(function () {});
                 return;
             }
@@ -4076,7 +4080,7 @@
                     // exact-alarm permission (the app has none) it opens "Alarms & reminders" and never answers the call:
                     // nothing was scheduled on Android 12+ (emulator check, 2026-10-31). A text of the day may come a
                     // few minutes late; it must not stop arriving.
-                    return { isExactNotification: false, id: SUB_NOTIF_SCHED + i, title: subLabel(it.sub) + ' * ' + it.id + (n.pali ? ' ' + n.pali : ''), body: n.tr || t('menu.daily.notifTitle', 'Текст дня'),
+                    return { isExactNotification: false, smallIcon: SUB_NOTIF_ICON, id: SUB_NOTIF_SCHED + i, title: subLabel(it.sub) + ' * ' + it.id + (n.pali ? ' ' + n.pali : ''), body: n.tr || t('menu.daily.notifTitle', 'Текст дня'),
                         schedule: { at: new Date(it.when), allowWhileIdle: true }, extra: { url: '/' + it.id } };
                 });
             });
