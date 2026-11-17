@@ -196,14 +196,22 @@ async function semanticSearch(query, { limit = 10, recall = null } = {}) {
 // The index lives on one host only (owner 2026-11-17: F1 has 3 GB of memory; the index ~200 MB of it). A host without
 // it asks the service that has it, by its service name, never a machine's (api.dhamma.gift -> f3 now): the same answer,
 // computed there. No local index and no answer -> the caller's old pipeline.
-const REMOTE = process.env.SEM_REMOTE || 'https://api.dhamma.gift';
+// api2.dhamma.gift (f2 now) is the reserve: scripts/semantic-server.js with its own copy of the index.
+const REMOTES = (process.env.SEM_REMOTE || 'https://api.dhamma.gift,https://api2.dhamma.gift').split(',');
 const hasLocalIndex = () => fs.existsSync(path.join(DIR, 'meta.json'));
 async function remoteSearch(query, { limit = 10 } = {}) {
-    const res = await fetch(`${REMOTE}/api/semantic-search?q=${encodeURIComponent(query)}&limit=${limit}`, { signal: AbortSignal.timeout(12000) });
-    if (!res.ok) throw new Error(`remote semantic search HTTP ${res.status}`);
-    const data = await res.json();
-    if (!data.ok) throw new Error(`remote semantic search: ${data.reason || 'failed'}`);
-    return data.hits;
+    const errors = [];
+    for (const base of REMOTES) {
+        try {
+            const res = await fetch(`${base}/api/semantic-search?q=${encodeURIComponent(query)}&limit=${limit}`, { signal: AbortSignal.timeout(12000) });
+            const data = await res.json().catch(() => ({}));
+            if (res.ok && data.ok) return data.hits;
+            errors.push(`${base}: HTTP ${res.status} ${data.reason || ''}`);
+        } catch (err) {
+            errors.push(`${base}: ${err.message}`);
+        }
+    }
+    throw new Error(`remote semantic search: ${errors.join(' | ')}`);
 }
 
 module.exports = { semanticSearch, remoteSearch, hasLocalIndex };
