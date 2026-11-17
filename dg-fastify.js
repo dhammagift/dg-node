@@ -2791,7 +2791,7 @@ function hitsToSuttaRows(hits, scope, { limit = 5, keepOrder = false } = {}) {
         forSort[hit.sutta_id] = { category: meta ? meta.category : 'other', mr: meta ? meta.mr : 0, segments: [], hit, meta };
     }
     // keepOrder: the semantic search's own ranking is the answer (best first), not the canon order
-    return (keepOrder ? topHits.map(h => h.sutta_id) : Object.keys(sortSuttaResults(forSort))).map(suttaId => {
+    const rows = (keepOrder ? topHits.map(h => h.sutta_id) : Object.keys(sortSuttaResults(forSort))).map(suttaId => {
         const { hit, meta } = forSort[suttaId];
         return {
             sutta_id: suttaId,
@@ -2813,6 +2813,9 @@ function hitsToSuttaRows(hits, scope, { limit = 5, keepOrder = false } = {}) {
             }],
         };
     });
+    // the translated titles a plain search's rows carry (owner 2026-11-17: Pali-only titles here were a gap)
+    searchCore.addTranslatedTitles(Object.fromEntries(rows.map(r => [r.sutta_id, r])), new Set(['ru', 'en']));   // a plain search's default langs
+    return rows;
 }
 
 // Owner: "откуда берутся эти заглушки? кто их дорисовывает?" — the LLM's own pali_candidates are

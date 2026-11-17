@@ -1758,6 +1758,7 @@ module.exports = {
     addEditions,
     init,
     suttaTitleIndex,
+    addTranslatedTitles,
     setSkeleton,
     navFor,
     findRangeContaining,

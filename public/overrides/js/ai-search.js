@@ -528,7 +528,8 @@
         // only for load/empty/error now; a real result switches back to the plain results screen.
         if (data.suttas.length && window.DgSearchRender && window.dgSetState) {
             window.dgSetState('results');
-            window.DgSearchRender.buildDataTable('#pali', data.suttas, query, 'en', true,
+            // the page's language, as the quotes come in it: 'en' here gave a Russian page English titles
+            window.DgSearchRender.buildDataTable('#pali', data.suttas, query, lang, true,
                 { keepOrder: !!(data.debug && data.debug.provider === 'semantic') });
             if (window.jQuery) window.jQuery('#pali, #pali_wrapper').removeClass('d-none');
             const noteEl = document.getElementById('ai-note');
