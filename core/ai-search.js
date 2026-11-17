@@ -181,7 +181,23 @@ const RECALL_PROMPT = 'You know the Pali Canon (Sutta Pitaka, SuttaCentral numbe
     'name the suttas that best match it. Answer ONLY a JSON array of up to 6 SuttaCentral ids, best first, e.g. ["mn21","sn56.11","an4.41"]. ' +
     'Only DN, MN, SN, AN, Snp, Ud, Iti. No text.';
 const RECALL_ORDER = ['gemini', 'zai', 'groq'];
-async function recallSuttas(userQuery) {
+// Answers kept by query: the search waits for the model 4 s at most (semantic-search.js), and Gemini took 5-7 s on
+// 2026-11-17 evening, so a hint question that found SN 22.59 first came without it (Cakkhu). A late answer still lands
+// here for the next reader, and the same query keeps the same order (temperature 0 still varied run to run).
+const recallCache = new Map();   // ponytail: in-process, 5000 queries, oldest out; lost on restart
+const RECALL_CACHE_MAX = 5000;
+function recallSuttas(userQuery) {
+    const key = String(userQuery).trim().toLowerCase();
+    if (recallCache.has(key)) return Promise.resolve(recallCache.get(key));
+    return askRecall(userQuery).then(r => {
+        if (r.ids.length) {
+            if (recallCache.size >= RECALL_CACHE_MAX) recallCache.delete(recallCache.keys().next().value);
+            recallCache.set(key, r);
+        }
+        return r;
+    });
+}
+async function askRecall(userQuery) {
     const errors = [];
     for (const name of RECALL_ORDER) {
         const provider = PROVIDERS.find(p => p.name === name);

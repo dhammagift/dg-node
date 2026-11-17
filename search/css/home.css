@@ -1158,7 +1158,7 @@ body.dg-state-toc #toc-pane.toc-out .toc-aside { animation: dg-toc-out-right 240
    too (owner: "на планшетах же много места... в одну колонку только на мобильных"). 640px keeps
    portrait tablets (iPad-class, ≥768px) two-column; only narrower phone widths collapse. */
 @media (max-width: 640px) {
-    .toc-layout { flex-direction: column; }
+    .toc-layout { flex-direction: column; align-items: stretch; }   /* flex-start left the root TOC rows content-wide, ~half the phone (Sadda 2026-11-17) */
     .toc-aside { order: -1; flex-basis: auto; width: 100%; position: static; }
 }
 
@@ -2338,6 +2338,8 @@ body:not(.dg-state-home) #dg-announce { display: none; }
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+/* A label without an icon wraps instead: «По всему тексту» in an equal third came out «По всему те…» (Sadda 2026-11-17) */
+.dg-segmented button > span:only-child { white-space: normal; text-align: center; overflow-wrap: anywhere; }
 .dg-seg-ic { width: 14px; height: 14px; flex: none; }
 .dg-segmented button[aria-pressed="true"] .dg-seg-ic { color: #fff; }
 /* На узком экране трети переключателя не хватало на «Light» рядом со значком — подпись

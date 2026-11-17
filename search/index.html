@@ -1485,7 +1485,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
       // (and left English titles, which nothing later corrects).
       var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
-        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
+        ((location.search.match(/[?&]lang=(ru|en)(&|$)/) || [])[1] ||   // /ru/ lands as /?lang=ru
+        localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
       if (lang !== 'ru') {
         document.getElementById('home-motto').textContent = 'Find the Truth';
         document.getElementById('home-subtitle').textContent = 'In the Pāli Suttas and Vinaya';
@@ -1578,7 +1579,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
       // (and left English titles, which nothing later corrects).
       var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
-        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
+        ((location.search.match(/[?&]lang=(ru|en)(&|$)/) || [])[1] ||   // /ru/ lands as /?lang=ru
+        localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
         if (lang !== 'ru') {
           var goLabel = document.querySelector('.dg-shell-go-label');
           if (goLabel) goLabel.textContent = 'Search';
@@ -1611,7 +1613,8 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       // window.siteLanguage below; without it a first visit to /ru/ flashed English strings
       // (and left English titles, which nothing later corrects).
       var lang = /^\/(ru|r|ml|mt)(\/|$)/.test(location.pathname) ? 'ru' :
-        (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
+        ((location.search.match(/[?&]lang=(ru|en)(&|$)/) || [])[1] ||   // /ru/ lands as /?lang=ru
+        localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage') || 'en');
       if (lang !== 'ru') {
         var changeLabel = document.querySelector('.dg-scope-change-label');
         if (changeLabel) changeLabel.textContent = 'change';
@@ -1634,7 +1637,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       var done = JSON.parse(localStorage.getItem('dgAnnounceDismissed') || '[]'), it = null;
       for (var i = 0; i < items.length && !it; i++) if (done.indexOf(items[i].flag || items[i].id) < 0) it = items[i];
       if (!it) return;
-      var ru = /^\/ru(\/|$)/.test(location.pathname) || (localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage')) === 'ru';
+      var ru = /^\/ru(\/|$)/.test(location.pathname) || ((location.search.match(/[?&]lang=(ru|en)(&|$)/) || [])[1] || localStorage.getItem('dhammaLanguage') || localStorage.getItem('siteLanguage')) === 'ru';
       var text = (ru ? it.ru : it.en) || it.en || it.ru || '';
       var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); };
       a.innerHTML = '<div class="dg-announce-box" role="status">' + (it.tag ? '<span class="dg-announce-tag">' + esc(it.tag) + '</span>' : '') +
@@ -4514,7 +4517,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
                 if (renderResultHeader._callId !== headerRenderId) return;
                 if (messageKey) {
                     let msgSpan = document.createElement('span');
-                    msgSpan.className = 'rh-stats';
+                    msgSpan.className = 'rh-stats' + (messageKey === 'results.noResultsMessage' ? ' rh-notfound' : '');
                     msgSpan.textContent = tFrom(config, messageKey, '');
                     $head[0].appendChild(msgSpan);
                 }

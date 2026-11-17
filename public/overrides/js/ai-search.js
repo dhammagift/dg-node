@@ -539,6 +539,8 @@
                     : 'No exact matches — guesses by meaning, check what you find against the suttas themselves.';
                 noteEl.classList.remove('d-none');
             }
+            // «не найдено» by the query, then a table of results: the note above already says no exact match (Cakkhu 2026-11-17)
+            document.querySelectorAll('.rh-notfound').forEach(el => { el.hidden = true; });
             // Owner: "не показывает raw запрос. в футере" — a real sutta table has its own real
             // footer row (Main/History/Export/Read/...), the natural home for a debug link once
             // there's an actual table on screen; #ai-note-wrap (right under the header) is only

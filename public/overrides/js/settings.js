@@ -191,6 +191,19 @@ window.addEventListener('dgStateChanged', function (e) {
     idle(function () { window.dg_loadDictionaryScripts().catch(function () {}); });
 });
 
+// Alt+A (dictionary on/off) and Alt+B (its mode) live in paliLookup.js, which isn't on the page until the first word click
+// or the preload above - and that preload skips a reader who turned the dictionary off, so Alt+A could never turn it back
+// on (Sadda 2026-11-17). Before the script is there the key loads it and is pressed again for it.
+document.addEventListener('keydown', function (event) {
+    if (!event.altKey || event.shiftKey || (event.code !== 'KeyA' && event.code !== 'KeyB') || window.isDictScriptLoaded) return;
+    if (!event.isTrusted) return;   // the replay below
+    event.preventDefault();
+    var code = event.code, key = event.key;
+    window.dg_loadDictionaryScripts().then(function () {
+        document.dispatchEvent(new KeyboardEvent('keydown', { code: code, key: key, altKey: true, bubbles: true }));
+    }).catch(function () {});
+});
+
 // ==========================================
 // ФОНОВАЯ АКТИВАЦИЯ С РОДНОЙ ПЛАШКОЙ
 // ==========================================
@@ -1358,10 +1371,15 @@ if (event.altKey && !event.ctrlKey && !event.metaKey &&
         // не конкретный сегмент — точечная закладка уже есть отдельно (sm-bookmark, common.js,
         // требует сначала выделить строку).
         if (window._currentSlug && typeof toggleFavoriteGlobal === 'function') {
+            // Right after Ctrl+→/← the address and the title already name the next text while _currentSlug is still
+            // the old one (sn56.11 was saved as «Tathāgatasutta sn56.12», Sadda 2026-11-17): the address wins, and a
+            // title that doesn't name the saved text isn't used.
+            const fromPath = (location.pathname.match(/^\/(?:ru\/)?([a-z]+\d[\w.-]*)$/i) || [])[1];
+            const slug = fromPath ? fromPath.toLowerCase() : window._currentSlug;
             toggleFavoriteGlobal({
-                slug: window._currentSlug,
-                id: window._currentSlug,
-                title: document.title || window._currentSlug,
+                slug: slug,
+                id: slug,
+                title: document.title && document.title.indexOf(slug) !== -1 ? document.title : slug,
                 path: window.location.pathname,
                 search: window.location.search,
                 timestamp: Date.now()

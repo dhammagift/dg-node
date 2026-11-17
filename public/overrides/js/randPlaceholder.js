@@ -75,14 +75,16 @@ const randomS = Math.floor(Math.random() * suttas.length);
 // console.log(words[randomW], suttas[randomS]);
 // Mixed in: questions in one's own words, which the search by meaning answers (owner 2026-11-17: show that one can
 // search by meaning, not only words and numbers). Wording approved by the owner; each one finds its sutta among the
-// first three on dhamma.gift (checked 2026-11-17), no other phrase goes here without that check.
+// first three on dhamma.gift (checked 2026-11-17), no other phrase goes here without that check. «Почему пять блоков — не
+// «я»» / «The five blocks are not self» went out the same evening: the index reads «пять» as the Fives of AN, and SN 22.59
+// came 9th even with the model naming it first (Cakkhu's check).
 var byMeaning = theLanguage == "ru"
     ? ["Где определена dukkha", "Беседа с пятью монахами в Оленьем парке", "Что такое благородный восьмеричный путь",
-       "Как возникает dukkha: зависимое возникновение", "Почему пять блоков — не «я»", "Пример с плотом",
+       "Как возникает dukkha: зависимое возникновение", "Пример с плотом",
        "«Всё» — шесть органов чувств и их объекты", "Ночь пробуждения Будды", "Как развивать дыхания-памятование",
        "Четыре установления памятования", "Что прекращается в ниббане", "Пример с пилой"]
     : ["Where dukkha is defined", "The talk with the five monks in the Deer Park", "What is the noble eightfold path",
-       "How dukkha arises, link by link", "The five blocks are not self", "The simile of the raft",
+       "How dukkha arises, link by link", "The simile of the raft",
        "\"The all\": the six senses and their objects", "The night of the Buddha's awakening", "How to develop breath-remembrance",
        "The four establishments of remembrance", "What ceases in nibbana", "The simile of the saw"];
 var input = document.getElementById('paliauto');

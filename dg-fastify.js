@@ -4766,6 +4766,16 @@ app.listen({ port: PORT, host: '0.0.0.0' }, (err) => {
     // the start instead of inside the first search, which waited ~6 s for it.
     // ponytail: still blocks the loop once per start; a table built with dg.db if restarts ever hurt
     setTimeout(() => { const t = Date.now(); searchCore.suttaTitleIndex(); console.log(`titles index: ${Date.now() - t} ms`); }, 500);
+    // The search box's questions by meaning (randPlaceholder.js) asked of the model once, one after another: the first
+    // reader to try one gets the answer from recallSuttas' cache, not after the search's 4 s cap (Gemini 5-7 s, 2026-11-17)
+    setTimeout(() => {
+        if (!hasLocalIndex()) return;
+        const src = fsSync.readFileSync(path.join(__dirname, 'public/overrides/js/randPlaceholder.js'), 'utf8');
+        const block = (src.match(/var byMeaning[^[]*(\[[\s\S]*?);\n/) || [])[1] || '';
+        const qs = [...block.matchAll(/"((?:[^"\\]|\\.)*)"/g)].map(m => JSON.parse(`"${m[1]}"`));
+        qs.reduce((p, q) => p.then(() => recallSuttas(q).catch(() => {})), Promise.resolve())
+            .then(() => console.log(`recall warmed: ${qs.length} hint questions`));
+    }, 3000);
     // The packs list against the files on disk (streamed hashes, ~1 s for 320 MB): a file that disagrees keeps its bytes and
     // the manifest takes its numbers, so a hand edit or a half-done publish never serves "the pack has the wrong size".
     setTimeout(() => require('./scripts/packs-check.js').checkPacks(path.join(SITEROOT, 'mobile-data'), { fix: true }).then((r) => {

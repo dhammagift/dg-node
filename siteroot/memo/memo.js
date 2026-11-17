@@ -88,7 +88,10 @@ window.addEventListener('DOMContentLoaded', loadPresets);
         window.memoLoopTimeout = null;
         window.memoRestartTimeout = null;
         window.isLoopingPause = false; 
-        window.memoLang = window.location.pathname.includes('/r/') || window.location.pathname.includes('/ml/') || window.location.pathname.includes('/ru/') ? 'ru' : 'en';
+        // ?lang= first, as the rest of the site reads it (/memo/?lang=ru stayed English - Cakkhu 2026-11-17), then the path
+        const memoLangParam = new URLSearchParams(window.location.search).get('lang');
+        window.memoLang = memoLangParam === 'ru' || memoLangParam === 'en' ? memoLangParam
+            : window.location.pathname.includes('/r/') || window.location.pathname.includes('/ml/') || window.location.pathname.includes('/ru/') ? 'ru' : 'en';
         window.isMemoPlaying = false; 
 
         // --- ГЛОБАЛЬНАЯ БЛОКИРОВКА (ГЕЙТКИПЕР) ---

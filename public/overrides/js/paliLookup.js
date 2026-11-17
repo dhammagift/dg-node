@@ -1142,7 +1142,8 @@ function toggleDictionaryVisible() {
   dictionaryVisible = !dictionaryVisible;
   localStorage.setItem('dictionaryVisible', dictionaryVisible);
   applyDictToggleIcon();
-  showBubbleNotification(dictionaryVisible ? "Dictionary On" : "Dictionary Off");
+  showBubbleNotification(window.isRu ? (dictionaryVisible ? "Словарь включён" : "Словарь выключен")
+    : (dictionaryVisible ? "Dictionary On" : "Dictionary Off"));
 }
 
 document.addEventListener('click', (e) => {
