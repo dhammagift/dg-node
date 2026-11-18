@@ -150,6 +150,8 @@ function legacyReaderRedirect(url) {
     if (!target) return null;
     const q = (params.get('q') || '').trim();
     params.delete('q');
+    // the old readers' lang=pli was Pali alone: the reader's own word for that is pali=pli (lang=pli opened Pali + English)
+    if (params.get('lang') === 'pli') { params.delete('lang'); params.set('pali', 'pli'); }
     for (const [k, v] of Object.entries(target)) if (!params.has(k)) params.set(k, v);
     const rest = params.toString();
     if (!q) return '/' + (rest ? '?' + rest : '');

@@ -377,12 +377,15 @@ function trimTexts(cache) {
     });
 }
 
+// ignoreVary: the server answers "Vary: Origin" (CORS), and a page's fetch() carries an Origin the precache's own
+// requests did not - every fetch()ed file missed offline (the reader's text, mode-table.json: Cakkhu 2026-11-18).
+// Only same-origin GETs get here, so the Origin never changes what the answer is.
 function matchCached(request, url) {
-    return caches.match(request).then(function (cached) {
+    return caches.match(request, { ignoreVary: true }).then(function (cached) {
         if (cached) return cached;
         for (var i = 0; i < VERSIONED_ASSET_ROOTS.length; i++) {
             if (url.pathname.indexOf(VERSIONED_ASSET_ROOTS[i]) === 0) {
-                return caches.match(request, { ignoreSearch: true });
+                return caches.match(request, { ignoreSearch: true, ignoreVary: true });
             }
         }
         return undefined;
