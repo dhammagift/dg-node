@@ -12,8 +12,10 @@ const crypto = require('crypto');
 
 const ROOT = path.join(__dirname, '..');
 const PW = '/usr/lib/node_modules/@playwright/cli/node_modules/playwright';
-// what the grid is built from: home.js renders it from menu-links.json, with FontAwesome's icons
-const SOURCES = ['search/js/home.js', 'configs/search/menu-links.json', 'public/overrides/js/fontawesome-local.js'];
+// what the grid is built from: home.js renders it from menu-links.json. Not fontawesome-local.js: build-icons.js cuts it
+// per host from whatever files the tree holds (test's untracked files add icons), so its hash never matched on prod and
+// the snapshot was never used there. The icons are in the snapshot as SVG; a grid that differs is rebuilt by home.js.
+const SOURCES = ['search/js/home.js', 'configs/search/menu-links.json'];
 
 function sourcesHash() {
     return SOURCES.map(f => {
