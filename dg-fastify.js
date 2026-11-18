@@ -4737,8 +4737,8 @@ app.setNotFoundHandler(async (req, res) => {
         if (seg) return res.header('X-Robots-Tag', 'noindex').header('Cache-Control', 'no-cache').type('application/json; charset=utf-8').send(seg);
         if (OLD_SITE_MIRRORS.test(decodedPath(req.url))) return res.redirect('https://old.dhamma.gift' + req.url, 302);
     }
-    // /th/ like /ru/: the old site's Thai links (/th/sc?q=an3.5) 404ed while /ru/sc?q= worked (prod log 2026-11-18)
-    const langPrefix = /^\/(ru|th)(\/|\?|$)/.exec(req.url);
+    // /th/ and /en/ like /ru/: the old site's links (/th/sc?q=an3.5, /en/repeat-timer/) 404ed while /ru/... worked (prod log 2026-11-18)
+    const langPrefix = /^\/(ru|th|en)(\/|\?|$)/.exec(req.url);
     if (langPrefix) {
         const [pathPart, queryPart] = req.url.split('?');
         // one leading slash: "/ru//evil.example" must not become a protocol-relative "//evil.example"
