@@ -130,6 +130,8 @@ const LEGACY_READERS = {
     '/ml': { mode: 'multi' }, '/mt': { mode: 'multi', lang: 'ru' }, '/multi': { mode: 'multi' },
     '/th': { lang: 'th' }, '/th/read': { lang: 'th' }, '/mlth': { mode: 'multi', lang: 'th' },
     '/rev': {}, '/frev': {}, '/rv': {},
+    // the old SC-style reader (/sc/?q=sn7.4&lang=ru, ~900 a day on prod): it was a search for the word "sc"
+    '/sc': {},
     // the old site's home pages and its TTS reader (Google still lists them; without this they were a search for "tts.php")
     // /en names its language like /ru: a reader who had been on /ru/ got the Russian home at /en/ (Cakkhu 2026-11-17)
     '/en': { lang: 'en' }, '/ru': { lang: 'ru' }, '/tts.php': {},
@@ -4733,12 +4735,14 @@ app.setNotFoundHandler(async (req, res) => {
         if (seg) return res.header('X-Robots-Tag', 'noindex').header('Cache-Control', 'no-cache').type('application/json; charset=utf-8').send(seg);
         if (OLD_SITE_MIRRORS.test(decodedPath(req.url))) return res.redirect('https://old.dhamma.gift' + req.url, 302);
     }
-    if (req.url === '/ru' || req.url.startsWith('/ru/') || req.url.startsWith('/ru?')) {
+    // /th/ like /ru/: the old site's Thai links (/th/sc?q=an3.5) 404ed while /ru/sc?q= worked (prod log 2026-11-18)
+    const langPrefix = /^\/(ru|th)(\/|\?|$)/.exec(req.url);
+    if (langPrefix) {
         const [pathPart, queryPart] = req.url.split('?');
         // one leading slash: "/ru//evil.example" must not become a protocol-relative "//evil.example"
         const rest = '/' + pathPart.slice(3).replace(/^[\/\\]+/, '');
         const params = new URLSearchParams(queryPart || '');
-        params.set('lang', 'ru');
+        params.set('lang', langPrefix[1]);
         return res.redirect(rest + '?' + params.toString(), 301); // a permanent alias: 302 kept both forms in search
     }
     // Dictionary clean-path words (/dict/dukkha, /dict/ru/dukkha), same as dict.dhamma.gift/dukkha
