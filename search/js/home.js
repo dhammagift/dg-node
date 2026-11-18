@@ -5080,6 +5080,11 @@
         Array.prototype.forEach.call(document.querySelectorAll('[data-href-en][data-href-ru]'), function (el) {
             el.href = ru ? el.dataset.hrefRu : el.dataset.hrefEn;
         });
+        // Footer icon titles: the English one is in the markup, the Russian one beside it
+        Array.prototype.forEach.call(document.querySelectorAll('[data-title-ru]'), function (el) {
+            if (!el.dataset.titleEn) el.dataset.titleEn = el.title;
+            el.title = ru ? el.dataset.titleRu : el.dataset.titleEn;
+        });
     }
 
     /* Список кнопок для правки. Открывается пунктом «Изменить кнопки» в меню: выбирать, что
