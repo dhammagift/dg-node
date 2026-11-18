@@ -121,8 +121,10 @@ function regexPrefilterLiterals(pattern) {
             for (const l of inner) if (!out.includes(l)) out.push(l);
             continue;
         }
-        const first = literalRuns(stripped)[0];
-        if (!first || first.length < min || !LITERAL_SAFE.test(first) || !stripped.startsWith(first)) return null;
+        const run = literalRuns(stripped)[0];
+        // the run's leading word: "Hoti kho so.*samayo" starts with the run "Hoti kho so", whose spaces failed LITERAL_SAFE (prod log 2026-11-18)
+        const first = run && stripped.startsWith(run) ? (run.match(/^[\p{L}\p{N}]+/u) || [''])[0] : '';
+        if (first.length < min || !LITERAL_SAFE.test(first)) return null;
         if (!out.includes(first)) out.push(first);
     }
     return out;

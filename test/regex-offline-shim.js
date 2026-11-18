@@ -5,7 +5,7 @@ const fs = require('fs'), path = require('path'), vm = require('vm');
 const { DatabaseSync } = require('node:sqlite');
 const dbPath = process.argv[2] || path.join(__dirname, '..', 'dg.db');
 const src = fs.readFileSync(process.env.WORKER || path.join(__dirname, '..', 'public/offline/db-worker.js'), 'utf8');
-const a = src.indexOf('function nodeSqliteShim'), b = src.indexOf('// Streams the database straight into OPFS');
+const a = src.indexOf('const RID_STRIDE'), b = src.indexOf('// Streams the database straight into OPFS'); // from RID_STRIDE: packedQuery, which the shim calls, sits right above it
 const nodeSqliteShim = new Function(src.slice(a, b) + '; return nodeSqliteShim;')();
 
 function fresh() { delete require.cache[require.resolve('../core/search-core.js')]; return require('../core/search-core.js'); }
@@ -31,7 +31,7 @@ const modes = {
     'offline worker (sqlite-wasm shape)': () => ({ searchDb: nodeSqliteShim(oo1(raw)) }),
     'iOS (native SQL, JS RegExp)': () => ({ searchDb: nodeSqliteShim(native(raw)) }),
 };
-const queries = ['Kata.*, dukkhaṁ\\?', 'duk+ha', 'kacchap(a|ā)', '^Katamā', 'bhikkhave\\s+dukkh'];
+const queries = ['Kata.*, dukkhaṁ\\?', 'duk+ha', 'kacchap(a|ā)', '^Katamā', 'bhikkhave\\s+dukkh', 'Hoti kho so.*samayo'];
 (async () => {
     let bad = 0;
     for (const q of queries) {
