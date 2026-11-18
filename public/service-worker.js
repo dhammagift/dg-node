@@ -91,7 +91,7 @@ var PRECACHE_URLS = [
     // The Patimokkha branches of the TOC and the two fragment endpoints they read: without these the
     // tree expanded offline and then died on 'Failed to fetch' (measured with pm2 stopped).
     '/api/patimokkha-fragment/bu', '/api/patimokkha-fragment/bi',
-    '/api/toc/book/dn', '/api/toc/book/mn', '/api/toc/book/sn', '/api/toc/book/an', '/api/toc/book/kn',
+    '/api/toc/book/dn', '/api/toc/book/mn', '/api/toc/book/sn', '/api/toc/book/an',
     '/api/toc/book/iti', '/api/toc/book/ud', '/api/toc/book/snp', '/api/toc/book/dhp', '/api/toc/book/thag',
     '/api/toc/book/thig', '/api/toc/book/mil', '/api/toc/book/kp', '/api/toc/book/pe',
     '/api/toc/book/pli-tv-bu-pm', '/api/toc/book/pli-tv-bi-pm', '/api/toc/book/pli-tv-bu-vb',
@@ -117,7 +117,6 @@ var PRECACHE_URLS = [
     '/assets/svg/rotate-solid-full.svg',
     '/assets/svg/open-link.svg',
     '/assets/js/paliLookup.js',
-    '/assets/js/paliLookup.css',
     '/nodejs/res/lang_ru.json',
     '/nodejs/res/lang_en.json',
     '/assets/i18n/lang_global_ru.json',
