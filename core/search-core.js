@@ -1701,7 +1701,7 @@ async function runRegexJob(job) {
 // offline /api/text has it too.
 function principlesLineHtml(ru, audio = '') {
     const links = ru
-        ? [['/ru/docs/sutta', 'Принципы'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий'], ['/ru/docs/compare', '6 изданий Пали']]
+        ? [['/ru/docs/sutta/', 'Принципы'], ['/ru/docs/rationale/', 'Обоснование'], ['/ru/docs/glossary/', 'Глоссарий'], ['/ru/docs/compare/', '6 изданий Пали']]
         : [['/docs/sutta/', 'Principles'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary'], ['/docs/compare/', '6 Pali editions']];
     return `<p class="dg-principles" style="text-align:center;font-size:.8em;opacity:.7;margin:1.5em auto .5em;line-height:1.9">${links.map(([h, t]) => `<a href="${h}" style="white-space:nowrap">${t}</a>`).join(' · ')}${audio ? '<br>' + audio : ''}</p>`;
 }

@@ -1671,6 +1671,9 @@ searchDb.exec('PRAGMA cache_size = -16000'); // 16MB page cache, per connection
 // Rebuilt on each start, like the other caches here, so it follows dg.db.
 const SITEMAP_DIR = path.join(__dirname, 'settings', 'sitemaps');
 const SITEMAP_STATE_PATH = path.join(__dirname, 'settings', 'sitemap-state.json');
+// sutta_id -> Set of languages with a human translation (filled by buildSitemapCache's scan): the contents pages and the
+// text pages link a text in a language only where that language's page exists
+let textLangs = new Map();
 async function buildSitemapCache() {
     const base = 'https://dhamma.gift';
     const today = new Date().toISOString().slice(0, 10);
@@ -1717,6 +1720,7 @@ async function buildSitemapCache() {
         if (r.kind === 'translation') m.tr[r.lang] = `${r.n}:${r.c}`;
         else m.root += `${r.kind}${r.n}:${r.c};`;
     }
+    textLangs = new Map([...sig].map(([id, m]) => [id, new Set(Object.keys(m.tr))]));
     const seen = new Set();
     for (const id of Object.keys(skeletonDB)) {
         // Pali texts only: the Chinese, Sanskrit and Gāndhārī parallels (lzh/, san/, pra/) open by their id but are
@@ -2100,12 +2104,12 @@ app.post('/api/tts/memo', { bodyLimit: 256 * 1024 }, async (req, res) => {
 // заменить на docs"). Permanent redirects keep old bookmarks and links from the legacy site working;
 // the tool/data pages next to them (history, multiTool, abbr, syrkin) are not help and stay.
 const LEGACY_HELP_REDIRECTS = {
-    'dictHelp.html': '/docs/dictionary', 'dictHelpRu.html': '/ru/docs/dictionary',
-    'keyFeatures.html': '/docs/key-features', 'keyFeaturesRu.html': '/ru/docs/key-features',
-    'privacy.html': '/docs/policies', 'privacy-ru.html': '/ru/docs/policies',
-    'rationale-en.html': '/docs/rationale', 'rationale.html': '/ru/docs/rationale',
-    'o-en.html': '/docs/principles', 'o.html': '/ru/docs/principles',
-    'ttsHelp.html': '/docs/tts',
+    'dictHelp.html': '/docs/dictionary/', 'dictHelpRu.html': '/ru/docs/dictionary/',
+    'keyFeatures.html': '/docs/key-features/', 'keyFeaturesRu.html': '/ru/docs/key-features/',
+    'privacy.html': '/docs/policies/', 'privacy-ru.html': '/ru/docs/policies/',
+    'rationale-en.html': '/docs/rationale/', 'rationale.html': '/ru/docs/rationale/',
+    'o-en.html': '/docs/principles/', 'o.html': '/ru/docs/principles/',
+    'ttsHelp.html': '/docs/tts/',
     'lunar.html': '/uposatha-calendar', 'lunarRu.html': '/uposatha-calendar?lang=ru', // the calendar is a page of its own now
 };
 for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
@@ -2563,7 +2567,8 @@ for (const [rootDir, urlPrefix] of VERSIONED_HTML_ROOTS) {
 // /ru/docs — real RU-locale docs build, baseUrl:'/ru/docs/' baked in at build time
 // (dg-docs/docusaurus.config.js, DOCS_BUILD_LOCALE=ru), so this is a genuine static mount,
 // not a redirect — /docs/ru/... never existed for readers to have bookmarked.
-app.register(fastifyStatic, { root: path.join(__dirname, 'dg-docs', 'build-ru'), prefix: '/ru/docs', setHeaders: staticCacheHeaders, decorateReply: false });
+// redirect: true — /ru/docs/sutta answered 200 as well as /ru/docs/sutta/ (two URLs per page, GSC 2026-11-20), as /docs/ does
+app.register(fastifyStatic, { root: path.join(__dirname, 'dg-docs', 'build-ru'), prefix: '/ru/docs', setHeaders: staticCacheHeaders, decorateReply: false, redirect: true });
 
 // Офлайн-зеркала сторонних сайтов — /{имя-папки}/... отдаётся как статика напрямую из offline-data.
 // Skips a name already mounted above (siteroot takes precedence — same behavior Express's
@@ -3708,8 +3713,11 @@ app.get('/api/toc', (req, res) => res.send({ categories: tocCategories() }));
 // itself builds its tree from /api/toc with buttons, so a crawler saw the home page's shell and a few labels, and
 // Google folded /toc into / as a duplicate (GSC 2026-10-29). /toc lists the books, /toc/<book> every text of the
 // book. Sutta and Vinaya only (owner: no Abhidhamma in the site's texts); a chapter (/toc/sn25) gets nothing extra.
-function tocSsrHtml(code, lang) {
+function tocSsrHtml(code, lang, reqLang) {
     const ru = lang === 'ru', q = ru ? '?lang=ru' : '';
+    // /toc/sn?lang=de: each text that has German opens in German (Google saw no link to ~3,300 such pages, GSC 2026-11-20)
+    const other = !ru && /^[a-z]{2,3}$/.test(reqLang || '') && reqLang !== 'en' ? reqLang : '';
+    const leafQ = id => other ? ((textLangs.get(id) || new Set()).has(other) ? '?lang=' + other : '') : q;
     const esc = s => String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').trim();
     const label = l => esc((l && (l[lang] || l.en)) || '');
     if (!code) {
@@ -3727,7 +3735,7 @@ function tocSsrHtml(code, lang) {
     const firstLeaves = kids.filter(c => typeof c !== 'string').map(c => findFirstLeafId(c[Object.keys(c)[0]])).filter(Boolean);
     const titleIdx = firstLeaves.length ? pickBranchTitleIndex(firstLeaves) : 2;
     const node = n => n.type === 'leaf'
-        ? `<li><a href="/${encodeURIComponent(n.id)}${q}">${esc(n.id)}</a> ${esc(n.title)}</li>`
+        ? `<li><a href="/${encodeURIComponent(n.id)}${leafQ(n.id)}"${leafQ(n.id) && other ? ` hreflang="${other}"` : ''}>${esc(n.id)}</a> ${esc(n.title)}</li>`
         : `<li>${esc(n.title)}<ul>${(n.children || []).map(node).join('')}</ul></li>`;
     const list = kids.map(c => annotateTree(c, code, titleIdx, true));
     return `<main class="dg-ssr-results" lang="${lang}"><h1>${esc(bookLabel(code, lang) || code)}</h1><p><a href="/toc${q}">${ru ? 'Палийский канон — содержание' : 'Pali Canon — contents'}</a></p><ul>${list.map(node).join('')}</ul></main>`;
@@ -3882,6 +3890,8 @@ const paliCyr = name => { const c = name.split(' ').map(paliToCyrillic).join(' '
 const paliAscii = name => name.normalize('NFD').replace(/[̀-ͯ]/g, '');
 const cleanTitle = s => (s || '').replace(/^\s*[\dIVXLC]+\.\s*/, '').replace(/[\s.]+$/, '').trim();
 const textHeadCache = new Map(); // `${id}|${lang}` -> head data
+// a text's framing lines (its root, leading quotes dropped), skipped at the start of its description
+const TEXT_FRAMING = /^(Evaṁ me sutaṁ|Ekaṁ samayaṁ|Sāvatthinidānaṁ|Sāvatthiyaṁ viharati|Atha kho|Bhikkhavo|Bhadd?ante|Tatra kho|Bhagavā etadavoca|Taṁ suṇātha|Evaṁ, bhante|Vuttañhetaṁ)/i;
 async function textHead(dataId, urlId, reqLang) {
     const roster = searchDb.prepare(
         "SELECT DISTINCT lang FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'"
@@ -3901,7 +3911,8 @@ async function textHead(dataId, urlId, reqLang) {
     // untitled ranges carry "~" for a name (an11.992-1151): the code stands in for it
     const pali = cleanTitle(titleSeg && titleSeg.root_text).replace(/^[~\s]+$/, '');
     const split = pali.replace(/(.)(sutta|vagga)$/i, '$1 $2');
-    const local = cleanTitle(titleSeg && tr(titleSeg));
+    // Thanissaro's headers lead with "Sutta" ("Sutta Animals", 333 English titles, GSC 2026-11-20): the name alone
+    const local = cleanTitle(titleSeg && tr(titleSeg)).replace(/^Sutta[\s:.—–-]+(?=\p{Lu})/u, '');
     const code = textCode(urlId, lang);
     // Owner 2026-10-18, an experiment: the title splits "-sutta" off the name ("Mahāsīhanāda Sutta") — named-sutta
     // queries are typed spaced ("kesi sutta", "assalayana sutta", GSC 90 days) and a fused compound is not reliably split.
@@ -3912,13 +3923,17 @@ async function textHead(dataId, urlId, reqLang) {
     // two pages then had one title (SEO audit 2026-10-30)
     let endonym = '';
     if (lang !== 'en' && lang !== 'ru') try { endonym = new Intl.DisplayNames([lang], { type: 'language' }).of(lang); } catch { /* unknown code */ }
-    const title = [name, local && local.toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') +
+    const title = [name, local && local.replace(/\s+/g, '').toLowerCase() !== pali.toLowerCase() ? local : ''].filter(Boolean).join(' — ') +
         (endonym && endonym !== lang ? ' · ' + endonym : '') + ' | Dhamma.Gift';
     let description = '';
     // the translation's own words; Pali only when this text has no translation in this language
     const body = segments.slice(headerEnd + 1);
     const hasTr = body.some(s => tr(s));
-    for (const s of body) {
+    // the opening formula says nothing of the text ("I have heard that on one occasion…", "Так мной услышано…" opened most
+    // descriptions, GSC 2026-11-20): the description starts at the first line past it and the section headings before it,
+    // the whole text if all of it is that
+    const lead = body.findIndex(s => !/<h\d/.test(s.html || '') && !TEXT_FRAMING.test(String(s.root_text || '').replace(/^[\s“‘"'(]+/, '')));
+    for (const s of lead > 0 ? body.slice(lead) : body) {
         description += (hasTr ? tr(s) : s.root_text || '') + ' ';
         if (description.length > 200) break;
     }
@@ -3932,8 +3947,6 @@ async function textHead(dataId, urlId, reqLang) {
     // a text with its audio says so at the end of the description, which keeps its 160 characters
     const audio = textAudio(dataId);
     const AUDIO_LANG = { en: { pli: 'Pali', ru: 'Russian', en: 'English' }, ru: { pli: 'пали', ru: 'русский', en: 'английский' } };
-    const audioNames = audio.map(a => (AUDIO_LANG[lang] || AUDIO_LANG.en)[a.lang]).filter(Boolean);
-    const audioNote = !audioNames.length ? '' : lang === 'ru' ? ` Аудио: ${audioNames.join(', ')}.` : ` Audio: ${audioNames.join(', ')}.`;
     // two or more translations in this language: the description says they can be compared side by side (owner 2026-10-20:
     // «кто-то ищет MN 10 — видит „Сравнить переводы MN 10“»), no pages of their own - the reader's multi mode is the comparison
     // the name alone ("SV", "Сыркин", "Thanissaro"): the byline's source, editor and title don't fit 160 characters; o first
@@ -3946,10 +3959,13 @@ async function textHead(dataId, urlId, reqLang) {
     // the other Pali editions this text has: the snippet says how many (owner 2026-11-09: «6 Pali editions», Google has to
     // know the comparison), the JSON-LD names them and points to the page that explains it (work.subjectOf)
     const eds = textEditions(dataId);
-    const edNote = !eds.length ? '' : lang === 'ru' ? ` ${eds.length + 1} изданий Пали.` : ` ${eds.length + 1} Pali editions.`;
-    const room = 160 - audioNote.length - compareNote.length - edNote.length;
+    // one short note, ~25 characters: the languages of the audio cost the text ~30 of its 160 (GSC 2026-11-20)
+    const ru = lang === 'ru';
+    const edNote = eds.length && audio.length ? (ru ? ` ${eds.length + 1} изданий Пали, аудио.` : ` ${eds.length + 1} Pali editions, audio.`)
+        : eds.length ? (ru ? ` ${eds.length + 1} изданий Пали.` : ` ${eds.length + 1} Pali editions.`) : audio.length ? (ru ? ' Аудио.' : ' Audio.') : '';
+    const room = 160 - compareNote.length - edNote.length;
     if (description.length > room) description = description.slice(0, description.lastIndexOf(' ', room - 3)) + '…';
-    description += compareNote + edNote + audioNote;
+    description += compareNote + edNote;
     // Cyrillic only for the Russian page: nobody reading the English one types it
     const names = [...new Set([split, paliAscii(split), paliAscii(pali), lang === 'ru' ? cyr : ''])].filter(n => n && n !== pali);
     const url = id => SITE + '/' + encodeURIComponent(urlId) + (id === 'en' ? '' : '?lang=' + id);
@@ -3967,7 +3983,7 @@ async function textHead(dataId, urlId, reqLang) {
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
             workExample: eds.length ? ['ms', ...eds].map(e => ({ '@type': 'Book', name: e === 'th' && dataId === 'pli-tv-bu-pm' ? EDITION_NAMES.thPm : EDITION_NAMES[e], inLanguage: 'pi' })) : undefined,
-            subjectOf: eds.length ? { '@type': 'WebPage', name: `${eds.length + 1} Pali editions side by side`, url: SITE + (lang === 'ru' ? '/ru/docs/compare' : '/docs/compare/') } : undefined,
+            subjectOf: eds.length ? { '@type': 'WebPage', name: `${eds.length + 1} Pali editions side by side`, url: SITE + (lang === 'ru' ? '/ru/docs/compare/' : '/docs/compare/') } : undefined,
             audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
                 contentUrl: a.url, encodingFormat: 'audio/mpeg', duration: a.duration ? `PT${Math.floor(a.duration / 60)}M${a.duration % 60}S` : undefined })) : undefined },
         alternates: [...new Set(['en', ...roster])].filter(l => l === 'en' || roster.includes(l)).map(l => [l, url(l)]),
@@ -4116,7 +4132,9 @@ function shellEnglish(html) {
         : part.replace(/>(\s*)([^<>]*[а-яё][^<>]*?)(\s*)</gi, (m, a, s, b) => SHELL_EN.has(s) ? `>${a}${htmlAttr(SHELL_EN.get(s))}${b}<` : m)).join('');
 }
 function withTextHead(html, h) {
-    if (h.lang === 'en') html = shellEnglish(html);
+    // the interface is Russian or English only (dhamma-i18n.js uiLanguage): every page but a Russian one gets the English
+    // shell (a German text sat in ~440 words of Russian UI, GSC audit 2026-11-20)
+    if (h.lang !== 'ru') html = shellEnglish(html);
     const t = htmlAttr(h.title), d = htmlAttr(h.description), u = htmlAttr(h.canonical);
     const ld = [h.breadcrumbs, h.work, ...(h.ld || [])].filter(Boolean);
     const links = (h.noindex ? `<meta name="robots" content="${h.noindex === true ? 'noindex' : h.noindex}">\n` : '') +
@@ -4126,6 +4144,9 @@ function withTextHead(html, h) {
         (h.keywords ? `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` : '') +
         (ld.length ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n` : '');
     let out = html
+        // the home slogan is the home page's heading only: on a text page the sutta's title is the one h1 (GSC 2026-11-20);
+        // its look is #home-motto's own (home.css), not the tag's
+        .replace(/<h1 id="home-motto">([^<]*)<\/h1>/, (m, t) => h.critical === 'home' ? m : `<div id="home-motto">${t}</div>`)
         .replace('<html ', `<html lang="${h.lang}" `)
         .replace(/<title>[^<]*<\/title>/, `<title>${t}</title>`)
         .replace(/<meta name="description" content="[^"]*">/, `<meta name="description" content="${d}">`);
@@ -4140,6 +4161,27 @@ function withTextHead(html, h) {
             const v = getAssetVersion(path.join(__dirname, 'reader', 'css', f));
             return `<link rel="stylesheet" class="dg-reader-css" href="/reader/css/${f}${v ? '?v=' + v : ''}">`;
         }).join('\n');
+        // the text's languages and its neighbours as plain links in the served HTML: Google saw no link to ~3,300 other-language
+        // and ~2,400 English text pages (GSC 2026-11-20). The reader repaints prev/next itself (renderNavigation).
+        const ui = h.lang === 'ru' ? 'ru' : 'en';
+        const langName = l => { try { const n = new Intl.DisplayNames([l], { type: 'language' }).of(l); return n.charAt(0).toLocaleUpperCase(l) + n.slice(1); } catch { return l; } };
+        const langLinks = h.alternates.length < 2 ? '' : (ui === 'ru' ? 'Переводы: ' : 'Translations: ') + [...h.alternates]
+            .sort(([a], [b]) => (b === 'en') - (a === 'en') || (b === 'ru') - (a === 'ru') || a.localeCompare(b)).map(([l, href]) => {
+            const hl = l === 'jpn' ? 'ja' : l;
+            return l === h.lang ? `<span lang="${hl}" aria-current="page">${htmlAttr(langName(hl))}</span>`
+                : `<a hreflang="${hl}" lang="${hl}" href="${htmlAttr(new URL(href).pathname + new URL(href).search)}">${htmlAttr(langName(hl))}</a>`;
+        }).join(' · ');
+        const navLink = (e, prev) => {
+            if (!e) return '';
+            const q = h.lang !== 'en' && (textLangs.get(e.slug) || new Set()).has(h.lang) ? '?lang=' + h.lang : '';
+            const name = (e.title || '').replace(/[0-9.-]/g, '').trim(), shown = htmlAttr(e.slug.replace(/pli-tv-|b[ui]-vb-/g, ''));
+            return `<a href="/${encodeURIComponent(e.slug)}${q}" rel="${prev ? 'prev' : 'next'}">${shown}${name ? ` <span class="sutta-name"> ${htmlAttr(name)}</span>` : ''}</a>`;
+        };
+        if (h.nav) out = out
+            .replace('<div id="previous2"></div>', () => `<div id="previous2">${navLink(h.nav.prev, true)}</div>`)
+            .replace('<div id="next2"></div>', () => `<div id="next2">${navLink(h.nav.next, false)}</div>`);
+        if (langLinks) out = out.replace('<p id="dg-text-langs" hidden></p>', () => `<p id="dg-text-langs" data-slug="${htmlAttr(h.slug || '')}" ` +
+            `style="text-align:center;font-size:.8em;opacity:.7;margin:0 auto 1em;line-height:1.9;max-width:40em">${langLinks}</p>`);
         out = out
             .replace('<body>', '<body class="dg-state-reader">')
             .replace('<div id="reader-pane" class="mt-4">', () => h.body ? '<div id="reader-pane" class="mt-4" data-ssr>' : '<div id="reader-pane" class="mt-4">') // home.css: no cold-load prev/next reservation
@@ -4345,15 +4387,23 @@ const SITE_LD = [
         url: SITE + '/', inLanguage: ['en', 'ru'], publisher: { '@id': SITE + '/#organization' } },
     { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/',
         logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift',
-            'https://play.google.com/store/apps/developer?id=Dhamma.Gift', 'https://apps.apple.com/developer/pavel-katorgin/id6813706219'] },
+            'https://play.google.com/store/apps/developer?id=Dhamma.Gift', 'https://apps.apple.com/developer/pavel-katorgin/id6813706219',
+            'https://t.me/dhammagift', 'https://apps.microsoft.com/detail/9NK892G5P5GT', 'https://huggingface.co/datasets/dhammagift/dg-dataset',
+            'https://doi.org/10.5281/zenodo.23491473'],
+        description: 'Search, reader and voice for the Pali Canon (Sutta and Vinaya): Pali line by line with translations, six Pali editions compared.' },
     // What the site is for search engines and AI readers: a tool, not only pages. No offers: the owner doesn't want
     // "free" stated (every Dhamma site is).
     { '@context': 'https://schema.org', '@type': 'WebApplication', '@id': SITE + '/#app', name: 'Dhamma.Gift', url: SITE + '/',
         applicationCategory: 'ReferenceApplication', operatingSystem: 'Web, Android, iOS', inLanguage: ['en', 'ru'],
         description: 'Search the Pali Canon (Sutta and Vinaya) in Pali and 25 languages, read suttas with translations side by side, listen and memorize.',
-        featureList: ['Search of the Sutta and Vinaya in Pali and translations', 'Reader with Pali and translations side by side',
-            'Translator comparison', '6 Pali editions side by side, line by line, differences highlighted (Mahāsaṅgīti, Buddha Jayanti, Chaṭṭha Saṅgāyana, Siam Rath, PTS)', 'Voice (text to speech)', 'Sutta podcasts in Pali, English and Russian', 'Memorization mode',
-            'Key terms read by the Suttas\' own definitions (glossary, rationale)', 'Pali dictionary', 'MCP server for AI assistants',
+        // Order and wording follow the owner's own view of what DG has and others don't (2026-11-20).
+        featureList: ['6 Pali Canon editions compared in one click, line by line, differences highlighted (Mahāsaṅgīti, Mahāsaṅgīti 2005, Buddha Jayanti, Chaṭṭha Saṅgāyana, Siam Rath, PTS)',
+            'Structured search of the Sutta and Vinaya in Pali and translations: every word form, filters by collection and text, grouping by text and by word, regex',
+            'Search by meaning: describe a passage in your own words (English or Russian) and find the sutta',
+            'Reader with Pali and translations line by line: Syrkin (Russian), Thanissaro Bhikkhu and Sujato (English), 25 languages',
+            'Neural Pali voice, plus English and Russian (text to speech)', 'Sutta podcasts in Pali, English and Russian', 'Memorization mode',
+            'Dictionary by the Suttas and Vinaya: definitions and similes from the Canon itself', 'Key terms read by the Suttas\' own definitions (glossary, rationale)',
+            'Uposatha days by the Suttas, by the real Moon', 'MCP server for AI assistants', 'Open dataset (CC BY 4.0, DOI 10.5281/zenodo.23491473)',
             'Telegram bot', 'Offline Android and iOS apps'],
         installUrl: ['https://play.google.com/store/apps/details?id=gift.dhamma.twa', 'https://apps.apple.com/app/dhamma-gift/id6813706217'],
         publisher: { '@id': SITE + '/#organization' } },
@@ -4463,7 +4513,7 @@ async function sendSiteHtml(req, res, kind, arg) {
     if (kind === 'toc') {
         h.vary = 'Sec-Fetch-Mode, User-Agent';
         h.bot = !isBrowserNavigation(req);
-        if (h.bot) h.ssr = tocSsrHtml(arg, h.lang);
+        if (h.bot) h.ssr = tocSsrHtml(arg, h.lang, req.query.lang);
     }
     return sendHeadHtml(req, res, h);
 }
@@ -4572,7 +4622,7 @@ function searchSsrList(q, lang, result, term) {
     // glossary (SEO_TERMS) and the three pages it comes from, as plain links (owner: neutral, no claims)
     const rendering = term && (ru ? term.ru : term.en);
     const docs = (ru
-        ? [['/ru/docs/sutta', 'Принципы по Суттам'], ['/ru/docs/rationale', 'Обоснование'], ['/ru/docs/glossary', 'Глоссарий']]
+        ? [['/ru/docs/sutta/', 'Принципы по Суттам'], ['/ru/docs/rationale/', 'Обоснование'], ['/ru/docs/glossary/', 'Глоссарий']]
         : [['/docs/sutta/', 'Principles by the Suttas'], ['/docs/rationale/', 'Rationale'], ['/docs/glossary/', 'Glossary']])
         .map(([h, t]) => `<a href="${SITE}${h}">${t}</a>`).join(' · ');
     const about = (rendering ? `<p>${esc(term.pali)}: ${ru ? 'перевод Dhamma.Gift' : 'Dhamma.Gift rendering'} — ${esc(rendering)}.</p>` : '') + `<p>${docs}</p>`;
@@ -4583,6 +4633,7 @@ async function sendTextHtml(req, res, dataId, urlId) {
     try { h = await textHead(dataId, urlId, req.query.lang); }
     catch (e) { console.warn(`textHead ${dataId}: ${e.message}`); }
     if (!h) return sendVersionedHtml(req, res, searchIndexPath);
+    try { h = { ...h, slug: String(dataId).toLowerCase(), nav: navFor(dataId) }; } catch (e) { /* no neighbours: the reader fetches them */ }
     // the text in the HTML only for the default view: another mode/script/translator set would be swapped at once
     const q = req.query;
     // ...but still the reader's shell: its stylesheets and critical CSS, so the header is in its final look from the first

@@ -5585,7 +5585,7 @@
         [['dn16', '/dn16?s=T%C4%81ni'], ['an4.180', '/an4.180?s=T%C4%81ni']].forEach(function (r, i) {
             if (i) refs.appendChild(document.createTextNode(' · '));
             var a = el('a', null, r[0]);
-            a.href = r[1]; a.target = '_blank'; a.rel = 'noopener';
+            a.href = r[1]; a.target = '_blank'; a.rel = 'noopener nofollow'; // ?s= lands on the passage: not a page to index
             refs.appendChild(a);
         });
         body.appendChild(refs);

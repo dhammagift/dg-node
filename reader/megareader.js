@@ -1975,7 +1975,9 @@ window.renderNavigation = async function(slug, suttaTitle, navPromise) {
     const canon = document.querySelector('link[rel="canonical"]');
     const canonUrl = canon ? new URL(canon.href) : null;
     const serverNamed = canonUrl && canonUrl.pathname === location.pathname.split(':')[0] &&
-        (canonUrl.searchParams.get('lang') || 'en') === readerUiLang();   // in the interface's language: lang leaves the address
+        // in the interface's language (lang leaves the address), or the text's: a German page (?lang=de) has an English interface,
+        // and its server title gave way to "Dhammacakkappavattanasutta sn56.11" in the rendered page Google indexes
+        [readerUiLang(), READER_MODE.lang].includes(canonUrl.searchParams.get('lang') || 'en');
     if (!serverNamed) {
         document.title = newTitle;
         let metaDesc = document.querySelector('meta[name="description"]');
@@ -2093,6 +2095,9 @@ window.buildSutta = async function(rawSlug, opts) {
     const abort = buildAbort = (typeof AbortController === 'function') ? new AbortController() : null;
     const slug = window.normalizeSlugToDbKey(rawSlug);
     window._currentSlug = slug;
+    // the server's language links name the text the page came with (dg-fastify.js withTextHead): another one opened in place drops them
+    const textLangs = document.getElementById('dg-text-langs');
+    if (textLangs && textLangs.dataset.slug !== slug.toLowerCase()) textLangs.remove();
     dgPrepareReaderLinks();
     // Point the shell's Contents link (.dg-shell-toc, reader-only) at THIS sutta's node in the
     // tree — /toc/<id> makes toc.js open the owning book/vagga and flash the leaf, instead of
