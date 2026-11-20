@@ -179,7 +179,7 @@ app.addHook('onRequest', (req, res, done) => {
     done();
 });
 
-// /bw (The Buddha's Words mirror), /ai (offline-data/dhammagift/ai/, the AI-assisted draft
+// /ai (offline-data/dhammagift/ai/, the AI-assisted draft
 // translation) and /b (legacy PHP reader shell — PHP is not executed under this vhost any more,
 // so it only ever serves a blank shell now, but still a stray legacy page, owner: lock it down
 // too) must be unreachable for ordinary visitors and crawlers, full stop — not just hidden from
@@ -187,10 +187,10 @@ app.addHook('onRequest', (req, res, done) => {
 // сайте"; "/bw и ai переводы должны быть недоступны для обычных пользователей в принципе").
 // The client-side "force_local" flag (dg-text-router.js/settings.js) only changes which URL a
 // link on OUR OWN page points to — it was never real access control, so it changes nothing
-// here. Gate all three prefixes with HTTP Basic Auth, checked before any static mount below.
+// here. Gate these prefixes with HTTP Basic Auth, checked before any static mount below.
 let restrictedAuth = null;
 try { restrictedAuth = require('./configs/local/restricted-auth.json'); }
-catch (e) { console.warn('configs/local/restricted-auth.json missing — /bw, /ai, /b and /reviews are LOCKED for everyone:', e.message); }
+catch (e) { console.warn('configs/local/restricted-auth.json missing — /ai, /b and /reviews are LOCKED for everyone:', e.message); }
 // Fail closed (outside review 2026-11-07): a missing file, {} or an empty user/pass used to let everyone in.
 if (!(typeof restrictedAuth?.user === 'string' && restrictedAuth.user && typeof restrictedAuth?.pass === 'string' && restrictedAuth.pass)) restrictedAuth = null;
 function hasRestrictedAuth(req) {
@@ -236,12 +236,31 @@ app.addHook('onRequest', (req, res, done) => {
     if (PRIVATE_TEXTS.test(path.posix.normalize(decodedPath(req.url)))) return res.code(404).send('Not found');
     done();
 });
+// /bw (The Buddha's Words) is gone from the site (owner 2026-11-20: «bw не должно быть нигде», «можно пересылать»): its old
+// addresses, still asked for by ChatGPT (1175 times a week got 410) and search engines, go to our page of the same text.
+function bwTarget(p) {
+    const m = p.match(/^\/bw\/[^/]+\/([^/]+)$/);
+    const slug = m ? m[1].toLowerCase().replace(/\.html?$/, '') : '';
+    // Links in the wild carry typos after the id ("sn12.20html", "an4.49,html", "mn38.htmnl"): take the id at the start.
+    const id = slug.match(/^(dn|mn|sn|an|kp|dhp|ud|iti|snp|thag|thig|tha|thi)(\d+(?:\.\d+)?(?:-\d+)?)(?!\d)/);
+    if (id) return '/' + ({ tha: 'thag', thi: 'thig' }[id[1]] || id[1]) + id[2];
+    const vi = slug.match(/^(pli-tv-[a-z0-9-]*[a-z0-9]|b[iu]-vb-[a-z]+\d*|kd\d+)(?:\.htm.*)?$/);
+    if (vi) return vi[1].startsWith('pli-tv-') ? '/' + vi[1] : '/pli-tv-' + vi[1];
+    if (slug === 'bu-pt') return '/pli-tv-bu-pm';
+    if (slug === 'bi-pt') return '/pli-tv-bi-pm';
+    return '/';
+}
+app.addHook('onRequest', (req, res, done) => {
+    const p = decodedPath(req.url);
+    if (/^\/bw(\/|$)/.test(p)) return res.redirect(bwTarget(p), 301);
+    done();
+});
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     // /reviews: the owner's review and status pages (siteroot/reviews, not in git), same password
-    if (!/^\/(bw|ai|b|reviews)(\/|$)/.test(p) || hasRestrictedAuth(req)) return done();
+    if (!/^\/(ai|b|reviews)(\/|$)/.test(p) || hasRestrictedAuth(req)) return done();
     // Search engines get 410 Gone, not 401: with 401 (and, earlier, a robots.txt Disallow they could not read past) the
-    // old /bw, /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
+    // old /ai and /b pages stayed in the index. People (and the owner's login) still get the password prompt.
     if (isBot(req)) return res.code(410).send('Gone');
     // Realm text is shown by some browsers in the login box; the body is shown when the visitor presses Cancel.
     res.header('WWW-Authenticate', 'Basic realm="Access restricted by rights holders"')
@@ -4102,7 +4121,7 @@ function withTextHead(html, h) {
     const ld = [h.breadcrumbs, h.work, ...(h.ld || [])].filter(Boolean);
     const links = (h.noindex ? `<meta name="robots" content="${h.noindex === true ? 'noindex' : h.noindex}">\n` : '') +
         `<link rel="canonical" href="${u}">\n` +
-        h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l}" href="${htmlAttr(href)}">`).join('\n') +
+        h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l === 'jpn' ? 'ja' : l}" href="${htmlAttr(href)}">`).join('\n') +
         `\n<link rel="alternate" hreflang="x-default" href="${htmlAttr(h.alternates[0][1])}">\n` +
         (h.keywords ? `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` : '') +
         (ld.length ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n` : '');

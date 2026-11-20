@@ -301,7 +301,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
       dgPreload('/assets/js/copyToClipboard.js', 'script');
       dgPreload('/assets/js/linksdpr.js', 'script');
       dgPreload('/assets/js/linksbjt.js', 'script');
-      dgPreload('/assets/js/linksbw.js', 'script');
       dgPreload('/assets/js/linksru.js', 'script');
       dgPreload('/reader/common.js', 'script');
       dgPreload('/reader/megareader.js', 'script');
@@ -3135,14 +3134,6 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
             Читать на сайте DigitalPaliReader.online
         </div>
     </div>
-    <div class="row align-items-center mb-2">
-        <div class="col-3">
-            <a href="#">En</a>
-        </div>
-        <div class="col-9">
-            Читать на сайте TheBuddhasWords.net  
-        </div>
-    </div>
 
 
     <div class="row align-items-center mb-2">
@@ -3817,8 +3808,7 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
         if (piEnRuScriptsPromise) return piEnRuScriptsPromise;
         var srcs = [
             '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
-            '/assets/js/linksru.js', '/assets/js/openRu.js',
-            '/assets/js/linksbw.js', '/assets/js/openBw.js'
+            '/assets/js/linksru.js', '/assets/js/openRu.js'
         ];
         piEnRuScriptsPromise = srcs.reduce(function (chain, src) {
             return chain.then(function () { return dgLoadScriptOnce(src); });
@@ -3830,18 +3820,13 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
     // просто перевызывается после каждой отрисовки таблицы, как enrichIds выше, только для этой
     // колонки (строки таблицы появляются асинхронно, а не сразу в HTML как на легаси-странице).
     function wireResultLinks() {
-        var hasAnyLink = document.querySelector('#pali .bwLink, #pali .ruLink, #pali .dprLink');
+        var hasAnyLink = document.querySelector('#pali .ruLink, #pali .dprLink');
         if (!hasAnyLink) return;
         if (typeof getDprUrl !== 'function') {
             loadPiEnRuScripts().then(wireResultLinks);
             return;
         }
         var searchValue = (typeof getSearchValue === 'function') ? getSearchValue() : '';
-        document.querySelectorAll('#pali .bwLink').forEach(function (link) {
-            var slug = link.getAttribute('data-slug');
-            var textUrl = (typeof findBwTextUrl === 'function') ? findBwTextUrl(slug, searchValue) : null;
-            if (!textUrl) { link.style.display = 'none'; } else { link.href = textUrl; link.target = '_blank'; }
-        });
         document.querySelectorAll('#pali .ruLink').forEach(function (link) {
             var slug = link.getAttribute('data-slug');
             var textUrl = (typeof findRuTextUrl === 'function') ? findRuTextUrl(slug) : null;
@@ -4805,7 +4790,6 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             loadScript('/assets/js/copyToClipboard.js'),
             loadScript('/assets/js/linksdpr.js'),
             loadScript('/assets/js/linksbjt.js'),
-            loadScript('/assets/js/linksbw.js'),
             loadScript('/assets/js/linksru.js')
         ])
             .then(function () { return loadScript('/reader/common.js'); })

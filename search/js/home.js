@@ -883,18 +883,6 @@
         } else if (item.setsLang) {
             // Легаси-пункт "DG (th)" ставил siteLanguage перед переходом — сохраняем поведение.
             a.addEventListener('click', function () { localStorage.setItem('siteLanguage', item.setsLang); });
-        } else if (item.localHref && item.forceLocalGate) {
-            // TBW specifically (item 9, owner): must follow the explicit ?force_local flag, like
-            // the legacy site — not mirror-link.js's live-reachability probe just below (that's
-            // for mirrors that are simply THERE-or-not; TBW is an explicit mode switch, not a
-            // "happens to be reachable" check). The flag only: the app's origin is
-            // https://localhost, so treating the hostname as "local mirror is here" sent app users
-            // to /bw/... which the app does not bundle.
-            a.addEventListener('click', function (e) {
-                e.preventDefault();
-                var isLocal = localStorage.getItem('forceLocal') === 'true';
-                window.open(isLocal ? item.localHref : item.href, item.blank ? '_blank' : '_self');
-            });
         } else if (item.localHref) {
             // Sites we also keep an offline mirror of (menu-links.json's localHref — bw/
             // theravada.ru/theravada.su, see CLAUDE.md "Публикация от корня сайта" /

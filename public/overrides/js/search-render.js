@@ -1209,9 +1209,8 @@ window.DgSearchRender = (function () {
                         // /4nt isn't mounted here (packaged app, dev box without the tool).
                         var links4nt = build4ntLinks(data);
                         if (links4nt) return links4nt + ' ' + ruLinkHtml;
-                        // No 4nt mapping for this book (ja/mil/vb*, ...) — the old DPR/TBW pair.
+                        // No 4nt mapping for this book (ja/mil/vb*, ...) — the old DPR link (TBW gone: owner 2026-11-20).
                         return '<a class=\'dprLink\' href=\'javascript:void(0)\' role=\'button\' data-slug=\'' + data + '\' onclick="if(typeof openDpr === \'function\') openDpr(\'' + data + '\'); return false;">Pi</a> ' +
-                            '<a class=\'bwLink\' href=\'javascript:void(0)\' role=\'button\' data-slug=\'' + data + '\' onclick="if(typeof openBw === \'function\') openBw(\'' + data + '\'); return false;">En</a> ' +
                             ruLinkHtml;
                     }
                 },

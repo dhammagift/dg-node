@@ -1606,22 +1606,13 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
 
     externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral${eds('MS')}</a>`;
 
-    // TBW follows the explicit local mode. BB is a local-only link, never a public fallback.
+    // BB is a local-only link, never a public fallback. (The Buddha's Words link is gone: owner 2026-11-20 «bw не должно быть нигде».)
     const isLocal = localStorage.getItem('forceLocal') === 'true';
-    if (typeof tbwLinksData !== 'undefined') {
-        const hasTbw = tbwLinksData.find(item => Array.isArray(item) ? item[0] === slug : item === slug);
-        if (hasTbw) {
-            const hashSeg = window.location.hash ? window.location.hash.slice(1) : '';
-            const segSuffix = hashSeg ? '#' + hashSeg : '';
-            const book = (slug.match(/^[a-z]+/) || [""])[0];
-            const tbwUrl = isLocal ? `/bw/${book}/${slug}.html` : `https://thebuddhaswords.net/${book}/${slug}.html`;
-            externalLinks += `<a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="${tbwUrl}">The Buddha’s Words${eds('MS')}</a>`;
-            if (isLocal && !window.location.pathname.startsWith('/b/')) {
-                externalLinks += `<a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${segSuffix}">BB &amp; Other Translations</a>`;
-            }
-            // (no AI link: the AI drafts are the Translation Editor's only - owner 2026-11-07)
-        }
+    if (isLocal && !window.location.pathname.startsWith('/b/')) {
+        const hashSeg = window.location.hash ? window.location.hash.slice(1) : '';
+        externalLinks += `<a target="_blank" class="sc-ext-link" title="BB and Other translations" href="/b/?q=${encodeURIComponent(slug)}${hashSeg ? '#' + hashSeg : ''}">BB &amp; Other Translations</a>`;
     }
+    // (no AI link: the AI drafts are the Translation Editor's only - owner 2026-11-07)
 
     if (window.isRuPath) {
         if (typeof thruLinksData !== 'undefined') {

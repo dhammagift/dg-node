@@ -6,7 +6,7 @@
 window.notEn= /^\/(ru|r|ml|mt)(\/|$)/.test(window.location.pathname)
     || (new URLSearchParams(window.location.search).get('lang') || localStorage.getItem('siteLanguage') || 'en') !== 'en';
 
-// Портировано из легаси settings.js — openBw.js (загружается через junction на легаси-репо) ожидает
+// Портировано из легаси settings.js — скрипты легаси-репо (openDpr.js и др.) ожидают
 // эту функцию глобально, а этот override её не содержал (скопирован раньше, чем она появилась в легаси).
 function checkForceLocalFlag() {
     const urlParams = new URLSearchParams(window.location.search);
