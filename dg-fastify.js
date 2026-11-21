@@ -162,7 +162,13 @@ function legacyReaderRedirect(url) {
     const [base, seg] = q.split(':');
     const classified = DgTextRouter.classify(base.toLowerCase());
     if (classified.type === 'text') {
-        return '/' + encodeURIComponent(classified.id) + (seg ? ':' + seg : '') + (rest ? '?' + rest : '');
+        // the old Bodhi reader: Bhikkhu Bodhi's own translation where we have it (owner 2026-11-21, the SuttaCentral subset)
+        let r = rest;
+        try {
+            if (page === '/b' && !params.has('translators') && textRoster(classified.id).availableTranslators.includes('en_bodhi'))
+                r = (r ? r + '&' : '') + 'translators=en_bodhi';
+        } catch (e) { /* no search db: the text as usual */ }
+        return '/' + encodeURIComponent(classified.id) + (seg ? ':' + seg : '') + (r ? '?' + r : '');
     }
     return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
 }
