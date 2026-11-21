@@ -2,7 +2,7 @@
 
 > Search and reader for the Pali Canon, Sutta and Vinaya, in the Pali root text (Mahāsaṅgīti edition) with Russian, English and other translations, side by side, segment by segment.
 
-Dhamma.Gift (DG) searches every word form across the canon and opens any text by its id (dn22, mn10, sn56.11). Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
+Dhamma.Gift (DG) searches every word form across the canon and opens any text by its id (dn22, mn10, sn56.11). What it has that other sites don't: the six Pali editions of the canon compared in one click with the differences highlighted, a dictionary by the Suttas and Vinaya (the Canon's own definitions and similes), and translations found nowhere else (A. Syrkin in Russian, Thanissaro Bhikkhu line by line with the Pali in English). Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
 
 ## Reading the Suttas by the Suttas
 
@@ -30,6 +30,10 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 - [6 Pali editions side by side](https://dhamma.gift/docs/compare/): any text line by line in the Mahāsaṅgīti, Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and the PTS editions, with the differences highlighted; each edition's known problems listed
 - [SN 56.11 in all editions](https://dhamma.gift/sn56.11?mode=multi&editions=ms,bjt,my,th,mso,pts&diff=1): the comparison on one text (`?mode=multi&editions=…&diff=1`)
 
+## Dictionary by the Suttas and Vinaya
+
+- [Dict.Dhamma.Gift](https://dict.dhamma.gift/): a Pali word's meaning as the Canon itself gives it, the definitions and similes from the Suttas and the Vinaya with their lines; DPD, PTS, Cone, Sanskrit and other dictionaries are further sources on the same page. Also as a browser extension, apps and a Telegram bot.
+
 ## Browse
 
 - [Contents](https://dhamma.gift/toc): every collection and book
@@ -50,7 +54,8 @@ The Suttas define their own key terms ("Katamañca, bhikkhave, X? … idaṁ vuc
 - [MCP server for AI assistants](https://dhamma.gift/docs/tech/mcp/): `https://api.dhamma.gift/mcp`; search the canon, read a text, compare translations, answer with quotes and links
 - [API](https://dhamma.gift/api-docs/): the search and the texts as JSON
 - [Telegram bot](https://dhamma.gift/docs/telegram-bot/): search and read the Suttas in any chat, and the Uposatha days for your city
-- [Pali dictionary](https://dhamma.gift/docs/dictionary/): many Pali and Sanskrit dictionaries on one page; a tap on a word in the reader opens its entry
+- [Dictionary in the reader](https://dhamma.gift/docs/dictionary/): a tap on a Pali word opens its entry; key terms show the project's rendering and every sutta where the canon defines the word
+- [Uposatha by the Suttas](https://dhamma.gift/docs/uposatha/): the Uposatha days by the real Moon (8th, 14th, 15th) as the Suttas count them, for your place; also an app and in the Telegram bot
 - [Apps](https://dhamma.gift/apps): Dhamma.Gift, Uposatha calendar and Dictionary for Android and iOS
 
 ## Optional
