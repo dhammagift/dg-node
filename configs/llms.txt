@@ -2,7 +2,7 @@
 
 > Search and reader for the Pali Canon, Sutta and Vinaya, in the Pali root text (Mahāsaṅgīti edition) with Russian, English and other translations, side by side, segment by segment.
 
-Dhamma.Gift (DG) searches every word form across the canon and opens any text by its id (dn22, mn10, sn56.11). What it has that other sites don't: the six Pali editions of the canon compared in one click with the differences highlighted, a dictionary by the Suttas and Vinaya (the Canon's own definitions and similes), and translations found nowhere else (A. Syrkin in Russian, Thanissaro Bhikkhu line by line with the Pali in English). Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
+Dhamma.Gift (DG) searches every word form across the canon and opens any text by its id (dn22, mn10, sn56.11). What it has that other sites don't: the six Pali editions of the canon compared in one click with the differences highlighted, a dictionary by the Suttas and Vinaya (the Canon's own definitions and similes), and translations aligned line by line with the Pali that SuttaCentral does not have that way (Thanissaro Bhikkhu's English, 1,416 suttas, not on SuttaCentral at all; A. Ya. Syrkin's Russian, there only as an unsegmented text). Pages are server-rendered HTML; the interface is in English and Russian (`?lang=ru`).
 
 ## Reading the Suttas by the Suttas
 
