@@ -36,6 +36,7 @@ const { z } = require('zod');
 const zKey = () => z.string().max(100);
 const zList = (max) => z.array(z.string().max(60)).max(max);
 const path = require('path');
+const fsSync = require('fs');
 const { DatabaseSync } = require('node:sqlite');
 const { buildFastResponse, enrichResponse, getSuttaBaseData, buildTextDataFromBase, isRegexKeyword } = require('./search-core');
 // Regex queries need the worker too — see core/regex-runner.js. Literal ones run on this thread: the per-address and
@@ -663,7 +664,89 @@ function getServer() {
         });
     });
 
+    server.registerTool('dictionary', {
+        description: 'Look a word up in the Dictionary of dhamma.gift (dict.dhamma.gift): (1) dg — the project\'s glossary: where the Suttas and the Vinaya DEFINE the term (the Pali definition line and its segment ids), broader uses, Vinaya uses, and similes/metaphors (adhivacana, upamā, seyyathāpi) built on it; (2) dpd — the Digital Pali Dictionary meanings for the form (the headwords it may come from, with DG\'s own definition refs merged in); (3) sanskrit — 20+ Sanskrit dictionaries of the Cologne Digital Sanskrit Lexicon (Monier-Williams, Edgerton\'s Buddhist Hybrid Sanskrit, Apte, Böhtlingk-Roth…) through their API. Give the Pali form as it stands in the text; for Sanskrit give its Sanskrit form in IAST (dukkha → duḥkha, dhamma → dharma) as sanskrit_word.',
+        inputSchema: {
+            word: z.string().min(1).max(80).describe('The Pali word, IAST with diacritics (dukkha, taṇhā, upādāna), any inflected form.'),
+            sanskrit_word: z.string().max(80).optional().describe('The Sanskrit form in IAST for the Sanskrit dictionaries (duḥkha, tṛṣṇā). Default: word.'),
+            sources: z.array(z.enum(['dg', 'dpd', 'sanskrit'])).optional().describe('Which sources. Default: all three.'),
+            lang: z.enum(['en', 'ru']).optional().describe('Language of the glossary renderings and DPD meanings. Default: en.'),
+        },
+    }, async ({ word, sanskrit_word, sources = ['dg', 'dpd', 'sanskrit'], lang = 'en' }) => {
+        const w = word.trim().toLowerCase().normalize('NFC');
+        const t = glossary().get(w), head = t ? t.pali.split(/,\s*/)[0] : w;
+        const out = { word: w, page: `https://dict.dhamma.gift/${lang === 'ru' ? 'ru/' : ''}${encodeURIComponent(head)}` };
+        // the glossary closes a long list with a "(+118)" marker: kept as a count, not as an id
+        const seg = (id) => /^\(\+\d+\)$/.test(id) ? { more: +id.replace(/\D/g, '') } : { id, link: READER + id };
+        if (sources.includes('dg')) {
+            out.dg = t ? {
+                pali: t.pali, rendering: t[lang] || t.en,
+                definition: t.canon && t.canon.definition ? { text: t.canon.definition, at: (t.canon.where || t.canon.patterns || []).map(seg) } : undefined,
+                defined_at: t.canon && !t.canon.definition && t.canon.patterns ? t.canon.patterns.map(seg) : undefined,
+                broader: t.canon && t.canon.broader ? t.canon.broader.map(seg) : undefined,
+                vinaya: t.canon && t.canon.vinaya ? t.canon.vinaya.map(seg) : undefined,
+                metaphors: t.metaphors ? t.metaphors.map(m => ({ kind: m.kind, text: m.text, at: (m.refs || []).map(seg) })) : undefined,
+            } : null;
+            // the word as the image of a simile: "vammika" stands for kāya (MN 23)
+            const img = imageIndex().get(w);
+            if (img) out.dg_image_of = img.map(({ t: x, m }) => ({ term: x.pali, rendering: x[lang] || x.en, kind: m.kind, at: (m.refs || []).map(seg) }));
+        }
+        if (sources.includes('dpd')) {
+            const { i2h, ebts, byLemma } = dpd(lang), wm = w.replace(/ṁ/g, 'ṃ'); // DPD spells the niggahīta ṃ
+            out.dpd = (i2h[wm] || byLemma.get(wm) || []).filter(h => ebts[h]).map(h => ({ headword: h, meaning: dpdText(ebts[h]) }));
+        }
+        if (sources.includes('sanskrit')) {
+            const key = (sanskrit_word || word).trim();
+            try {
+                const r = await fetch(`https://www.sanskrit-lexicon.uni-koeln.de/scans/awork/apidev/api1/salt_multidict.php?key=${encodeURIComponent(key)}&input=roman&output=roman`, { signal: AbortSignal.timeout(12000) });
+                const d = await r.json();
+                // ponytail: 2 entries x 500 chars per dictionary; the full answer for "dharma" is 680 KB
+                out.sanskrit = { key, source: 'Cologne Digital Sanskrit Lexicon, https://www.sanskrit-lexicon.uni-koeln.de/', dictionaries: Object.entries(d.dicts || {}).map(([code, es]) => ({
+                    dict: (d.dictmeta && d.dictmeta[code] && d.dictmeta[code].name) || code,
+                    entries: es.slice(0, 2).map(e => ((e.csl && e.csl.text) || '').slice(0, 500)),
+                    more: es.length > 2 ? es.length - 2 : undefined,
+                })).sort((a, b) => /Edgerton|Monier/.test(b.dict) - /Edgerton|Monier/.test(a.dict)) };
+            } catch (e) {
+                out.sanskrit = { key, error: 'The Cologne Sanskrit Lexicon did not answer from this server: ' + (e.name === 'TimeoutError' ? 'timeout' : e.message), url: `https://www.sanskrit-lexicon.uni-koeln.de/scans/awork/apidev/api1/salt_multidict.php?key=${encodeURIComponent(key)}&input=roman&output=roman` };
+            }
+        }
+        return asText(out);
+    });
+
     return server;
+}
+
+// The Dictionary's data, the files the reader's word lookup uses; loaded on the first dictionary call
+// (DPD en ~80 MB in memory, ru +40 MB), not at start.
+const DPD_DIR = path.join(__dirname, '..', 'public', 'overrides', 'js', 'standalone-dpd');
+const dpdCache = {};
+const loadVar = (f) => JSON.parse(fsSync.readFileSync(path.join(DPD_DIR, f), 'utf8').replace(/^var \w+ = /, '').replace(/;\s*$/, ''));
+function dpd(lang) {
+    dpdCache.i2h = dpdCache.i2h || loadVar('dpd_i2h.js');
+    dpdCache[lang] = dpdCache[lang] || loadVar(lang === 'ru' ? 'ru/dpd_ebts.js' : 'dpd_ebts.js');
+    if (!dpdCache.byLemma) { // a bare stem (vammika) is not among the inflected forms: found by its headwords "vammika 1.1"
+        dpdCache.byLemma = new Map();
+        for (const h of Object.keys(dpdCache[lang])) { const l = h.replace(/ ([\d.]+|\(DG\))$/, ''); dpdCache.byLemma.set(l, [...(dpdCache.byLemma.get(l) || []), h]); }
+    }
+    return { i2h: dpdCache.i2h, ebts: dpdCache[lang], byLemma: dpdCache.byLemma };
+}
+const dpdText = (html) => html.replace(/<a class="dg-seg" href="\/([^"]+)"[^>]*>[^<]*<\/a>/g, '$1').replace(/<div[^>]*>/g, ' | ').replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+/g, ' ').trim();
+let glossaryCache = null;
+function glossary() {
+    if (glossaryCache) return glossaryCache;
+    glossaryCache = new Map();
+    for (const t of JSON.parse(fsSync.readFileSync(path.join(DPD_DIR, 'dg-glossary.json'), 'utf8')).terms)
+        for (const f of [...(t.pali || '').split(/,\s*/), ...(t.forms || [])]) if (f && !glossaryCache.has(f.toLowerCase())) glossaryCache.set(f.toLowerCase(), t);
+    return glossaryCache;
+}
+let imageCache = null;
+function imageIndex() {
+    if (imageCache) return imageCache;
+    imageCache = new Map();
+    for (const t of new Set(glossary().values())) for (const m of t.metaphors || [])
+        if (m.text && !m.text.includes(' ')) imageCache.set(m.text.toLowerCase(), [...(imageCache.get(m.text.toLowerCase()) || []), { t, m }]);
+    return imageCache;
 }
 
 // What an agent should know before the first call: how to search, how to phrase answers, where
@@ -681,7 +764,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya), the Pali l
 6. What the site has:
 - The canon's editions compared line by line (compare_editions): the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and PTS, for the whole canon (each edition's gaps: https://dhamma.gift/docs/compare, "Problems of each edition"); each differing word classed as a reading or a spelling. Name the edition when you quote.
 - Translations aligned with the Pali segment by segment. Russian: the project's own, from the Pali (translator "o", shown as Dhamma.Gift), A. Ya. Syrkin, SV (theravada.ru), Narinyani/Evmenenko, V. Toporov. English: Ṭhānissaro Bhikkhu (1,400+ suttas). Name the translator when you quote.
-7. Tools: uposatha gives the Uposatha days by the Suttas at a place (lat, lon, tz). search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
+7. Tools: dictionary gives a word's definition in the Suttas and the Vinaya, its similes, DPD and 20+ Sanskrit dictionaries; uposatha gives the Uposatha days by the Suttas at a place (lat, lon, tz). search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
 8. The corpus also holds the Abhidhamma books (scope "abhi") for a user who asks for them; by AN 4.180 they are not the criterion, and an answer is not built on them.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
