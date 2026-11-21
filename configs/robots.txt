@@ -9,6 +9,20 @@ Disallow: /suttacentral.net/
 # /assets/js/ must stay crawlable: the SPA (jQuery, reader) loads from there; blocked, Googlebot rendered every text as the bare shell, a duplicate of the home page
 Disallow: /assets/apk/
 
+# OpenAI's crawlers don't render pages (the text is in the served HTML), yet in 6-20.11 OAI-SearchBot spent 98% of ~4,100
+# fetches a day on scripts, styles and the JSON API and 2% on texts (2026-11-21). A named group replaces the * group for
+# them, so its rules are repeated here. Mirrors and /assets/materials stay readable (they answer 410).
+User-agent: OAI-SearchBot
+User-agent: GPTBot
+Disallow: /suttacentral.net/
+Disallow: /assets/apk/
+Disallow: /assets/js/
+Disallow: /assets/css/
+Disallow: /nodejs/
+Disallow: /offline/
+Disallow: /reader/
+Disallow: /api/
+
 # Yandex only (Google ignores it): these parameters show the same page in another view or highlight a word,
 # so Yandex keeps one URL per page. ?lang= is not here: it is a different page (another language).
 Clean-param: s&mode&langs&translators&script&scope&la&lb&report&fast /
