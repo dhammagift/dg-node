@@ -4627,10 +4627,11 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 .dg-ts-head { display: flex; align-items: center; gap: 8px; padding: 11px 14px 8px; }
 .dg-ts-head b { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--dg-text-muted); }
 .dg-ts-count { font-size: 11.5px; color: var(--dg-text-muted); }
-.dg-ts-reset { margin-left: auto; border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--dg-accent-ink); padding: 2px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
+.dg-ts-reset { min-width: 0; overflow: hidden; text-overflow: ellipsis; margin-left: auto; border: 0; background: none; font: inherit; font-size: 11.5px; color: var(--dg-accent-ink); padding: 2px 6px; border-radius: 6px; cursor: pointer; white-space: nowrap; }
 .dg-ts-reset:hover { background: var(--dg-surface-hover); }
 .dg-ts-mode:not([hidden]) + .dg-ts-reset { margin-left: 4px; }
-.dg-ts-x { border: 0; background: none; color: var(--dg-text-muted); width: 26px; height: 26px; border-radius: 50%; line-height: 1; cursor: pointer; transition: transform .1s ease-out, background .15s; }
+.dg-ts-x { flex: none; border: 0; background: none; color: var(--dg-text-muted); width: 26px; height: 26px; border-radius: 50%; line-height: 1; cursor: pointer; transition: transform .1s ease-out, background .15s; }
+@media (max-width: 379px) { .dg-ts-count { display: none; } } /* a 360 px phone: the count gives way, not Default or the close button */
 .dg-ts-x:hover { background: var(--dg-surface-hover); color: var(--dg-text); }
 .dg-ts-x:active { transform: scale(.9); }
 
@@ -4695,6 +4696,16 @@ body.dg-state-results #search-pane:not(.dg-has-paging) .dt-search { pointer-even
 .dg-qs-eds { flex-wrap: wrap; padding: 2px 0 6px; }
 .dg-ts-add { border-style: dashed !important; border-color: var(--dg-border-strong) !important; }
 .dg-ts-add-list { padding: 4px 10px 2px; max-height: 240px; overflow-y: auto; }
+/* on a short screen only the translators' list gives way: the chips were squeezed to a sliver (owner 2026-11-21) */
+.dg-ts > * { flex-shrink: 0; }
+.dg-ts > .dg-ts-body { flex-shrink: 1; min-height: 0; }
+/* "+ language" opens the language list as a screen of its own: the rest of the window steps aside until Back or a pick */
+.dg-ts.dg-ts-adding > .dg-ts-seg, .dg-ts.dg-ts-adding > .dg-ts-chips, .dg-ts.dg-ts-adding > .dg-ts-body, .dg-ts.dg-ts-adding > .dg-ts-foot { display: none; }
+.dg-ts.dg-ts-adding > .dg-ts-add-list { flex: 1 1 auto; min-height: 0; max-height: none; padding-bottom: 10px; }
+.dg-ts-add-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 2px 0 8px; background: var(--dg-surface); }
+.dg-ts-add-head b { font-size: 13.5px; font-weight: 600; color: var(--dg-text); }
+.dg-ts-back { border: 0; background: var(--dg-surface-hover); color: var(--dg-text); font: inherit; font-size: 12.5px; padding: 5px 10px; border-radius: 999px; cursor: pointer; transition: transform .1s ease-out; }
+.dg-ts-back:active { transform: scale(.96); }
 .dg-ts-add-list[hidden] { display: none; }
 .dg-ts-add-hint { margin: 2px 4px 6px; font-size: 11px; color: var(--dg-text-muted); }
 .dg-ts-add-row { display: flex; width: 100%; align-items: center; gap: 8px; border: 0; background: none; font: inherit; font-size: 13px; color: var(--dg-text); padding: 7px 6px; border-radius: 8px; cursor: pointer; text-align: left; }

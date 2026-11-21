@@ -1536,7 +1536,7 @@
         memorize: { ru: 'Полн.', en: 'Hint' },
         devanagari: { ru: 'Лат.', en: 'Lat.' }
     };
-    var LANG_FULL_NAME = { ru: 'Русский', en: 'English', th: 'ไทย', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', pt: 'Português', pl: 'Polski', cs: 'Čeština', si: 'Sinhala', my: 'Myanmar', vi: 'Tiếng Việt', id: 'Indonesia', jp: '日本語', zh: '中文', hi: 'हिन्दी', bn: 'বাংলা', lt: 'Lietuvių', nl: 'Nederlands', sv: 'Svenska', fi: 'Suomi', no: 'Norsk', hu: 'Magyar', ro: 'Română', sr: 'Српски', sl: 'Slovenščina', uk: 'Українська', kn: 'ಕನ್ನಡ', ta: 'தமிழ்' };
+    var LANG_FULL_NAME = { ru: 'Русский', en: 'English', th: 'ไทย', de: 'Deutsch', fr: 'Français', es: 'Español', it: 'Italiano', pt: 'Português', pl: 'Polski', cs: 'Čeština', si: 'Sinhala', my: 'Myanmar', vi: 'Tiếng Việt', id: 'Indonesia', jp: '日本語', zh: '中文', hi: 'हिन्दी', bn: 'বাংলা', lt: 'Lietuvių', nl: 'Nederlands', sv: 'Svenska', fi: 'Suomi', no: 'Norsk', hu: 'Magyar', ro: 'Română', sr: 'Српски', sl: 'Slovenščina', uk: 'Українська', kn: 'ಕನ್ನಡ', ta: 'தமிழ்', tr: 'Türkçe', et: 'Eesti', gsw: 'Schwiizertüütsch', ka: 'ქართული', lo: 'ລາວ', jpn: '日本語', ko: '한국어', ja: '日本語', ca: 'Català', ar: 'العربية', he: 'עברית', fa: 'فارسی', el: 'Ελληνικά', ms: 'Bahasa Melayu', mr: 'मराठी', gu: 'ગુજરાતી', ne: 'नेपाली' };
 
     /* "ЯЗЫКИ ПЕРЕВОДА" popover (production-v4 mock, docs/Fresults-standalone.html) — the
        six-dot "more" button's target. STAGE 2 (owner: "нужно чтобы можно было отключить язык",
@@ -1826,6 +1826,8 @@
         close:  { ru: 'закрыть и читать', en: 'close and read' },
         sorting:{ ru: 'Сортировка временная — ваш порядок цел', en: 'Sorting is temporary — your order is kept' },
         addLang:{ ru: '+ язык', en: '+ language' },
+        addTitle:{ ru: 'Добавить язык', en: 'Add a language' },
+        back:   { ru: 'Назад', en: 'Back' },
         addHint:{ ru: 'Только на эту сессию. Насовсем — в настройках',
                   en: 'For this session only. For good — in settings' },
         addLink:{ ru: 'Мои языки', en: 'My languages' },
@@ -2034,7 +2036,12 @@
         // Нечего добавлять — список закрывается сам, иначе он висел бы открытым и пустым.
         if (tsAddOpen && !textLangs.some(function (l) { return enabled.indexOf(l) === -1; })) tsAddOpen = false;
         addHost.hidden = !tsAddOpen;
+        // the language list is a screen of its own inside the window, not a second list squeezed above the translators
+        // (owner 2026-11-21: «открыть как бы дополнительную вкладку, выбрать язык, закрыть её и всё»); Back always returns
+        host.classList.toggle('dg-ts-adding', tsAddOpen);
         addHost.innerHTML = !tsAddOpen ? '' :
+            '<div class="dg-ts-add-head"><button type="button" class="dg-ts-back" data-ts-add>‹ ' + esc(tsStr('back')) + '</button>' +
+            '<b>' + esc(tsStr('addTitle')) + '</b></div>' +
             '<p class="dg-ts-add-hint">' + esc(tsStr('addHint')) +
             ' · <a href="/settings/#langs">' + esc(tsStr('addLink')) + '</a></p>' +
             textLangs.filter(function (l) { return enabled.indexOf(l) === -1; }).map(function (l) {
@@ -2118,16 +2125,22 @@
         var host = document.getElementById('dg-ts');
         var pillHost = document.getElementById('dg-langpill');
         if (!host) return;
+        // the window must not go under the fixed header (#navigation, z 850): on a short screen its top did
+        // (owner 2026-11-21 screenshot, 743 px). Cap it to the room below the header.
+        var nav = document.getElementById('navigation');
+        var top = nav && nav.offsetHeight ? Math.max(0, cssRect(nav).bottom) : 0;
         if (window.innerWidth < 768) {
             // Снять посадку у кнопки: инлайновые right/bottom с десктопа переживают смену
             // ширины и побеждают CSS шторки (left:0;right:0) — окно оставалось узким слева.
             host.style.right = host.style.bottom = '';
+            host.style.maxHeight = Math.round(Math.max(260, Math.min(0.82 * cssVH(), cssVH() - top - 8))) + 'px';
             return;
         }
         if (!pillHost) return;
         var r = cssRect(pillHost);
         host.style.right = Math.round(cssVW() - r.right) + 'px';
         host.style.bottom = Math.round(cssVH() - r.top + 8) + 'px';
+        host.style.maxHeight = Math.round(Math.max(220, Math.min(620, 0.72 * cssVH(), r.top - 8 - top - 8))) + 'px';
     }
 
     function tsOpen() {
