@@ -115,6 +115,12 @@ def seg_links(refs):
     return ', '.join(shown)
 
 
+# Styles inline (no paliLookup.css rule): a CSS change would change the page bundle and switch the critical CSS off on
+# prod until it is cut again; the dictionary files themselves reach prod without a restart. A mid amber reads on both themes.
+META_BOX = 'margin:4px 0 2px;padding:3px 8px;border-left:3px solid #c98a2b;background:rgba(201,138,43,.12);border-radius:4px'
+META_KIND = 'color:#b8862e'
+
+
 # Owner 2026-11-21: a word's metaphors (adhivacana, later seyyathāpi/evameva, yathā, no formula) as one collapsed line under
 # its definition: the kind in italics, the image, the suttas; open shows them all.
 def metaphors_html(items, lang):
@@ -122,14 +128,14 @@ def metaphors_html(items, lang):
         return ''
     label = 'Метафоры' if lang == 'ru' else 'Metaphors'
     preview = ', '.join(m['text'] for m in items)
-    rows = ''.join(f'<div><i class="dg-meta-kind">{m["kind"]}</i> <b>{m["text"]}</b> {seg_links(m.get("refs") or [])}</div>' for m in items)
-    return (f'<details class="dg-meta"><summary><i>{label}</i> <span class="dg-meta-n">{len(items)}</span> '
-            f'<span class="dg-meta-preview">{preview}</span></summary>{rows}</details>')
+    rows = ''.join(f'<div><i style="{META_KIND}">{m["kind"]}</i> <b>{m["text"]}</b> {seg_links(m.get("refs") or [])}</div>' for m in items)
+    return (f'<details class="dg-meta" style="{META_BOX}"><summary style="cursor:pointer">'
+            f'<i style="{META_KIND}">{label}</i> ({len(items)}): {preview}</summary>{rows}</details>')
 
 
 def image_line(kind, meaning, gloss, refs):
     # on the image's own entry: «adhivacana → kāya тело mn23» (the image stands for that meaning)
-    return f'<div class="dg-meta-of"><i class="dg-meta-kind">{kind}</i> → <b>{meaning}</b> {gloss} {seg_links(refs)}</div>'
+    return f'<div class="dg-meta-of"><i style="{META_KIND}">{kind}</i> → <b>{meaning}</b> {gloss} {seg_links(refs)}</div>'
 
 
 def main():
