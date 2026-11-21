@@ -1284,6 +1284,16 @@
           "an10.60:13.20"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "dakkho bhamakāro dīghaṁ vā añchanto ‘dīghaṁ añchāmī’ti pajānāti",
+          "refs": [
+            "dn22:2.8",
+            "mn10:4.8"
+          ]
+        }
+      ],
       "forms": [
         "ānāpānassati",
         "ānāpānassatinti",
@@ -1816,7 +1826,17 @@
         "patterns": [
           "sn40.9:1.2"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "rājā vā rājamahāmatto vā caturaṅginiyā senāya vanasaṇḍe ekarattiṁ vāsaṁ upagaccheyya",
+          "refs": [
+            "an6.60:8.5",
+            "an6.60:8.10"
+          ]
+        }
+      ]
     },
     {
       "id": "anjalikaraniyo",
@@ -2200,6 +2220,29 @@
           "sn14.31:1.4"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ āpodhātuṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn14.31:2.5"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ āpodhātu aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn14.31:2.5"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo āpodhātuyā chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn14.31:2.5"
+          ]
+        }
+      ],
       "forms": [
         "āpodhātu",
         "āpodhātuyaṁ",
@@ -5821,6 +5864,29 @@
           "pli-tv-bu-vb-pc45:2.1.13"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ cakkhuṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.10"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ cakkhuṁ aniccaṁ dukkhaṁ vipariṇāmadhammaṁ",
+          "refs": [
+            "sn35.13:1.11"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo cakkhusmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.12"
+          ]
+        }
+      ],
       "forms": [
         "cakkhu",
         "cakkhuno",
@@ -5913,7 +5979,28 @@
         "vinaya": [
           "pli-tv-bu-vb-pc79:2.1.6"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "odātena vatthena sasīsaṁ pārupitvā",
+          "refs": [
+            "an5.28:5.4",
+            "dn2:82.1",
+            "dn10:2.18.4",
+            "mn77:28.3",
+            "mn119:21.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "pabbatasaṅkhepe udakarahado nivāto vigataūmiko",
+          "refs": [
+            "an6.60:7.4",
+            "an6.60:7.8"
+          ]
+        }
+      ]
     },
     {
       "id": "cetana",
@@ -6662,6 +6749,29 @@
           "(+15)"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ dhamme paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.16"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ dhammā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.17"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo dhammesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.14:1.18"
+          ]
+        }
+      ],
       "forms": [
         "dhamma",
         "dhammameva",
@@ -7160,6 +7270,16 @@
           "pli-tv-bu-vb-ss8:1.6.9"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "dakkho kevaṭṭo sukhumacchikena jālena parittaṁ udakadahaṁ otthareyya",
+          "refs": [
+            "dn1:3.72.3",
+            "dn1:3.72.4"
+          ]
+        }
+      ],
       "forms": [
         "diṭṭheva",
         "diṭṭhi",
@@ -7992,7 +8112,28 @@
           "pli-tv-bu-vb-pj1:5.7.23",
           "pli-tv-bu-vb-ss8:1.5.10"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "udakarahado ubbhidodako",
+          "refs": [
+            "an5.28:3.4",
+            "dn2:78.1",
+            "dn10:2.16.1",
+            "mn77:26.3",
+            "mn119:19.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "gāmassa vā nigamassa vā avidūre mahantaṁ taḷākaṁ",
+          "refs": [
+            "an6.60:5.4",
+            "an6.60:5.9"
+          ]
+        }
+      ]
     },
     {
       "id": "ehi-tvam",
@@ -8142,6 +8283,29 @@
           "pli-tv-bu-vb-pj3:4.9.15"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ gandhe paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.13"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ gandhā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.13"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo gandhesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.14:1.13"
+          ]
+        }
+      ],
       "forms": [
         "gandha",
         "gandhampi",
@@ -8247,6 +8411,29 @@
           "sn38.11:1.11"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ ghānaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.14"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ ghānaṁ aniccaṁ dukkhaṁ vipariṇāmadhammaṁ",
+          "refs": [
+            "sn35.13:1.14"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo ghānasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.14"
+          ]
+        }
+      ],
       "forms": [
         "ghāna",
         "ghānasmimpi",
@@ -8557,6 +8744,16 @@
           "sn12.33:3.3"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "jajjarasakaṭaṁ veṭhamissakena yāpeti (tathāgatassa kāyo)",
+          "refs": [
+            "dn16:2.25.11",
+            "dn16:2.25.12"
+          ]
+        }
+      ],
       "forms": [
         "jara",
         "jarampi",
@@ -8779,6 +8976,29 @@
           "sn35.228:2.5"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ jivhaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.15"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ jivhā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.13:1.16"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo jivhāya chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.17"
+          ]
+        }
+      ],
       "forms": [
         "jivha",
         "jivhampi",
@@ -9193,6 +9413,32 @@
           ]
         }
       ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ ime pañca kāmaguṇe paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "mn13:7.10",
+            "mn14:6.10"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "ādīnavo sandiṭṭhiko, dukkhakkhandho kāmahetu kāmanidānaṁ kāmādhikaraṇaṁ kāmānameva hetu / samparāyiko",
+          "refs": [
+            "mn13:8.5",
+            "mn13:15.3",
+            "mn14:7.5"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo kāmesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "mn13:16.2"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -9586,6 +9832,25 @@
           "(+5)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "no formula",
+          "text": "khetta (kammaṁ khettaṁ, viññāṇaṁ bījaṁ, taṇhā sneho)",
+          "refs": [
+            "an3.76:2.3",
+            "an3.77:2.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "loṇakapalla (pāpakamma)",
+          "refs": [
+            "an3.100:4.1",
+            "an3.100:4.7",
+            "an3.100:5.1"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -10136,6 +10401,29 @@
             "rathoti",
             "rathā",
             "rathānaṁ"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ kāyaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.18"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ kāyo anicco dukkho vipariṇāmadhammo",
+          "refs": [
+            "sn35.13:1.18"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo kāyasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.18"
           ]
         }
       ],
@@ -10717,6 +11005,29 @@
       },
       "dgNote": "Особое определение: Обычно: «Мир, мир» — так говорят (вопрос Ананды: насколько это называется миром?). В выведении благородного (ariyassa vinaye): Что разрушающееся (palokadhamma), то называется в выведении благородного «мир»: глаз, образы, глаза-распознавание, глаза-касание, чувствование, возникшее из глаза-касания, … ум-представление и всё остальное. • Обычно: Край мира, до которого нельзя дойти, идя ногами. В выведении благородного (ariyassa vinaye): Чем в мире воспринимают мир и мнят мир, то называется в выведении благородного «мир»: глазом, ухом, носом, языком, телом, умом-представлением. • Обычно: Брахманы-локаятики спорят о бесконечности или конечности мира. В выведении благородного (ariyassa vinaye): Пять желания-множителей называются в выведении благородного «мир»: глазом распознаваемые образы … телом распознаваемые касания, желанные, обожаемые, приятные, миловидные, связанные с желанием, очаровывающие.",
       "kind": "special: ariyassa vinaye",
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ lokaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "an3.103:1.4"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ loko anicco dukkho vipariṇāmadhammo",
+          "refs": [
+            "an3.103:1.5"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo loke chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "an3.103:1.6"
+          ]
+        }
+      ],
       "forms": [
         "loka",
         "lokamhi",
@@ -11168,6 +11479,29 @@
           "(+66)"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ manaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.19"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ mano anicco dukkho vipariṇāmadhammo",
+          "refs": [
+            "sn35.13:1.20"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo manasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.21"
+          ]
+        }
+      ],
       "forms": [
         "mano",
         "manoti",
@@ -11981,6 +12315,17 @@
           "pli-tv-bu-vb-pj4:4.1.11"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "maṇi veḷuriyo subho jātimā aṭṭhaṁso, tatrāssa suttaṁ āvutaṁ",
+          "refs": [
+            "dn2:84.1",
+            "dn10:2.22.1",
+            "mn77:29.4"
+          ]
+        }
+      ],
       "forms": [
         "ñāṇadassananti",
         "ñāṇadassanato",
@@ -12740,6 +13085,24 @@
             "caṅgavāranti",
             "caṅgavāraṁ",
             "caṅgavāro"
+          ]
+        },
+        {
+          "kind": "yathā",
+          "text": "iṇa, roga, bandhanāgāra, dāsabya, kantāraddhānamagga (appahīnā)",
+          "refs": [
+            "dn2:74.1",
+            "dn10:2.12.1",
+            "mn39:14.29"
+          ]
+        },
+        {
+          "kind": "yathā",
+          "text": "āṇaṇya, ārogya, bandhanāmokkha, bhujissa, khemantabhūmi (pahīnā)",
+          "refs": [
+            "dn2:74.2",
+            "dn10:2.12.2",
+            "mn39:14.30"
           ]
         }
       ],
@@ -13592,6 +13955,14 @@
             "mn146:12.6",
             "mn146:25.5"
           ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "hatthena vā hatthaṁ dhoveyya, pādena vā pādaṁ (paññāparidhotaṁ sīlaṁ)",
+          "refs": [
+            "dn4:21.8",
+            "dn4:22.5"
+          ]
         }
       ],
       "forms": [
@@ -14338,14 +14709,59 @@
         "vinaya": [
           "pli-tv-bu-vb-pj3:3.8"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "nhāpako nhāniyapiṇḍaṁ",
+          "refs": [
+            "an5.28:2.4",
+            "dn2:76.1",
+            "dn10:2.14.1",
+            "mn39:15.4",
+            "mn77:25.4",
+            "mn119:18.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "cātumahāpathe thullaphusitako devo vassanto rajaṁ antaradhāpeyya",
+          "refs": [
+            "an6.60:4.4",
+            "an6.60:4.8"
+          ]
+        }
+      ]
     },
     {
       "id": "pathavidhatu",
       "num": 210,
       "pali": "paṭhavīdhātu",
       "ru": "тверди-дхату, твёрдого-дхату",
-      "en": "solidity-dhatu, solid-dhatu"
+      "en": "solidity-dhatu, solid-dhatu",
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ pathavīdhātuṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn14.31:2.2"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ pathavīdhātu aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn14.31:2.3"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo pathavīdhātuyā chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn14.31:2.4"
+          ]
+        }
+      ]
     },
     {
       "id": "pathavilekhupamo-puggalo",
@@ -14742,6 +15158,29 @@
           "pli-tv-bu-vb-pj3:4.9.29"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ phoṭṭhabbe paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.15"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ phoṭṭhabbā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.15"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo phoṭṭhabbesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.14:1.15"
+          ]
+        }
+      ],
       "forms": [
         "phoṭṭhabba",
         "phoṭṭhabbaṁ",
@@ -15539,6 +15978,29 @@
           "pli-tv-bu-vb-ss13:3.2.25"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ rase paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.14"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ rasā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.14"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo rasesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.14:1.14"
+          ]
+        }
+      ],
       "forms": [
         "rasa",
         "rasato",
@@ -15638,6 +16100,92 @@
           "pli-tv-bu-vb-ss1:3.2.1"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "pheṇapiṇḍa",
+          "refs": [
+            "sn22.95:2.1",
+            "sn22.95:2.2"
+          ],
+          "forms": [
+            "pheṇapiṇḍaṁ",
+            "pheṇapiṇḍe"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ rūpaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "mn109:12.6",
+            "sn22.26:1.9",
+            "sn22.57:3.1",
+            "sn22.82:10.6"
+          ]
+        },
+        {
+          "kind": "assāda",
+          "text": "subhaṁ vaṇṇanibhaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "mn13:18.4"
+          ]
+        },
+        {
+          "kind": "assāda",
+          "text": "yaṁ rūpe paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.9"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ rūpaṁ aniccaṁ dukkhaṁ vipariṇāmadhammaṁ",
+          "refs": [
+            "mn109:12.7",
+            "sn22.26:1.10",
+            "sn22.57:3.3",
+            "sn22.82:10.7"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yā purimā subhā vaṇṇanibhā sā antarahitā, ādīnavo pātubhūto",
+          "refs": [
+            "mn13:19.4",
+            "mn13:20.3",
+            "mn13:21.4",
+            "mn13:22.3",
+            "mn13:29.4"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ rūpā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.10"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo rūpasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "mn109:12.8",
+            "sn22.26:1.11",
+            "sn22.57:3.5",
+            "sn22.82:10.8"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo rūpesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "mn13:30.2",
+            "sn35.14:1.11"
+          ]
+        }
+      ],
       "forms": [
         "rūpa",
         "rūpameva",
@@ -15919,6 +16467,29 @@
           "(+9)"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ sadde paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.14:1.12"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ saddā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn35.14:1.12"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo saddesu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.14:1.12"
+          ]
+        }
+      ],
       "forms": [
         "sadda",
         "saddañca",
@@ -17975,6 +18546,47 @@
           "an10.60:12.3"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "kadalikkhandha",
+          "refs": [
+            "sn22.95:5.1",
+            "sn22.95:5.2"
+          ],
+          "forms": [
+            "",
+            "kadalikkhandhaṁ",
+            "kadalikkhandhe"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ saṅkhāre paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn22.26:1.16",
+            "sn22.57:12.1"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "ye saṅkhārā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn22.26:1.17",
+            "sn22.57:12.3"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo saṅkhāresu chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn22.26:1.18",
+            "sn22.57:12.5"
+          ]
+        }
+      ],
       "forms": [
         "saṅkhāra",
         "saṅkhāraṁ",
@@ -18141,6 +18753,45 @@
           "pli-tv-bu-vb-ss6:2.1.1"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "marīcikā",
+          "refs": [
+            "sn22.95:4.1",
+            "sn22.95:4.2"
+          ],
+          "forms": [
+            "marīcikaṁ",
+            "marīcikā",
+            "marīcikāya"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ saññaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "mn109:12.10",
+            "sn22.26:1.15"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yā saññā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn22.26:1.15"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo saññāya chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn22.26:1.15"
+          ]
+        }
+      ],
       "forms": [
         "sañña",
         "saññato",
@@ -19036,6 +19687,23 @@
             "nelaṅgaṁ",
             "nelaṅgo"
           ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "rājā khattiyo muddhāvasitto nihatapaccāmitto na kutoci bhayaṁ samanupassati",
+          "refs": [
+            "dn2:63.2",
+            "dn8:19.6",
+            "dn10:1.29.2"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "hatthena vā hatthaṁ dhoveyya, pādena vā pādaṁ (sīlaparidhotā paññā)",
+          "refs": [
+            "dn4:21.8",
+            "dn4:22.5"
+          ]
         }
       ],
       "forms": [
@@ -19318,6 +19986,29 @@
       "pali": "sota",
       "ru": "ухо",
       "en": "ear",
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ sotaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn35.13:1.13"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ sotaṁ aniccaṁ dukkhaṁ vipariṇāmadhammaṁ",
+          "refs": [
+            "sn35.13:1.13"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo sotasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn35.13:1.13"
+          ]
+        }
+      ],
       "forms": [
         "sota",
         "sotasmimpi",
@@ -19934,6 +20625,23 @@
             "sotānaṁ",
             "sotāni"
           ]
+        },
+        {
+          "kind": "no formula",
+          "text": "sneha (kammaṁ khettaṁ, viññāṇaṁ bījaṁ, taṇhā sneho)",
+          "refs": [
+            "an3.76:2.3",
+            "an3.77:2.3"
+          ]
+        },
+        {
+          "kind": "no formula",
+          "text": "dutiya (taṇhādutiyo puriso)",
+          "refs": [
+            "iti15:3.1",
+            "iti105:3.1",
+            "snp3.12:28.1"
+          ]
         }
       ],
       "rationale": {
@@ -20345,7 +21053,29 @@
         "vinaya": [
           "pli-tv-bu-vb-pc47:1.4.12"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "uppaliniyaṁ uppalāni udakānuggatāni",
+          "refs": [
+            "an5.28:4.4",
+            "dn2:80.1",
+            "dn10:2.17.3",
+            "mn39:17.3",
+            "mn77:27.3",
+            "mn119:20.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "purisaṁ paṇītabhojanaṁ bhuttāviṁ ābhidosikaṁ bhojanaṁ nacchādeyya",
+          "refs": [
+            "an6.60:6.4",
+            "an6.60:6.9"
+          ]
+        }
+      ]
     },
     {
       "id": "tatratatrabhinandini",
@@ -20380,6 +21110,29 @@
           "sn14.31:1.5"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ tejodhātuṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn14.31:2.6"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ tejodhātu aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn14.31:2.6"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo tejodhātuyā chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn14.31:2.6"
+          ]
+        }
+      ],
       "forms": [
         "tejodhātu",
         "tejodhātuyaṁ",
@@ -21244,6 +21997,29 @@
           "sn14.31:1.6"
         ]
       },
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ vāyodhātuṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn14.31:2.7"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ vāyodhātu aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "sn14.31:2.8"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo vāyodhātuyā chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "sn14.31:2.9"
+          ]
+        }
+      ],
       "forms": [
         "vāyodhātu",
         "vāyodhātuyaṁ",
@@ -21319,6 +22095,64 @@
           "(+13)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "seyyathāpi",
+          "text": "udakapubbuḷa",
+          "refs": [
+            "sn22.95:3.1",
+            "sn22.95:3.2"
+          ],
+          "forms": [
+            "udakapubbuḷaṁ",
+            "udakapubbuḷe"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ vedanaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "sn22.26:1.12",
+            "sn22.57:7.1",
+            "sn36.15:1.11",
+            "sn36.17:1.11",
+            "sn36.23:2.9"
+          ]
+        },
+        {
+          "kind": "assāda",
+          "text": "abyābajjhaparamāhaṁ vedanānaṁ assādaṁ vadāmi",
+          "refs": [
+            "mn13:32.5"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ vedanā aniccā dukkhā vipariṇāmadhammā",
+          "refs": [
+            "mn13:36.2",
+            "sn22.26:1.13",
+            "sn22.57:7.3",
+            "sn36.15:1.12",
+            "sn36.17:1.12",
+            "sn36.23:2.10"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo vedanāya chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "mn13:37.2",
+            "sn22.26:1.14",
+            "sn22.57:7.5",
+            "sn36.15:1.13",
+            "sn36.17:1.13",
+            "sn36.23:2.11"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -21966,6 +22800,72 @@
             "nagarassāmi",
             "nagarassāmī",
             "nagarassāmīti"
+          ]
+        },
+        {
+          "kind": "no formula",
+          "text": "bīja (kammaṁ khettaṁ, viññāṇaṁ bījaṁ, taṇhā sneho)",
+          "refs": [
+            "an3.76:2.3",
+            "an3.77:2.3"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "māyā",
+          "refs": [
+            "sn22.95:6.1",
+            "sn22.95:6.2"
+          ],
+          "forms": [
+            "māya",
+            "māyañca",
+            "māyaṁ",
+            "māye",
+            "māyā",
+            "māyāya",
+            "māyāyaṁ",
+            "māyāyāti"
+          ]
+        },
+        {
+          "kind": "seyyathāpi",
+          "text": "coro āgucārī (viññāṇāhāra)",
+          "refs": [
+            "sn12.63:6.2",
+            "sn12.63:6.23"
+          ]
+        }
+      ],
+      "assada": [
+        {
+          "kind": "assāda",
+          "text": "yaṁ viññāṇaṁ paṭicca uppajjati sukhaṁ somanassaṁ",
+          "refs": [
+            "mn109:12.12",
+            "sn22.26:1.19",
+            "sn22.57:15.1",
+            "sn22.82:10.12"
+          ]
+        },
+        {
+          "kind": "ādīnava",
+          "text": "yaṁ viññāṇaṁ aniccaṁ dukkhaṁ vipariṇāmadhammaṁ",
+          "refs": [
+            "mn109:12.13",
+            "sn22.26:1.20",
+            "sn22.57:15.3",
+            "sn22.82:10.13"
+          ]
+        },
+        {
+          "kind": "nissaraṇa",
+          "text": "yo viññāṇasmiṁ chandarāgavinayo chandarāgappahānaṁ",
+          "refs": [
+            "mn109:12.14",
+            "sn22.26:1.21",
+            "sn22.57:15.5",
+            "sn22.82:10.14"
           ]
         }
       ],
