@@ -3982,6 +3982,9 @@ async function textHead(dataId, urlId, reqLang) {
         keywords: [pali, ...names, code, local].filter(Boolean).join(', '),
         work: { '@context': 'https://schema.org', '@type': 'CreativeWork', name: pali || code || local, alternateName: [...names, local].filter(Boolean),
             inLanguage: lang, url: url(lang), isPartOf: collection ? { '@type': 'CreativeWorkSeries', name: collection } : undefined,
+            // How the project's translation picks each term (by the Suttas' own definitions), for an AI reader to meet before it
+            // compares the rendering with the usual ones (owner 2026-11-21: «чтобы ИИ схему почитали, а не… «так никто не переводит»»)
+            publishingPrinciples: lang === 'ru' ? [SITE + '/ru/docs/principles/', SITE + '/ru/docs/rationale/'] : [SITE + '/docs/principles/', SITE + '/docs/rationale/'],
             workExample: eds.length ? ['ms', ...eds].map(e => ({ '@type': 'Book', name: e === 'th' && dataId === 'pli-tv-bu-pm' ? EDITION_NAMES.thPm : EDITION_NAMES[e], inLanguage: 'pi' })) : undefined,
             subjectOf: eds.length ? { '@type': 'WebPage', name: `${eds.length + 1} Pali editions side by side`, url: SITE + (lang === 'ru' ? '/ru/docs/compare/' : '/docs/compare/') } : undefined,
             audio: audio.length ? audio.map(a => ({ '@type': 'AudioObject', name: `${name} — ${AUDIO_LANG.en[a.lang]}`, inLanguage: a.lang === 'pli' ? 'pi' : a.lang,
@@ -4385,7 +4388,7 @@ const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
 const SITE_LD = [
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': SITE + '/#website', name: 'Dhamma.Gift', alternateName: ['DG', 'Dhamma Gift'],
         url: SITE + '/', inLanguage: ['en', 'ru'], publisher: { '@id': SITE + '/#organization' } },
-    { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/',
+    { '@context': 'https://schema.org', '@type': 'Organization', '@id': SITE + '/#organization', name: 'Dhamma.Gift', url: SITE + '/', publishingPrinciples: SITE + '/docs/principles/',
         logo: SITE + '/assets/img/favico-noglass.png', sameAs: ['https://github.com/dhammagift', 'https://huggingface.co/dhammagift',
             'https://play.google.com/store/apps/developer?id=Dhamma.Gift', 'https://apps.apple.com/developer/pavel-katorgin/id6813706219',
             'https://t.me/dhammagift', 'https://apps.microsoft.com/detail/9NK892G5P5GT', 'https://huggingface.co/datasets/dhammagift/dg-dataset',
