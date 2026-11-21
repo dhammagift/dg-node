@@ -59,7 +59,7 @@ def load_glossary(path):
             kind = t.get('kind') or ('special: ' + ('assutavā puthujjano bhāsati' if 'обыватель' in t['dgNote'][:60] else 'ariyassa vinaye')
                                      if (t.get('dgNote') or '').startswith('Особое определение') else '')
             out.append({'name': t.get('pali', ''), 'ru': t.get('ru', ''), 'en': t.get('en', '') or t.get('ru', ''), 'links': links, 'kind': kind,
-                        'metaphors': t.get('metaphors') or []})
+                        'metaphors': t.get('metaphors') or [], 'assada': t.get('assada') or []})
         return out
     for m in LD_RE.finditer(text):
         try:
@@ -119,18 +119,21 @@ def seg_links(refs):
 # prod until it is cut again; the dictionary files themselves reach prod without a restart. A mid amber reads on both themes.
 META_BOX = 'margin:4px 0 2px;padding:3px 8px;border-left:3px solid #c98a2b;background:rgba(201,138,43,.12);border-radius:4px'
 META_KIND = 'color:#b8862e'
+# Owner 2026-11-21: «ko assādo, ko ādīnavo, kiṁ nissaraṇaṁ» - a kind of definition (the sheet's column U), its own line
+ASSADA = 'Assāda · ādīnava · nissaraṇa'
 
 
 # Owner 2026-11-21: a word's metaphors (adhivacana, later seyyathāpi/evameva, yathā, no formula) as one collapsed line under
 # its definition: the kind in italics, the image, the suttas; open shows them all.
-def metaphors_html(items, lang):
+def metaphors_html(items, lang, label=None):
     if not items:
         return ''
-    label = 'Метафоры' if lang == 'ru' else 'Metaphors'
-    preview = ', '.join(m['text'] for m in items)
+    # the assāda formula's lines are long and its label names the three: no preview; the metaphors' summary lists the images
+    preview = '' if label else ': ' + ', '.join(m['text'] for m in items)
+    label = label or ('Метафоры' if lang == 'ru' else 'Metaphors')
     rows = ''.join(f'<div><i style="{META_KIND}">{m["kind"]}</i> <b>{m["text"]}</b> {seg_links(m.get("refs") or [])}</div>' for m in items)
     return (f'<details class="dg-meta" style="{META_BOX}"><summary style="cursor:pointer">'
-            f'<i style="{META_KIND}">{label}</i> ({len(items)}): {preview}</summary>{rows}</details>')
+            f'<i style="{META_KIND}">{label}</i> ({len(items)}){preview}</summary>{rows}</details>')
 
 
 def image_line(kind, meaning, gloss, refs):
@@ -186,8 +189,8 @@ def main():
         links = [l.strip() for l in (t.get('links') or []) if l and l.strip()]
         key = f'{name} (DG)'
         own = of_image.get(name, {}).get('lines', [])
-        ebts_en[key] = entry(en, links, 'en', t.get('kind') or '') + metaphors_html(t.get('metaphors'), 'en') + ''.join(image_line(k, mn, ge, r) for k, mn, gr, ge, r in own)
-        ebts_ru[key] = entry(ru, links, 'ru', t.get('kind') or '') + metaphors_html(t.get('metaphors'), 'ru') + ''.join(image_line(k, mn, gr, r) for k, mn, gr, ge, r in own)
+        ebts_en[key] = entry(en, links, 'en', t.get('kind') or '') + metaphors_html(t.get('assada'), 'en', ASSADA) + metaphors_html(t.get('metaphors'), 'en') + ''.join(image_line(k, mn, ge, r) for k, mn, gr, ge, r in own)
+        ebts_ru[key] = entry(ru, links, 'ru', t.get('kind') or '') + metaphors_html(t.get('assada'), 'ru', ASSADA) + metaphors_html(t.get('metaphors'), 'ru') + ''.join(image_line(k, mn, gr, r) for k, mn, gr, ge, r in own)
         added += 1
         with_link += bool(links)
         forms = by_base.get(norm(name), set())
