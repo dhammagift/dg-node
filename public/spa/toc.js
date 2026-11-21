@@ -209,6 +209,18 @@
     // the app closed or the tab hidden within the 400 ms: the last place is still kept
     window.addEventListener('pagehide', pmSaveNow);
     document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'hidden') pmSaveNow(); });
+    // Rows below a book that is about to grow (its fetched tree, the Pātimokkha's fragment) hidden until it is in: shown while
+    // the book grew, they were pushed down at once (PageSpeed: CLS 0.23 on /toc/mn in about 1 of 3 runs). Back two frames
+    // after the insert - by then far below the screen, so nothing visible moves. Returns the function that shows them.
+    var pmShowBelow = null;
+    function hideBelow(entry) {
+        var pane = document.getElementById('toc-pane');
+        var below = !pane ? [] : Array.prototype.filter.call(pane.querySelectorAll('.toc-category, .toc-book'), function (el) {
+            return !el.contains(entry.bookEl) && !entry.bookEl.contains(el) && (entry.bookEl.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
+        });
+        below.forEach(function (el) { el.style.visibility = 'hidden'; });
+        return function () { below.forEach(function (el) { el.style.visibility = ''; }); };
+    }
     function insertFragment(bodyEl, html) {
         var side = pmSideOf(bodyEl), place = side ? (pmPlace()[side] || {}) : {};
         // the address's rule (/toc/bipm#bi-pj5: the history row, a shortcut) or the side's own last place
@@ -253,6 +265,7 @@
         // for now, so most of it is in before the first paint anyway.
         if (window.dgEnsureReaderCss) window.dgEnsureReaderCss();
         requestAnimationFrame(function () { document.documentElement.classList.remove('dg-pm-placing'); });
+        if (pmShowBelow) { var showBelow = pmShowBelow; pmShowBelow = null; requestAnimationFrame(function () { requestAnimationFrame(showBelow); }); }
     }
 
     // Leaving the TOC through a link remembers the scroll position; the browser's Back then puts
@@ -849,6 +862,8 @@
             var wasOpen = pmBody && !pmBody.classList.contains('d-none');
             // the contents wait unseen for the place (search/index.html dgPmPlacing; insertFragment shows them)
             if (!wasOpen && window.dgPmPlacing) window.dgPmPlacing(pmSideOf(entry.bookEl.querySelector('[data-toc-book-body]')));
+            // the rows below wait unseen for the fragment, as for a book's tree below (nightly CLS 0.11 on /ru/toc/bipm, phone)
+            if (!wasOpen) { pmShowBelow = hideBelow(entry); setTimeout(function () { if (pmShowBelow) { pmShowBelow(); pmShowBelow = null; } }, 6000); }
             if (!wasOpen) entry.headerEl.click();
             // a reader's place there: straight to it, no smooth scroll to the title first - the two fought (up, then down) on a phone
             // (owner 2026-11-13: «вниз, вверх уходит… сразу открылось на нужном месте»); insertFragment holds it on a fresh open
@@ -860,16 +875,8 @@
             }
             return;
         }
-        // The fetched tree is taller than the screen: inserted while the rows below the book were on screen, it
-        // pushed them all down at once (PageSpeed: CLS 0.23 on /toc/mn in about 1 of 3 runs). Those rows are
-        // hidden while the tree loads and come back two frames after it is in - by then far below the screen,
-        // so nothing visible moves. The book and everything above it stay as they were.
-        var pane = document.getElementById('toc-pane');
-        var below = entry.bodyEl.dataset.loaded || !pane ? [] : Array.prototype.filter.call(pane.querySelectorAll('.toc-category, .toc-book'), function (el) {
-            return !el.contains(entry.bookEl) && !entry.bookEl.contains(el) && (entry.bookEl.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING);
-        });
-        below.forEach(function (el) { el.style.visibility = 'hidden'; });
-        var show = function () { below.forEach(function (el) { el.style.visibility = ''; }); };
+        // the fetched tree is taller than the screen: the rows below wait unseen for it (hideBelow)
+        var show = entry.bodyEl.dataset.loaded ? function () {} : hideBelow(entry);
         entry.bodyEl.classList.remove('d-none');
         var loaded = entry.bodyEl.dataset.loaded
             ? Promise.resolve()
