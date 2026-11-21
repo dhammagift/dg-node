@@ -135,6 +135,9 @@ const LEGACY_READERS = {
     // the old site's home pages and its TTS reader (Google still lists them; without this they were a search for "tts.php")
     // /en names its language like /ru: a reader who had been on /ru/ got the Russian home at /en/ (Cakkhu 2026-11-17)
     '/en': { lang: 'en' }, '/ru': { lang: 'ru' }, '/tts.php': {},
+    // the old Bodhi reader /b/?q=sn56.11 (~4.4k a day, owner 2026-11-21: redirect rather than a password prompt): our page
+    // of the same text; bare /b/ and a logged-in visitor keep the restricted section (see the hook below)
+    '/b': {},
 };
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');
@@ -148,6 +151,7 @@ function legacyReaderRedirect(url) {
     if (page === '/pm.php' || page === '/bipm.php') return '/toc/vinaya'; // the standalone pages are gone, the TOC shows the Patimokkha
     const target = LEGACY_READERS[page];
     if (!target) return null;
+    if (page === '/b' && !params.get('q')) return null;
     const q = (params.get('q') || '').trim();
     params.delete('q');
     // the old readers' lang=pli was Pali alone: the reader's own word for that is pali=pli (lang=pli opened Pali + English)
@@ -174,8 +178,10 @@ app.addHook('onRequest', (req, res, done) => {
     done();
 });
 app.addHook('onRequest', (req, res, done) => {
-    const to = (req.method === 'GET' || req.method === 'HEAD') ? legacyReaderRedirect(req.url) : null;
-    if (to) return res.redirect(to, 301);
+    const isB = /^\/b(\/|\?|$)/.test(req.url);
+    const to = (req.method === 'GET' || req.method === 'HEAD') && !(isB && hasRestrictedAuth(req)) ? legacyReaderRedirect(req.url) : null;
+    // /b to people: 302, a browser must not cache it — after logging in at /b/ the same link opens the restricted reader again
+    if (to) return res.redirect(to, isB && !isBot(req) ? 302 : 301);
     done();
 });
 
