@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-16",
+  "updatedAt": "2026-11-21",
   "source": {
     "sheetId": "1s7n7ogJhdtSIweVO9aad63_k7lWrZgyPRUFg34AobMg",
     "gid": "0",
@@ -2369,6 +2369,34 @@
           "pli-tv-bu-vb-ss3:3.1.5"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "tiṇṇo pāraṅgato thale tiṭṭhati brāhmaṇo",
+          "refs": [
+            "sn35.238:17.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "āyanta",
+          "refs": [
+            "sn41.5:5.9"
+          ],
+          "forms": [
+            "āyantanti",
+            "āyantaṁ",
+            "āyantiṁ",
+            "āyatañca",
+            "āyataṁ",
+            "āyatimpi",
+            "āyatiñca",
+            "āyatiṁ",
+            "āyañca",
+            "āyaṁ"
+          ]
+        }
+      ],
       "forms": [
         "arahaṁ"
       ]
@@ -2703,6 +2731,56 @@
           "(+7)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "khemo maggo sovatthiko pītigamanīyo",
+          "refs": [
+            "mn19:26.11"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "dakkhiṇo maggo",
+          "refs": [
+            "sn22.84:10.8"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "kulla",
+          "refs": [
+            "sn35.238:15.1"
+          ],
+          "forms": [
+            "kulla",
+            "kullanti",
+            "kullañhi",
+            "kullaṁ",
+            "kulle",
+            "kullo"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "yathāgatamagga",
+          "refs": [
+            "sn35.245:9.11"
+          ],
+          "forms": [
+            "yathāgatamaggaṁ",
+            "yathāgatamaggo",
+            "yathāgatamaggoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "brahmayāna, dhammayāna, anuttaro saṅgāmavijayo",
+          "refs": [
+            "sn45.4:4.2"
+          ]
+        }
+      ],
       "forms": [
         ""
       ]
@@ -4172,6 +4250,53 @@
           "pli-tv-bi-vb-pc50:2.5"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "visadosa",
+          "refs": [
+            "mn105:27.4"
+          ],
+          "forms": [
+            "visadosaṁ",
+            "visadoso",
+            "visadosoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "okacārikā",
+          "refs": [
+            "mn19:26.9"
+          ],
+          "forms": [
+            "okacārika",
+            "okacārikaṁ",
+            "okacārikā",
+            "okacārikāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "laṅgī",
+          "refs": [
+            "mn23:4.10"
+          ],
+          "forms": [
+            "laṅgi",
+            "laṅgiṁ",
+            "laṅgī",
+            "laṅgīti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "tibbo vanasaṇḍo",
+          "refs": [
+            "sn22.84:10.10"
+          ]
+        }
+      ],
       "forms": [
         "avijja",
         "avijjañca",
@@ -4342,6 +4467,82 @@
           "an9.41:11.5"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "piyarūpaṁ sātarūpaṁ",
+          "refs": [
+            "iti109:4.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "vaṇa",
+          "refs": [
+            "mn105:27.3"
+          ],
+          "forms": [
+            "vaṇa",
+            "vaṇaṁ",
+            "vaṇe",
+            "vaṇena",
+            "vaṇo",
+            "vaṇoti",
+            "vaṇā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "antarā maṁsakāyo",
+          "refs": [
+            "mn146:12.3",
+            "mn146:25.2"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "bāhiro cammakāyo",
+          "refs": [
+            "mn146:12.4",
+            "mn146:25.3"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "suñño gāmo",
+          "refs": [
+            "sn35.238:10.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "corā gāmaghātakā",
+          "refs": [
+            "sn35.238:11.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "orimaṁ tīraṁ",
+          "refs": [
+            "sn35.241:3.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "pārimaṁ tīraṁ",
+          "refs": [
+            "sn35.241:3.2"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "cha dvārā",
+          "refs": [
+            "sn35.245:9.4"
+          ]
+        }
+      ],
       "forms": [
         "āyatana",
         "āyatanassa",
@@ -7305,6 +7506,22 @@
       "pali": "dukkhā vedanā",
       "ru": "болезненное чувствование",
       "en": "painful feeling",
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "pātāla",
+          "refs": [
+            "sn36.4:1.5"
+          ],
+          "forms": [
+            "pātālaṁ",
+            "pātāle",
+            "pātālo",
+            "pātāloti",
+            "pātālā"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#dukkha",
         "ru": "/rationale#dukkha"
@@ -8784,6 +9001,198 @@
           "(+13)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "bhaya",
+          "refs": [
+            "an6.23:1.1",
+            "an8.56:1.1"
+          ],
+          "forms": [
+            "bhaya",
+            "bhayameva",
+            "bhayanti",
+            "bhayassa",
+            "bhayato",
+            "bhayañca",
+            "bhayaṁ",
+            "bhaye",
+            "bhayena",
+            "bhayepi",
+            "bhayo",
+            "bhayā",
+            "bhayāna",
+            "bhayānaṁ",
+            "bhayāni",
+            "bhayānīti",
+            "bhayāpi",
+            "bhayāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "dukkha",
+          "refs": [
+            "an6.23:1.2",
+            "an8.56:1.2"
+          ],
+          "forms": [
+            "dukkha",
+            "dukkhameva",
+            "dukkhamhā",
+            "dukkhampi",
+            "dukkhanti",
+            "dukkhasminti",
+            "dukkhasmiṁ",
+            "dukkhasmā",
+            "dukkhasmāti",
+            "dukkhassa",
+            "dukkhassāti",
+            "dukkhato",
+            "dukkhañca",
+            "dukkhañhi",
+            "dukkhaññeva",
+            "dukkhaṁ",
+            "dukkhaṁyeva",
+            "dukkhe",
+            "dukkhehi",
+            "dukkhena",
+            "dukkhesu",
+            "dukkho",
+            "dukkhoti",
+            "dukkhā",
+            "dukkhāhi",
+            "dukkhānaṁ",
+            "dukkhāni",
+            "dukkhāpi",
+            "dukkhāti",
+            "dukkhāya",
+            "dukkhāyapi",
+            "dukkhāyaṁ",
+            "dukkhāyo",
+            "dukkhāyāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "roga",
+          "refs": [
+            "an6.23:1.3",
+            "an8.56:1.3"
+          ],
+          "forms": [
+            "rogato",
+            "rogaṁ",
+            "roge",
+            "rogena",
+            "rogo",
+            "rogoti",
+            "rogā",
+            "rogānamiva",
+            "rogānaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "gaṇḍa",
+          "refs": [
+            "an6.23:1.4",
+            "an8.56:1.4"
+          ],
+          "forms": [
+            "gaṇḍa",
+            "gaṇḍassa",
+            "gaṇḍato",
+            "gaṇḍaṁ",
+            "gaṇḍo",
+            "gaṇḍoti",
+            "gaṇḍā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "saṅga",
+          "refs": [
+            "an6.23:1.5",
+            "an8.56:1.6"
+          ],
+          "forms": [
+            "saṅga",
+            "saṅgaṁ",
+            "saṅgo",
+            "saṅgoti",
+            "saṅgā",
+            "saṅgāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "paṅka",
+          "refs": [
+            "an6.23:1.6",
+            "an8.56:1.7"
+          ],
+          "forms": [
+            "paṅkamhi",
+            "paṅkamhiva",
+            "paṅkaṁ",
+            "paṅke",
+            "paṅkena",
+            "paṅko",
+            "paṅkoti",
+            "paṅkā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "salla",
+          "refs": [
+            "an8.56:1.5"
+          ],
+          "forms": [
+            "salla",
+            "sallampi",
+            "sallanti",
+            "sallassa",
+            "sallassapi",
+            "sallato",
+            "sallañca",
+            "sallaṁ",
+            "sallena",
+            "sallā",
+            "sallānaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "gabbha",
+          "refs": [
+            "an8.56:1.8"
+          ],
+          "forms": [
+            "gabbha",
+            "gabbhassa",
+            "gabbhassāti",
+            "gabbhañca",
+            "gabbhaṁ",
+            "gabbhe",
+            "gabbhepi",
+            "gabbho",
+            "gabbhoti",
+            "gabbhā",
+            "gabbhāya"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "mahantaṁ ninnaṁ pallalaṁ",
+          "refs": [
+            "mn19:26.3",
+            "sn22.84:10.11"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -8884,7 +9293,93 @@
           "dn1:3.20.2",
           "dn13:27.1"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "āvaṭṭabhaya",
+          "refs": [
+            "an4.122:4.14",
+            "mn67:18.13"
+          ],
+          "forms": [
+            "āvaṭṭabhayanti",
+            "āvaṭṭabhayassa",
+            "āvaṭṭabhayaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "gedha",
+          "refs": [
+            "an6.25:1.7",
+            "an6.25:2.5",
+            "an6.25:3.5",
+            "an6.25:4.4",
+            "an6.25:7.3",
+            "an6.26:2.6",
+            "an6.26:3.5",
+            "an6.26:4.5",
+            "an6.26:5.4",
+            "an6.26:6.6",
+            "an6.26:7.10"
+          ],
+          "forms": [
+            "gedhamhā",
+            "gedhaṁ",
+            "gedho",
+            "gedhoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "āvaṭṭa",
+          "refs": [
+            "iti109:7.1"
+          ],
+          "forms": [
+            "āvaṭṭo"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "asisūnā",
+          "refs": [
+            "mn23:4.27"
+          ],
+          "forms": [
+            "asisūna",
+            "asisūnaṁ",
+            "asisūnā",
+            "asisūnāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "nivāpa",
+          "refs": [
+            "mn25:7.3"
+          ],
+          "forms": [
+            "nivāpaṁ",
+            "nivāpe",
+            "nivāpeti",
+            "nivāpo",
+            "nivāpoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "āvaṭṭaggāha",
+          "refs": [
+            "sn35.241:5.4"
+          ],
+          "forms": [
+            "āvaṭṭaggāho",
+            "āvaṭṭaggāhoti"
+          ]
+        }
+      ]
     },
     {
       "id": "kamanam-vemattata",
@@ -9568,6 +10063,82 @@
           "(+121)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "gaṇḍa",
+          "refs": [
+            "an9.15:2.1",
+            "sn35.103:4.2"
+          ],
+          "forms": [
+            "gaṇḍa",
+            "gaṇḍassa",
+            "gaṇḍato",
+            "gaṇḍaṁ",
+            "gaṇḍo",
+            "gaṇḍoti",
+            "gaṇḍā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "vammika",
+          "refs": [
+            "mn23:4.1"
+          ],
+          "forms": [
+            "vammikaṁ",
+            "vammiko",
+            "vammikoti",
+            "vammikā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "nagara",
+          "refs": [
+            "sn35.245:9.3"
+          ],
+          "forms": [
+            "nagara",
+            "nagaramhi",
+            "nagaramhā",
+            "nagarampi",
+            "nagaranti",
+            "nagarassa",
+            "nagaraṁ",
+            "nagare",
+            "nagaresu",
+            "nagaresupi",
+            "nagarā",
+            "nagarāpi"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "ratha",
+          "refs": [
+            "sn41.5:5.5"
+          ],
+          "forms": [
+            "ratha",
+            "rathampi",
+            "rathasmimpi",
+            "rathasmiṁ",
+            "rathassa",
+            "rathassapi",
+            "rathañca",
+            "rathaṁ",
+            "rathe",
+            "rathena",
+            "ratho",
+            "rathoti",
+            "rathā",
+            "rathānaṁ"
+          ]
+        }
+      ],
       "forms": [
         "kāya",
         "kāyamhi",
@@ -9628,6 +10199,22 @@
           "mn119:3.1"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "daḷhe khīle vā thambhe vā",
+          "refs": [
+            "sn35.247:6.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "samatittiko telapatto",
+          "refs": [
+            "sn47.20:3.3"
+          ]
+        }
+      ],
       "forms": [
         "kāyagatāsati",
         "kāyagatāsatiṁ"
@@ -10300,6 +10887,22 @@
           "mn77:29.2"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "cattāro āsīvisā uggatejā ghoravisā",
+          "refs": [
+            "sn35.238:7.3"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "majjhe siṅghāṭako",
+          "refs": [
+            "sn35.245:9.8"
+          ]
+        }
+      ],
       "forms": [
         "mahābhūtā",
         "mahābhūtānaṁ",
@@ -11450,6 +12053,68 @@
       "pali": "nandīrāga",
       "ru": "радость-страсть",
       "en": "joy-passion",
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "antarā vilimaṁsaṁ, antarā nhāru, antarā bandhanaṁ",
+          "refs": [
+            "mn146:12.5"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "antarā vilimaṁsaṁ antarā nhāru antarā bandhanaṁ",
+          "refs": [
+            "mn146:25.4"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "okacara",
+          "refs": [
+            "mn19:26.8"
+          ],
+          "forms": [
+            "okacaraṁ",
+            "okacaro",
+            "okacaroti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "maṁsapesī",
+          "refs": [
+            "mn23:4.35"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "suttaka",
+          "refs": [
+            "sn17.3:2.3"
+          ],
+          "forms": [
+            "suttakanti",
+            "suttakaṁ",
+            "suttake",
+            "suttakena"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "chaṭṭho antaracaro vadhako ukkhittāsiko",
+          "refs": [
+            "sn35.238:9.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "majjhe saṁsādo",
+          "refs": [
+            "sn35.241:3.3"
+          ]
+        }
+      ],
       "forms": [
         "nandīrāgassa",
         "nandīrāgaṁ"
@@ -11630,6 +12295,29 @@
           "iti44:3.5"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "samo bhūmibhāgo ramaṇīyo",
+          "refs": [
+            "sn22.84:10.13"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "pārimaṁ tīraṁ khemaṁ appaṭibhayaṁ",
+          "refs": [
+            "sn35.238:14.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "yathābhūtaṁ vacanaṁ",
+          "refs": [
+            "sn35.245:9.10"
+          ]
+        }
+      ],
       "forms": [
         "nibbāna",
         "nibbānanti",
@@ -12041,6 +12729,20 @@
           "pli-tv-bu-vb-pj4:4.5.68"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "caṅgavāra",
+          "refs": [
+            "mn23:4.19"
+          ],
+          "forms": [
+            "caṅgavāranti",
+            "caṅgavāraṁ",
+            "caṅgavāro"
+          ]
+        }
+      ],
       "forms": [
         "nīvaraṇa",
         "nīvaraṇañca",
@@ -12081,6 +12783,15 @@
           "snp1.9:23.1"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "mahā udakaṇṇavo",
+          "refs": [
+            "sn35.238:12.1"
+          ]
+        }
+      ],
       "forms": [
         "ogha",
         "oghanti",
@@ -12156,6 +12867,15 @@
           "mn64:9.9"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "heṭṭhā rahado",
+          "refs": [
+            "iti109:5.1"
+          ]
+        }
+      ],
       "forms": [
         "orambhāgiyaṁ",
         "orambhāgiyehi",
@@ -12682,7 +13402,32 @@
           "mn141:20.1",
           "sn22.48:2.1"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "kumma",
+          "refs": [
+            "mn23:4.23"
+          ],
+          "forms": [
+            "kumma",
+            "kummamhā",
+            "kummamhāva",
+            "kummaṁ",
+            "kummo",
+            "kummoti",
+            "kummova"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "pañca vadhakā paccatthikā",
+          "refs": [
+            "sn35.238:8.1"
+          ]
+        }
+      ]
     },
     {
       "id": "pandita",
@@ -12811,6 +13556,44 @@
           "pli-tv-bu-vb-ss12:2.8"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "sattha",
+          "refs": [
+            "mn23:4.8",
+            "mn105:27.7"
+          ],
+          "forms": [
+            "sattha",
+            "satthanti",
+            "satthato",
+            "satthañca",
+            "satthaṁ",
+            "satthe",
+            "satthehi",
+            "satthehipi",
+            "satthena",
+            "satthenapi",
+            "satthepi",
+            "sattho",
+            "satthoti",
+            "satthā",
+            "satthāni",
+            "satthāpi",
+            "satthāti",
+            "satthāva"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "tiṇhaṁ govikantanaṁ",
+          "refs": [
+            "mn146:12.6",
+            "mn146:25.5"
+          ]
+        }
+      ],
       "forms": [
         "pañña",
         "paññañca",
@@ -14622,6 +15405,15 @@
           "sn36.6:1.25"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "puriso amaggakusalo",
+          "refs": [
+            "sn22.84:10.3"
+          ]
+        }
+      ],
       "forms": [
         "puthujjana",
         "puthujjananti",
@@ -15616,7 +16408,16 @@
         "patterns": [
           "sn22.105:1.4"
         ]
-      }
+      },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "orimaṁ tīraṁ sāsaṅkaṁ sappaṭibhayaṁ",
+          "refs": [
+            "sn35.238:13.1"
+          ]
+        }
+      ]
     },
     {
       "id": "salayatana",
@@ -15950,6 +16751,15 @@
           "pli-tv-bu-vb-pj2:7.48.9"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "migajātā",
+          "refs": [
+            "mn25:7.6"
+          ]
+        }
+      ],
       "forms": [
         "samaṇa",
         "samaṇamhā",
@@ -16068,6 +16878,15 @@
       "pali": "samatha",
       "ru": "равновесие, равностность",
       "en": "balance, evenness",
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "sīghaṁ dūtayugaṁ",
+          "refs": [
+            "sn35.245:9.6"
+          ]
+        }
+      ],
       "forms": [
         "samatha",
         "samathassa",
@@ -17633,6 +18452,50 @@
           "(+126)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "esanī",
+          "refs": [
+            "mn105:27.6"
+          ],
+          "forms": [
+            "esani",
+            "esaniyaṁ",
+            "esaniyā",
+            "esaniyāpi",
+            "esanī",
+            "esanīti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "dovārika",
+          "refs": [
+            "sn35.245:9.5"
+          ],
+          "forms": [
+            "dovārika",
+            "dovārikaṁ",
+            "dovārike",
+            "dovāriko",
+            "dovārikoti",
+            "dovārikā",
+            "dovārikānaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "ekāra",
+          "refs": [
+            "sn41.5:5.3"
+          ],
+          "forms": [
+            "ekāro",
+            "ekāroti"
+          ]
+        }
+      ],
       "forms": [
         "sati",
         "satiyaṁ",
@@ -17983,6 +18846,22 @@
           "an3.73:3.3"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "sumedha",
+          "refs": [
+            "mn23:4.7"
+          ],
+          "forms": [
+            "sumedha",
+            "sumedhaṁ",
+            "sumedho",
+            "sumedhoti",
+            "sumedhā"
+          ]
+        }
+      ],
       "forms": [
         "sekha",
         "sekhampi",
@@ -18145,6 +19024,20 @@
           "(+3)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "nelaṅga",
+          "refs": [
+            "sn41.5:5.1"
+          ],
+          "forms": [
+            "nelaṅganti",
+            "nelaṅgaṁ",
+            "nelaṅgo"
+          ]
+        }
+      ],
       "forms": [
         "sīla",
         "sīlameva",
@@ -18636,6 +19529,16 @@
           "pli-tv-bu-vb-ss13:1.3.4"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "puññāni",
+          "refs": [
+            "an7.62:1.2",
+            "iti22:2.2"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -18965,6 +19868,74 @@
           "(+2)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "nadiyā soto",
+          "refs": [
+            "iti109:3.3"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "salla",
+          "refs": [
+            "mn105:27.5"
+          ],
+          "forms": [
+            "salla",
+            "sallampi",
+            "sallanti",
+            "sallassa",
+            "sallassapi",
+            "sallato",
+            "sallañca",
+            "sallaṁ",
+            "sallena",
+            "sallā",
+            "sallānaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "gaṇḍamūla",
+          "refs": [
+            "sn35.103:4.3"
+          ],
+          "forms": [
+            "gaṇḍamūlanti",
+            "gaṇḍamūlaṁ",
+            "gaṇḍamūlo"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "sota",
+          "refs": [
+            "sn41.5:5.10"
+          ],
+          "forms": [
+            "sota",
+            "sotasmimpi",
+            "sotasmiṁ",
+            "sotassa",
+            "sotañca",
+            "sotaṁ",
+            "sote",
+            "sotehi",
+            "sotena",
+            "sotenapi",
+            "sotesu",
+            "soto",
+            "sototi",
+            "sotova",
+            "sotā",
+            "sotāna",
+            "sotānaṁ",
+            "sotāni"
+          ]
+        }
+      ],
       "rationale": {
         "en": "/rationale#passages",
         "ru": "/rationale#passages"
@@ -19065,6 +20036,235 @@
           "(+2)"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "sīha",
+          "refs": [
+            "an5.99:2.1",
+            "an10.21:2.1"
+          ],
+          "forms": [
+            "sīha",
+            "sīhassa",
+            "sīhañca",
+            "sīhaṁ",
+            "sīhaṁva",
+            "sīhena",
+            "sīho",
+            "sīhoti",
+            "sīhova",
+            "sīhā",
+            "sīhānaṁ",
+            "sīhānaṁva",
+            "sīhāti",
+            "sīhāva"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "samaṇa",
+          "refs": [
+            "an8.85:1.1"
+          ],
+          "forms": [
+            "samaṇa",
+            "samaṇamhā",
+            "samaṇamhāti",
+            "samaṇassa",
+            "samaṇasseva",
+            "samaṇañca",
+            "samaṇaṁ",
+            "samaṇaṁyeva",
+            "samaṇe",
+            "samaṇebhi",
+            "samaṇehi",
+            "samaṇena",
+            "samaṇesu",
+            "samaṇo",
+            "samaṇopi",
+            "samaṇoti",
+            "samaṇova",
+            "samaṇā",
+            "samaṇāna",
+            "samaṇānampi",
+            "samaṇānañca",
+            "samaṇānaṁ",
+            "samaṇāneva",
+            "samaṇāpi",
+            "samaṇāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "brāhmaṇa",
+          "refs": [
+            "an8.85:1.2",
+            "mn23:4.6"
+          ],
+          "forms": [
+            "brāhmaṇa",
+            "brāhmaṇamhā",
+            "brāhmaṇamhāti",
+            "brāhmaṇampi",
+            "brāhmaṇanti",
+            "brāhmaṇassa",
+            "brāhmaṇasseva",
+            "brāhmaṇaṁ",
+            "brāhmaṇaṁyeva",
+            "brāhmaṇe",
+            "brāhmaṇebhi",
+            "brāhmaṇehi",
+            "brāhmaṇehīti",
+            "brāhmaṇena",
+            "brāhmaṇenāti",
+            "brāhmaṇesu",
+            "brāhmaṇesūti",
+            "brāhmaṇo",
+            "brāhmaṇopi",
+            "brāhmaṇoti",
+            "brāhmaṇova",
+            "brāhmaṇā",
+            "brāhmaṇāna",
+            "brāhmaṇānampi",
+            "brāhmaṇānaṁ",
+            "brāhmaṇāpi",
+            "brāhmaṇāti",
+            "brāhmaṇāva"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "vedagū",
+          "refs": [
+            "an8.85:1.3"
+          ],
+          "forms": [
+            "vedagu",
+            "vedagunaṁ",
+            "vedaguno",
+            "vedagunā",
+            "vedaguṁ",
+            "vedagū",
+            "vedagūti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "bhisakka",
+          "refs": [
+            "an8.85:1.4"
+          ],
+          "forms": [
+            "bhisakkaṁ",
+            "bhisakkena",
+            "bhisakko",
+            "bhisakkoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "nimmala",
+          "refs": [
+            "an8.85:1.5"
+          ],
+          "forms": [
+            "nimmala",
+            "nimmalaṁ",
+            "nimmalena",
+            "nimmalo",
+            "nimmaloti",
+            "nimmalā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "vimala",
+          "refs": [
+            "an8.85:1.6"
+          ],
+          "forms": [
+            "vimalassa",
+            "vimalaṁ",
+            "vimalaṁva",
+            "vimale",
+            "vimalena",
+            "vimalo",
+            "vimaloti",
+            "vimalā"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "ñāṇī",
+          "refs": [
+            "an8.85:1.7"
+          ],
+          "forms": [
+            "ñāṇi",
+            "ñāṇinā",
+            "ñāṇī",
+            "ñāṇīti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "vimutta",
+          "refs": [
+            "an8.85:1.8"
+          ],
+          "forms": [
+            "vimutta",
+            "vimuttamiti",
+            "vimuttanti",
+            "vimuttasmiṁ",
+            "vimuttassa",
+            "vimuttaṁ",
+            "vimutte",
+            "vimuttehi",
+            "vimuttena",
+            "vimutto",
+            "vimuttoti",
+            "vimuttā",
+            "vimuttāti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "cakkhumā puriso tīre ṭhito",
+          "refs": [
+            "iti109:11.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "bhisakko sallakatto",
+          "refs": [
+            "mn105:27.8"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "puriso atthakāmo hitakāmo yogakkhemakāmo",
+          "refs": [
+            "mn19:26.10"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "puriso maggakusalo",
+          "refs": [
+            "sn22.84:10.4"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "dhammakāya, brahmakāya, dhammabhūta, brahmabhūta",
+          "refs": [
+            "dn27:9.6"
+          ]
+        }
+      ],
       "forms": [
         "tathāgata",
         "tathāgatassa",
@@ -20284,6 +21484,32 @@
           "an7.54:1.2"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "dvidhāpatha",
+          "refs": [
+            "mn23:4.16"
+          ],
+          "forms": [
+            "dvidhāpathaṁ",
+            "dvidhāpatho",
+            "dvidhāpathoti"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "dvedhāpatha",
+          "refs": [
+            "sn22.84:10.5"
+          ],
+          "forms": [
+            "dvedhāpathaṁ",
+            "dvedhāpatho",
+            "dvedhāpathoti"
+          ]
+        }
+      ],
       "forms": [
         "vicikiccha",
         "vicikicchañca",
@@ -20573,6 +21799,19 @@
           "pli-tv-bu-vb-pj1:1.8.5"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "setapacchāda",
+          "refs": [
+            "sn41.5:5.2"
+          ],
+          "forms": [
+            "setapacchādo",
+            "setapacchādoti"
+          ]
+        }
+      ],
       "forms": [
         "vimutti",
         "vimuttinti",
@@ -20716,6 +21955,20 @@
           "pli-tv-bu-vb-pj3:3.8"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "nagarassāmī",
+          "refs": [
+            "sn35.245:9.7"
+          ],
+          "forms": [
+            "nagarassāmi",
+            "nagarassāmī",
+            "nagarassāmīti"
+          ]
+        }
+      ],
       "forms": [
         "viññāṇa",
         "viññāṇameva",
@@ -20846,6 +22099,15 @@
       "pali": "vipassanā",
       "ru": "рассматривание, высматривание",
       "en": "examining, looking-into",
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "sīghaṁ dūtayugaṁ",
+          "refs": [
+            "sn35.245:9.6"
+          ]
+        }
+      ],
       "forms": [
         "vipassanañca",
         "vipassanaṁ",
@@ -20939,6 +22201,34 @@
           "sn51.13:2.2"
         ]
       },
+      "metaphors": [
+        {
+          "kind": "adhivacana",
+          "text": "hatthehi ca pādehi ca vāyāmo",
+          "refs": [
+            "iti109:10.1"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "abhikkhaṇa",
+          "refs": [
+            "mn23:4.9"
+          ],
+          "forms": [
+            "abhikkhaṇa",
+            "abhikkhaṇampi",
+            "abhikkhaṇaṁ"
+          ]
+        },
+        {
+          "kind": "adhivacana",
+          "text": "tassa hatthehi ca pādehi ca vāyāmo",
+          "refs": [
+            "sn35.238:16.1"
+          ]
+        }
+      ],
       "forms": [
         "vīriya",
         "vīriyamhi",
