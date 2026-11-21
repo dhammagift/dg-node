@@ -4061,7 +4061,7 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     const pool = searchDb.prepare("SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'")
         .all(dataId).map(r => `${r.lang}_${r.translator}`).filter(k => k.startsWith(lang + '_'));
     let def = (TRANSLATOR_PRIORITY[lang] || []).find(k => pool.includes(k));
-    if (!def && lang === 'en') def = pool.find(k => k !== 'en_sujato');
+    if (!def && lang === 'en') def = pool.find(k => k !== 'en_sujato' && k !== 'en_bodhi') || pool.find(k => k === 'en_sujato');
     if (!def && pool.length === 1) def = pool[0];
     // copyToClipboard.js dgSegmentUrl: /mn10:1.2 with the page's query, no hash
     const segUrl = (seg) => {

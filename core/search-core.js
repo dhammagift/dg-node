@@ -227,7 +227,8 @@ function filterPreferredTranslators(results) {
         if (!chosen && lang === 'en') {
             // Sujato и так широко доступен на SuttaCentral — если есть другой переводчик
             // (Thanissaro и т.п.), предпочитаем его; sujato берём только если больше никого нет.
-            chosen = keys.find(k => k !== 'en_sujato');
+            // en_bodhi is no default either (Ultra 2026-11-21, until the owner decides): the default stays as before it came
+            chosen = keys.find(k => k !== 'en_sujato' && k !== 'en_bodhi') || keys.find(k => k === 'en_sujato');
         }
 
         // Язык без записи в TRANSLATOR_PRIORITY (сейчас только будущие языки вроде тайского) —
@@ -1101,7 +1102,7 @@ function buildWordReportFast(searchResults, keyword) {
             for (const [lang, keys] of Object.entries(byLang)) {
                 const priorities = TRANSLATOR_PRIORITY[lang];
                 let chosen = priorities && priorities.find(p => keys.includes(p));
-                if (!chosen && lang === 'en') chosen = keys.find(k => k !== 'en_sujato');
+                if (!chosen && lang === 'en') chosen = keys.find(k => k !== 'en_sujato' && k !== 'en_bodhi') || keys.find(k => k === 'en_sujato');
                 if (!chosen) chosen = keys[0];
                 addWordsFromText(seg.translations[chosen], suttaId, seg.segment);
             }
