@@ -364,7 +364,7 @@ function composeCensus(all, query, limit) {
 let structureCache = null;
 
 function getServer() {
-    const server = new McpServer({ name: 'dg-node', version: '1.3.0' }, { instructions: INSTRUCTIONS });
+    const server = new McpServer({ name: 'dg-node', version: '1.4.0' }, { instructions: INSTRUCTIONS });
 
     server.registerTool('search', {
         description: 'Search the Pali Canon on dhamma.gift by keyword/substring or REGEX (min 3 letters, no semantic search). Patterns like "kata.*dukkha", "vucc.*dukkha", "katha.*dukkha" find the canon\'s own definitions and expositions of a term. Returns a CENSUS of every matching sutta — id, title, match count, metaphor count, reader link — Pali only, ordered so that suttas that DEFINE the term come first, then ones NAMED after it, then by how often it occurs. Set include_segments for the matched Pali lines, include_translations (+ langs) for translations. 40 suttas by default (25 by occurrence count, plus 15 for suttas named after the term and ones defining it); metadata.totalFiles reports the true count, and limit takes a number or "all".',
@@ -624,6 +624,45 @@ function getServer() {
         }));
     });
 
+    server.registerTool('uposatha', {
+        description: 'Uposatha days by the Suttas (the 8th, 14th/15th of each half-month, by the real moon) for the next N days at a place, the same engine as dhamma.gift/uposatha-calendar, the Uposatha app and the Telegram bot. The day runs from sunset to sunset at the place: each row gives its begin (sunset of the eve), dawn, noon and end times. Without coordinates: Bodh Gaya. Give lat/lon and the IANA time zone of the user\'s city for local times.',
+        inputSchema: {
+            days: z.number().int().min(1).max(366).optional().describe('How many days ahead. Default: 30.'),
+            lat: z.number().min(-90).max(90).optional().describe('Latitude of the place.'),
+            lon: z.number().min(-180).max(180).optional().describe('Longitude of the place.'),
+            tz: z.string().max(64).optional().describe('IANA time zone of the place, e.g. "Asia/Bangkok". Needed with lat/lon.'),
+            place: z.string().max(100).optional().describe('Name of the place, echoed back.'),
+            lang: z.enum(['en', 'ru']).optional().describe('Language of the day names. Default: en.'),
+        },
+    }, async ({ days = 30, lat, lon, tz, place, lang = 'en' }) => {
+        const C = require('../public/overrides/js/uposatha-core.js');
+        const A = require('../public/overrides/js/vendor/astronomy.browser.min.js');
+        const hasLoc = lat != null && lon != null;
+        if (hasLoc && !tz) return asText({ error: 'tz (IANA time zone) is required with lat/lon' }, true);
+        const at = hasLoc ? { name: place || tz, lat, lon, tz } : { name: 'Bodh Gaya', lat: 24.6961, lon: 84.9866, tz: 'Asia/Kolkata' };
+        try { new Intl.DateTimeFormat('en', { timeZone: at.tz }); } catch { return asText({ error: `Unknown time zone: ${at.tz}` }, true); }
+        const obs = new A.Observer(at.lat, at.lon, 0), t = C.NAMES[lang];
+        const iso = (d) => d ? new Intl.DateTimeFormat('sv-SE', { timeZone: at.tz, dateStyle: 'short', timeStyle: 'short' }).format(d) : null;
+        const today = C.localDay(new Date(), at.tz);
+        const rows = C.dataset(today, C.ymdAdd(today, days), { tz: at.tz, sutta: true, loc: { lat: at.lat, lon: at.lon } }).rows.filter(r => r.uposatha);
+        return asText({
+            place: at.name, lat: at.lat, lon: at.lon, tz: at.tz, from: today, days,
+            calendar: 'https://dhamma.gift/uposatha-calendar' + (lang === 'ru' ? '?lang=ru' : ''),
+            uposatha: rows.map(r => {
+                const n = C.dayNo(r.names[r.names.length - 1]);
+                return {
+                    date: r.ymd,
+                    day: r.names.map(x => t.nth(C.dayNo(x))).join(t.and),
+                    phase: n === 15 ? (r.names[0] > 15 ? 'new moon' : 'full moon') : n === 8 ? (r.names[0] > 15 ? 'last quarter' : 'first quarter') : (r.names[0] > 15 ? 'waning crescent' : 'waxing gibbous'),
+                    begin: iso(C.sunEvent('set', r.y, r.m, r.d, at.tz, obs)),
+                    dawn: iso(C.sunEvent('rise', r.y, r.m, r.d + 1, at.tz, obs)),
+                    noon: iso(A.SearchHourAngle('Sun', obs, 0, C.zonedToUtc(r.y, r.m, r.d + 1, 0, at.tz)).time.date),
+                    end: iso(C.sunEvent('set', r.y, r.m, r.d + 1, at.tz, obs)),
+                };
+            }),
+        });
+    });
+
     return server;
 }
 
@@ -642,7 +681,7 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya), the Pali l
 6. What the site has:
 - The canon's editions compared line by line (compare_editions): the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and PTS, for the whole canon (each edition's gaps: https://dhamma.gift/docs/compare, "Problems of each edition"); each differing word classed as a reading or a spelling. Name the edition when you quote.
 - Translations aligned with the Pali segment by segment. Russian: the project's own, from the Pali (translator "o", shown as Dhamma.Gift), A. Ya. Syrkin, SV (theravada.ru), Narinyani/Evmenenko, V. Toporov. English: Ṭhānissaro Bhikkhu (1,400+ suttas). Name the translator when you quote.
-7. Tools: search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
+7. Tools: uposatha gives the Uposatha days by the Suttas at a place (lat, lon, tz). search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
 8. The corpus also holds the Abhidhamma books (scope "abhi") for a user who asks for them; by AN 4.180 they are not the criterion, and an answer is not built on them.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
