@@ -2039,6 +2039,7 @@
         // the language list is a screen of its own inside the window, not a second list squeezed above the translators
         // (owner 2026-11-21: «открыть как бы дополнительную вкладку, выбрать язык, закрыть её и всё»); Back always returns
         host.classList.toggle('dg-ts-adding', tsAddOpen);
+        if (!tsAddOpen) host.style.height = '';
         addHost.innerHTML = !tsAddOpen ? '' :
             '<div class="dg-ts-add-head"><button type="button" class="dg-ts-back" data-ts-add>‹ ' + esc(tsStr('back')) + '</button>' +
             '<b>' + esc(tsStr('addTitle')) + '</b></div>' +
@@ -2201,6 +2202,12 @@
         params.delete('translators');   // стек главнее ссылки, из которой пришли
         params.delete('langs');
         params.set('mode', wantMode);
+        // A second translation makes it multi, and multi with no list of its own opens every edition (megareader.js
+        // getEditions, "Compare"): the Pali stays what was shown, only the translation is added (owner 2026-11-22:
+        // «я нажимаю англ а добавляется 6 пали… я вообще пали не тронул»)
+        if (wantMode === 'multi' && rm.modeKey !== 'multi') {
+            try { if (localStorage.getItem('dgEditionsMulti') === null) localStorage.setItem('dgEditionsMulti', JSON.stringify(window.getEditions())); } catch (e) { /* private mode */ }
+        }
         rm.modeKey = wantMode;
         var done;
         if (firstLang && firstLang !== rm.lang && typeof window.switchReadingLanguage === 'function') {
@@ -2277,7 +2284,14 @@
             tsRender();
             return;
         }
-        if (e.target.closest('[data-ts-add]')) { tsAddOpen = !tsAddOpen; tsRender(); return; }
+        if (e.target.closest('[data-ts-add]')) {
+            // the language list keeps the window's size and place: it shrank to the list and jumped down, then grew back
+            // (owner 2026-11-22: «большое окно, потом маленькое, потом опять большое»); tsRender lets go when the list closes
+            var tsBox = document.getElementById('dg-ts');
+            tsAddOpen = !tsAddOpen;
+            if (tsBox && tsAddOpen) tsBox.style.height = tsBox.offsetHeight + 'px';
+            tsRender(); return;
+        }
         var newLang = e.target.closest('[data-ts-newlang]');
         if (newLang) {
             tsAddOpen = false;
