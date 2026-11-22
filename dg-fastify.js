@@ -105,6 +105,10 @@ const {
 // for every visitor and the per-IP regex budget becomes one shared budget. An explicit list of the
 // proxy addresses, never `true`/a hop count: with those a client could rotate X-Forwarded-For to
 // escape the limit, because the leftmost entry is taken on faith.
+// Pages and unversioned files: browsers revalidate every time (max-age=0 + ETag), while Cloudflare's edge may keep them
+// for DG_EDGE_TTL s (s-maxage); rollout.sh purges the edge cache after a deploy. Only responses that say s-maxage are
+// cached there (the Cloudflare cache rule respects the origin): manifests (no-cache), errors and 401s never are.
+const EDGE_REVALIDATE = `public, max-age=0, s-maxage=${parseInt(process.env.DG_EDGE_TTL, 10) || 600}, must-revalidate`;
 const app = Fastify({
     bodyLimit: 10 * 1024 * 1024,
     // A clean-path search is one path parameter (/:slug); the default 100 characters answered 414 to the longer key-term
@@ -464,7 +468,7 @@ function sendVersionedHtml(req, reply, absHtmlPath, statusCode = 200) {
         versionedHtmlCache.set(absHtmlPath, entry);
     }
     const { rewritten, etag } = entry;
-    reply.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    reply.header('cache-control', EDGE_REVALIDATE).header('etag', etag);
     if (statusCode === 200 && req.headers['if-none-match'] === etag) {
         return reply.code(304).send();
     }
@@ -679,7 +683,7 @@ const CACHE_IMMUTABLE_YEAR = 'public, max-age=31536000, immutable';
 // runtime, a ?v= from an older copy of the file): keep the copy but always revalidate it. Cheap —
 // ETag is already there, so an unchanged file answers 304 with no body. Replaces the old
 // UNVERSIONED_LAZY_PATHS list, where every new case needed a hand-added entry.
-const CACHE_REVALIDATE = 'public, max-age=0, must-revalidate';
+const CACHE_REVALIDATE = EDGE_REVALIDATE;
 const CACHE_FONT = 'public, max-age=604800';
 const CACHE_IMAGE = 'public, max-age=86400';
 const CACHE_LEGACY_CODE = 'public, max-age=86400';
@@ -1261,7 +1265,7 @@ for (const route of ['/.well-known/apple-app-site-association', '/apple-app-site
 
 app.get('/api-docs', (req, res) => res.redirect('/api-docs/', 301));
 app.get('/api-docs/', (req, res) => {
-    res.header('cache-control', 'public, max-age=0, must-revalidate');
+    res.header('cache-control', EDGE_REVALIDATE);
     // a tool, not a document: the API is described for search in the docs (/docs/tech/), not by this JS page
     res.header('x-robots-tag', 'noindex');
     return res.type('text/html; charset=utf-8').send(SWAGGER_UI_HTML);
@@ -2331,7 +2335,7 @@ app.get('/apps', (req, res) => {
         appsRuCache.etag = entry.etag;
     }
     const etag = entry.etag.replace(/"$/, '-ru"');
-    res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    res.header('cache-control', EDGE_REVALIDATE).header('etag', etag);
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
     return res.type('text/html; charset=utf-8').send(appsRuCache.html);
 });
@@ -2463,7 +2467,7 @@ app.get('/hatthipada/', (req, reply) => {
         .replace(/<html lang="[^"]*"/, `<html lang="${lang}"`)
         .replace(/<title>[^<]*<\/title>\s*<meta name="description" content="[^"]*">/, head);
     const etag = entry.etag.replace(/"$/, '-' + lang + '"');
-    reply.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    reply.header('cache-control', EDGE_REVALIDATE).header('etag', etag);
     if (req.headers['if-none-match'] === etag) return reply.code(304).send();
     return reply.type('text/html; charset=utf-8').send(html);
 });
@@ -4689,7 +4693,8 @@ function sendHeadHtml(req, res, h) {
     // CSS, so a CSS-only deploy answered 304 with stale ?v= links (md5 of the page is ~1 ms)
     const html = withTextHead(entry.rewritten, h);
     const etag = '"' + crypto.createHash('md5').update(html).digest('hex') + '"';
-    res.header('cache-control', 'public, max-age=0, must-revalidate').header('etag', etag);
+    // Cloudflare ignores Vary: the page that differs for browsers and bots stays out of its edge cache
+    res.header('cache-control', h.vary ? 'public, max-age=0, must-revalidate' : EDGE_REVALIDATE).header('etag', etag);
     if (h.vary) res.header('vary', h.vary); // the search page differs for browsers and other readers (sendSiteHtml)
     if (req.headers['if-none-match'] === etag) return res.code(304).send();
     return res.type('text/html; charset=utf-8').send(html);
