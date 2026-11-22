@@ -139,6 +139,8 @@ const LEGACY_READERS = {
     // of the same text; bare /b/ and a logged-in visitor keep the restricted section (see the hook below)
     '/b': {},
 };
+// the text roster for the /b redirect: textRoster lives in the async startup below, set here once the search db is open
+let legacyRoster = null;
 function legacyReaderRedirect(url) {
     const [pathPart, queryPart = ''] = url.split('?');
     const page = pathPart.replace(/\/(index\.(html|php))?$/, '') || '/';
@@ -165,9 +167,9 @@ function legacyReaderRedirect(url) {
         // the old Bodhi reader: Bhikkhu Bodhi's own translation where we have it (owner 2026-11-21, the SuttaCentral subset)
         let r = rest;
         try {
-            if (page === '/b' && !params.has('translators') && textRoster(classified.id).availableTranslators.includes('en_bodhi'))
+            if (page === '/b' && legacyRoster && !params.has('translators') && legacyRoster(classified.id).availableTranslators.includes('en_bodhi'))
                 r = (r ? r + '&' : '') + 'translators=en_bodhi';
-        } catch (e) { /* no search db: the text as usual */ }
+        } catch (e) { console.error('legacy /b redirect: roster failed:', e.message); } // the text as usual
         return '/' + encodeURIComponent(classified.id) + (seg ? ':' + seg : '') + (r ? '?' + r : '');
     }
     return '/?q=' + encodeURIComponent(q) + (rest ? '&' + rest : '');
@@ -1336,6 +1338,7 @@ function textRoster(suttaId) {
     return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`),
         availableEditions: textEditions(suttaId) };
 }
+legacyRoster = textRoster;
 // The other Pali editions (textEditions, addEditions): in core/search-core.js since 2026-11-01, so the offline worker
 // answers ?editions= from the ed-* packs with the same code.
 const textEditions = (suttaId) => searchCore.textEditions(suttaId);
