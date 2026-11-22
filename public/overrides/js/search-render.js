@@ -721,7 +721,9 @@ window.DgSearchRender = (function () {
         function link(label, title) {
             return '<a class="mirror-link" target="_blank" rel="noopener" href="' + onlineUrl + '" data-local="' + localUrl + '" title="' + title + '">' + label + '</a>';
         }
-        return link('Pi', 'Pāḷi editions (BJT / CST / Thai) at 4nt') + ' ' + link('En', 'English translations at 4nt');
+        var ru = window.siteLanguage === 'ru';
+        return link('Pi', ru ? 'Издания пали (BJT / CST / тайское) на 4nt' : 'Pāḷi editions (BJT / CST / Thai) at 4nt') + ' ' +
+            link('En', ru ? 'Английские переводы на 4nt' : 'English translations at 4nt');
     }
 
     // Ссылка на сутту/сегмент — ведёт на чистый /{suttaId} route этого репозитория (ридер уже
@@ -1120,11 +1122,9 @@ window.DgSearchRender = (function () {
                         } else if (enKey) {
                             titleText = data[enKey];
                             langClass = 'en-lang';
-                        } else if (transKeys.length > 0) {
-                            var fallbackKey = transKeys[0];
-                            titleText = data[fallbackKey];
-                            langClass = fallbackKey.split('_')[0] + '-lang';
                         }
+                        // No title in the interface language or English: the Pāḷi title alone (it took the first
+                        // language found - a Russian title in the English interface, thig12.1, Sadda 23.11)
 
                         // "dg-title-lang" wires the title into the existing Pāḷi/Eng toggle
                         // (#language-button → langswitch.js → #sutta.hide-pali/.hide-english,

@@ -5100,6 +5100,11 @@
             if (!el.dataset.titleEn) el.dataset.titleEn = el.title;
             el.title = ru ? el.dataset.titleRu : el.dataset.titleEn;
         });
+        // and their text, the same way (the Export menu's "Copy")
+        Array.prototype.forEach.call(document.querySelectorAll('[data-text-ru]'), function (el) {
+            if (!el.dataset.textEn) el.dataset.textEn = el.textContent;
+            el.textContent = ru ? el.dataset.textRu : el.dataset.textEn;
+        });
     }
 
     /* Список кнопок для правки. Открывается пунктом «Изменить кнопки» в меню: выбирать, что
