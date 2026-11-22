@@ -112,6 +112,9 @@ function initUiHelp() {
         let hintKey, hintType;
         const searchParams = new URLSearchParams(window.location.search);
         
+        // the translation editors carry ?q= too, but they have no search fragments to tap: no hint there (it showed in
+        // Russian on the English editor, Sadda 20.11)
+        if (/\/lbl(-en)?\.html$/.test(path)) return;
         if (path.includes('/read/') || path.includes('/r/') || path.includes('/ml/') || 
             path.includes('/b/') || path.includes('/d/') || path.includes('/memorize/')) {
             hintKey = 'hintShown_read_mode';

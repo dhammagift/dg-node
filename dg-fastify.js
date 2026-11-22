@@ -2131,6 +2131,13 @@ for (const [file, target] of Object.entries(LEGACY_HELP_REDIRECTS)) {
 for (const p of ['/docs', '/ru/docs']) {
     for (const tail of ['', '/']) app.get(p + '/dhamma-gift-full' + tail, (req, res) => res.redirect(p + '/dhamma-gift-app', 301));
 }
+// The technical pages moved under /docs/tech/ (mcp, offline-db, voice-api): the old addresses 404'd, the Russian ones
+// after a detour to /docs/X/?lang=ru (Sadda 20.11).
+for (const p of ['/docs', '/ru/docs']) {
+    for (const page of ['mcp', 'offline-db', 'voice-api']) {
+        for (const tail of ['', '/']) app.get(p + '/' + page + tail, (req, res) => res.redirect(p + '/tech/' + page + '/', 301));
+    }
+}
 // Project tools retired on this site (owner: "не нужен", "было под проект"). The legacy tree keeps the
 // files for the old site, so without these routes the static fallback would still serve them here.
 // One edition-abbreviations page, /assets/common/abbr.html (the current copy); old links keep working.

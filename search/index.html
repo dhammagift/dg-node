@@ -2673,7 +2673,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      элемента, просто один скрыт в текущем состоянии, см. body.dg-state-*, так что дублировать
      id нельзя), общий класс .toggle-mode-btn — обработчик в settings.js делегирован через
      document по этому классу, вешает клик сразу на обе кнопки. -->
-<button id="toggle-mode-results" class="btn btn-light mb-1 toggle-mode-btn" type="button" title="1/2 columns">
+<button id="toggle-mode-results" class="btn btn-light mb-1 toggle-mode-btn" type="button" title="1/2 columns" data-title-ru="1/2 колонки">
   <img src="/assets/svg/align-right.svg" alt="1/2 columns">
 </button>
 
@@ -2684,11 +2684,11 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
      свой id (тот же дубль-id-паттерн, что и у toggle-mode-btn чуть ниже — обе кнопки
      одновременно в DOM), общий класс .toggle-multiselect-btn — paliLookup.js делегирует
      клик и обновляет иконку по классу, не по id. -->
-<button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
+<button id="toggle-multiselect-results" class="btn btn-light mb-1 toggle-multiselect-btn" type="button" title="Multi-select" data-title-ru="Выделение нескольких слов"><img src="/assets/svg/select-slash.svg" alt="Multi-select"></img></button>
 
 <!-- The compass (quick settings), as in the reader's row after multi-select (owner 2026-11-07: «компас добавим ... без
      разброса») -->
-<button id="btn-compass-results" class="btn btn-light mb-1" type="button" title="Compass" aria-label="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();"><img src="/assets/svg/compass.svg" alt=""></button>
+<button id="btn-compass-results" class="btn btn-light mb-1" type="button" title="Compass" data-title-ru="Компас" aria-label="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();"><img src="/assets/svg/compass.svg" alt=""></button>
 
 
 <!-- Показать/скрыть колонку отметок "прочитано". Отметки хранятся отдельно для каждого поиска
@@ -3345,7 +3345,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                 </button>
                 <span class="dg-external-links-menu" hidden><span class="dg-external-links-status"><span class="dg-external-links-en">Loading…</span><span class="dg-external-links-ru">Загрузка…</span></span></span>
             </span>
-            <a id="toggle-variants" href="javascript:void(0)" role="button" title="Show Variants">
+            <a id="toggle-variants" href="javascript:void(0)" role="button" title="Show Variants" data-title-ru="Показать варианты">
                 <img src="/assets/svg/eye-slash.svg" alt="Variants">
             </a>
             <!-- the stored variants state drawn at once (setupVariantVisibility would swap the eye after the text loads) -->
@@ -3356,19 +3356,19 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  (dgToggleColumnMode/dgApplyColumnMode), which doesn't have that problem and
                  also drives the matching button in the search-results row (#dg-toolbar-buttons)
                  off the SAME localStorage.viewMode. -->
-            <a id="toggle-mode" class="toggle-mode-btn" href="javascript:void(0)" role="button" title="1/2 columns">
+            <a id="toggle-mode" class="toggle-mode-btn" href="javascript:void(0)" role="button" title="1/2 columns" data-title-ru="1/2 колонки">
                 <img src="/assets/svg/align-right.svg" alt="1/2 columns">
             </a>
-            <a class="toggle-dict-btn" href="javascript:void(0)" role="button" title="Dictionary">
+            <a class="toggle-dict-btn" href="javascript:void(0)" role="button" title="Dictionary" data-title-ru="Словарь">
                 <img src="/assets/svg/comment.svg" alt="Dictionary">
             </a>
-            <a id="toggle-multiselect" class="toggle-multiselect-btn" href="javascript:void(0)" role="button" title="Multi-select">
+            <a id="toggle-multiselect" class="toggle-multiselect-btn" href="javascript:void(0)" role="button" title="Multi-select" data-title-ru="Выделение нескольких слов">
                 <img src="/assets/svg/select-slash.svg" alt="Multi-select">
             </a>
-            <a href="javascript:void(0)" role="button" title="Compass" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
+            <a href="javascript:void(0)" role="button" title="Compass" data-title-ru="Компас" onclick="if (typeof window.toggleQuickModal === 'function') window.toggleQuickModal();">
                 <img src="/assets/svg/compass.svg" alt="Compass">
             </a>
-            <a href="/docs/read/" target="_blank" title="Help" data-href-en="/docs/read/" data-href-ru="/ru/docs/read/">
+            <a href="/docs/read/" target="_blank" title="Help" data-title-ru="Справка" data-href-en="/docs/read/" data-href-ru="/ru/docs/read/">
                 <img src="/assets/svg/question.svg" alt="Help">
             </a>
             <!-- Subscriptions bell (ТЗ §6): always in the reader (home.js dgRenderReaderSubs), so drawn with the other
@@ -3389,7 +3389,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  что и в легаси, у них уже есть готовый CSS (reader/css/uiextra.css) — не изобретаю
                  заново, просто не оборачиваю в #smart-toc-container (тот был для независимого
                  позиционирования, тут кнопка — рядовой элемент тулбара). -->
-            <button type="button" id="smart-toc-btn" class="visible" title="Table of Contents">
+            <button type="button" id="smart-toc-btn" class="visible" title="Table of Contents" data-title-ru="Содержание">
                 <img src="/assets/svg/list-ul-solid-full.svg" alt="TOC">
                 <span id="smart-toc-current"></span>
             </button>
@@ -3464,7 +3464,7 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
                  at paint time and changes as the reader navigates without a repaint. -->
             <a href="/assets/lbl-en.html" data-href-en="/assets/lbl-en.html" data-href-ru="/assets/lbl.html" class="q-link" title="Edit Translation" data-title-ru="Править перевод" target="_blank" rel="noreferrer"><img width="20px" alt="Edit Translation" src="/assets/svg/table-columns.svg"></a>
             <a href="https://DharmaMitra.org/" title="DharmaMitra" target="_blank"><img width="20px" alt="DharmaMitra" src="/assets/svg/dharmachakra.svg"></a>
-            <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" title="s.4nt.org" target="_blank"><img width="24" height="24" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
+            <a href="https://s.dhamma.gift/sn/sn45/?cols=pali%2Cpali_royal_iast%2Cpali_myanmar_iast%2Cpali_bjt_iast#tr-sn45.8:1.1" class="dg-4nt-link" title="s.4nt.org" target="_blank"><img width="24" height="24" alt="4nt" src="/assets/img/logo4nt_plain.png"></a>
             <a href="https://index.readingfaithfully.org" title="Sutta Name Search" data-title-ru="Поиск сутт по названию" target="_blank"><img width="20" height="20" alt="Sutta Name Search" src="/reader/images/favicon-name-black.png"></a>
             <a href="https://ped.readingfaithfully.org" title="Pali English Dictionary" data-title-ru="Пали-английский словарь" target="_blank"><img width="20" height="20" alt="PED" src="/reader/images/favicon-ped-black.png"></a>
         </div>
@@ -3501,6 +3501,14 @@ document.addEventListener('click', function (e) {
     var slug = window._currentSlug || '';
     var url = a.href + (slug ? '?q=' + encodeURIComponent(slug) : '');
     window.open(url, '_blank', 'noopener,noreferrer');
+});
+// the footer's 4NT icon opens the text that is open (its href is only the fallback: sn45.8 on every text, Sadda 20.11)
+document.addEventListener('click', function (e) {
+    var a = e.target.closest('.dg-4nt-link');
+    var local = a && window._currentSlug && typeof get4ntUrl === 'function' ? get4ntUrl(window._currentSlug) : '';
+    if (!local) return;
+    e.preventDefault();
+    window.open(local.replace(/^\/4nt/, 'https://s.dhamma.gift'), '_blank', 'noopener,noreferrer');
 });
 // Резолюшн UI-языка (какой lang_{lang}.json подгрузить) теперь берёт на себя
 // window.DHAMMA_I18N (dhamma-i18n.js, см. <head>) — свой порядок: ?lang= → localStorage.dhammaLanguage

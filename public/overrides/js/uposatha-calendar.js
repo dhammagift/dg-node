@@ -1463,9 +1463,11 @@
       if ($('up-ver') && !window.__DG_APP_VERSION__ && !(C && C.isNativePlatform && C.isNativePlatform())) {
         var verLabel = document.querySelector('.up-ver [data-t="appVer"]');
         if (verLabel) { verLabel.setAttribute('data-t', 'siteVer'); verLabel.textContent = t.siteVer; }
-        fetch('/assets/js/uposatha-calendar.js', { method: 'HEAD', cache: 'no-cache' }).then(function (r) {
-          var d = new Date(r.headers.get('last-modified'));
-          if (!isNaN(d)) $('up-ver').textContent = ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
+        // the site's build time (offline/build-id.json, written at each start of the server): the script has no Last-Modified
+        // (static files are sent with an ETag only), and new Date(null) read as 01-01-1970 (Sadda 20.11)
+        fetch('/offline/build-id.json', { cache: 'no-cache' }).then(function (r) { return r.json(); }).then(function (j) {
+          var d = new Date(j && j.built_at);
+          if (j && j.built_at && !isNaN(d)) $('up-ver').textContent = ('0' + d.getDate()).slice(-2) + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + d.getFullYear();
         }).catch(function () { /* stays "preview" */ });
       }
       if ($('up-privacy')) $('up-privacy').addEventListener('click', function () { this.href = 'https://dhamma.gift' + (lang === 'ru' ? '/ru' : '') + '/docs/policies'; }); // the language of the moment
