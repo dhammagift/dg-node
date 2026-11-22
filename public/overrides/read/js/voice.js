@@ -1171,8 +1171,13 @@ function stripForPaliVoice(text) {
 // api.dhamma.gift, api2.dhamma.gift (the reserve, TTS only), then this site's own /api/tts/pali. Server names,
 // not machines: which server answers is set in DNS (never hardcode f1/f2/f3 here).
 // Then Google (see playCurrentSegment).
+// ru.dhamma.gift (the direct name for Russia, which cannot reach api.dhamma.gift) asks its own server first.
+// The first server that answers moves to the front for the rest of the page, so a dead one costs one timeout, not
+// one per phrase (from Russia api.dhamma.gift never answers: 20 s per phrase before api2, owner 2026-11-22).
 const DG_TTS_URLS = [window.DG_TTS_URL || 'https://api.dhamma.gift/api/tts/pali', 'https://api2.dhamma.gift/api/tts/pali',
                      '/api/tts/pali'];
+if (/^ru[.-]/.test(location.hostname)) DG_TTS_URLS.unshift(DG_TTS_URLS.pop());
+const dgTtsPrefer = url => { const i = DG_TTS_URLS.indexOf(url); if (i > 0) DG_TTS_URLS.unshift(...DG_TTS_URLS.splice(i, 1)); };
 
 // The voice list (see setDgVoices), from the first server that answers. Playback and the voice menus wait for it
 // at most 3 s; meanwhile (or if no server answers) the list from the last visit is used.
@@ -1184,6 +1189,7 @@ const dgVoicesLoaded = (async () => {
       if (!Array.isArray(list) || !list.length) continue;
       setDgVoices(list);
       try { localStorage.setItem('dg_voices', JSON.stringify(list)); } catch (e) {}
+      dgTtsPrefer(url);
       return true;
     } catch (e) {}
   }
@@ -1206,7 +1212,7 @@ async function fetchPaliVoiceAudio(text, uiRate, voice) {
     try {
       const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body,
                                    signal: AbortSignal.timeout(local ? 5000 : 20000) });
-      if (r.ok) return (await r.json()).audioContent;
+      if (r.ok) { dgTtsPrefer(url); return (await r.json()).audioContent; }
       lastError = new Error(url + ' HTTP ' + r.status);
     } catch (e) {
       lastError = e;
