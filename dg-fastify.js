@@ -1338,7 +1338,13 @@ let textRosterStmt;
 function textRoster(suttaId) {
     textRosterStmt = textRosterStmt || searchDb.prepare(
         "SELECT DISTINCT lang, translator FROM texts WHERE sutta_id = ? AND kind = 'translation' AND translator <> 'ai'");
-    const roster = textRosterStmt.all(suttaId);
+    // The translators in the project's order, not the build's (SuttaCentral's were loaded first: Compare opened Sujato
+    // first, owner 2026-11-24): translator-priority.json first, then the others, Bodhi and Sujato last; languages as found
+    const langs = [];
+    const rank = r => { const k = `${r.lang}_${r.translator}`, i = (TRANSLATOR_PRIORITY[r.lang] || []).indexOf(k);
+        if (!langs.includes(r.lang)) langs.push(r.lang);
+        return langs.indexOf(r.lang) * 10000 + (i >= 0 ? i : k === 'en_sujato' ? 1002 : k === 'en_bodhi' ? 1001 : 1000); };
+    const roster = textRosterStmt.all(suttaId).map(r => [rank(r), r]).sort((a, b) => a[0] - b[0]).map(x => x[1]);
     return { availableLangs: [...new Set(roster.map(r => r.lang))], availableTranslators: roster.map(r => `${r.lang}_${r.translator}`),
         availableEditions: textEditions(suttaId) };
 }
