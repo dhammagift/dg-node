@@ -169,6 +169,7 @@ var PRECACHE_URLS = [
     '/assets/js/copyToClipboard.js',
     '/assets/js/linksdpr.js',
     '/assets/js/linksbjt.js',
+    '/assets/js/linksbw.js',
     '/assets/js/linksru.js',
     '/assets/js/openDpr.js',
     '/assets/js/openRu.js',

@@ -722,6 +722,7 @@
         '/assets/js/linksdpr.js', '/assets/js/openDpr.js',
         '/assets/js/linksru.js', '/assets/js/openRu.js',
         '/assets/js/linksbjt.js',
+        '/assets/js/linksbw.js',
         '/assets/svg/eye.svg', '/assets/svg/eye-slash.svg',
         '/assets/svg/clock-rotate-left.svg', '/assets/svg/rotate-solid-full.svg',
         '/assets/svg/open-link.svg', '/assets/svg/trash-can-regular-full.svg',

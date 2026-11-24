@@ -1607,7 +1607,13 @@ window.generateThirdPartyLinks = function(slug, slugReady, texttype, translator)
 
     externalLinks += `<a target="_blank" class="sc-ext-link" title="SuttaCentral.net" href="https://suttacentral.net/${slug}">SuttaCentral${eds('MS')}</a>`;
 
-    // BB is a local-only link, never a public fallback. (The Buddha's Words link is gone: owner 2026-11-20 «bw не должно быть нигде».)
+    // The Buddha's Words: always the site itself, our /bw mirror is gone (owner 2026-11-24: the link stays, only the copy had to go)
+    if (typeof tbwLinksData !== 'undefined' && tbwLinksData.some(item => (Array.isArray(item) ? item[0] : item) === slug)) {
+        const book = (slug.match(/^[a-z]+/) || [""])[0];
+        externalLinks += `<a target="_blank" class="sc-ext-link" title="TheBuddhasWords.net" href="https://thebuddhaswords.net/${book}/${slug}.html">The Buddha’s Words${eds('MS')}</a>`;
+    }
+
+    // BB is a local-only link, never a public fallback.
     const isLocal = localStorage.getItem('forceLocal') === 'true';
     if (isLocal && !window.location.pathname.startsWith('/b/')) {
         const hashSeg = window.location.hash ? window.location.hash.slice(1) : '';
