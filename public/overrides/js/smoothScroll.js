@@ -497,6 +497,7 @@ const ScrollManager = {
         }
 
         if (bestElement) {
+            this.dropLeftAnchor();
             let progressData = {};
             try {
                 progressData = JSON.parse(localStorage.getItem('dg_suttaProgress') || '{}');
@@ -520,6 +521,23 @@ const ScrollManager = {
 
             localStorage.setItem('dg_suttaProgress', JSON.stringify(progressData));
         }
+    },
+
+    // A line in the address (/sn12.63:2.1 or #2.1) the reader has read away from: the address becomes the text's own,
+    // so opening it again goes to the place read last (the saved progress), not back to that line (owner 2026-11-24:
+    // «если я ушел, надо удалить этот ID и сохранить актуальное место»). While the line is still on screen it stays.
+    dropLeftAnchor() {
+        if (window.isRestoringProgress) return;
+        const path = window.location.pathname, last = path.split('/').filter(Boolean).pop() || '';
+        // the reader's elements are named by the line alone ("2.1"), the address carries the text too ("sn12.63:2.1")
+        const seg = decodeURIComponent(last.includes(':') ? last.slice(last.indexOf(':') + 1) : window.location.hash.slice(1));
+        if (!seg) return;
+        const el = document.getElementById(seg) || this.findFallbackElement(seg);
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        if (r.bottom > 0 && r.top < window.innerHeight) return;
+        const clean = last.includes(':') ? path.slice(0, path.length - last.length) + last.slice(0, last.indexOf(':')) : path;
+        try { history.replaceState(history.state, '', clean + window.location.search); } catch (e) { /* the address stays */ }
     },
 
     // A segment id may not exist as an element: verse lines are merged in the reader (mergeGathas
