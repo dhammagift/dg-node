@@ -722,11 +722,11 @@ function writeAtomic(file, obj) {
 // The edition packs' names, as the reader shows them (reader/megareader.js READER_EDITIONS).
 // How the Pali texts are shown wherever packs are listed (the first-launch sheet, Settings' picker): the reader's plate,
 // the name, the country of a national canon - one place, in the manifest, so no list keeps its own copy (owner
-// 2026-11-01). The order of this list is the manifest's: the three national canons first, then the composite editions.
+// 2026-11-01). The order of this list is the manifest's: the three national canons first (Siam Rath, BJT, VRI: owner 2026-11-24), then the composite editions.
 const EDITION_TITLES = {
+    th: { ru: 'Siam Rath', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
     bjt: { ru: 'Buddha Jayanti', en: 'Buddha Jayanti', tag: 'BJT', note: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
     my: { ru: 'Chaṭṭha Saṅgāyana', en: 'Chaṭṭha Saṅgāyana', tag: 'VRI', note: { ru: 'Мьянма', en: 'Myanmar' } },
-    th: { ru: 'Siam Rath', en: 'Siam Rath', tag: 'SR', note: { ru: 'Таиланд', en: 'Thailand' } },
     mso: { ru: 'Mahāsaṅgīti 2005', en: 'Mahāsaṅgīti 2005', tag: 'MS05' },
     pts: { ru: 'Pali Text Society', en: 'Pali Text Society', tag: 'PTS', note: { ru: 'Великобритания', en: 'UK' } },
 };

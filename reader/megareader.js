@@ -309,11 +309,12 @@ const EDITIONS_KEY = 'dgEditions';
 // латинице»); the countries and everything about translators are translated.
 // The order is the one shown everywhere (Compare's columns, the menus): the national canons first, the Mahāsaṅgīti after
 // them (owner 2026-11-09: «махасангити не должна ни в коем случае идти первой… первыми должны идти национальные»; the
-// settings and the offline library have this order since 2026-11-05)
+// settings and the offline library have this order since 2026-11-05). Among the national canons: the one with the fewest
+// texts put in that are not the Buddha's first - Siam Rath, then Buddha Jayanti, then Chaṭṭha Saṅgāyana (owner 2026-11-24)
 const READER_EDITIONS = [
+    { id: 'th', tag: 'SR', ru: 'Siam Rath', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
     { id: 'bjt', tag: 'BJT', ru: 'Buddha Jayanti', en: 'Buddha Jayanti', country: { ru: 'Шри-Ланка', en: 'Sri Lanka' } },
     { id: 'my', tag: 'VRI', ru: 'Chaṭṭha Saṅgāyana', en: 'Chaṭṭha Saṅgāyana', country: { ru: 'Мьянма', en: 'Myanmar' } },
-    { id: 'th', tag: 'SR', ru: 'Siam Rath', en: 'Siam Rath', country: { ru: 'Таиланд', en: 'Thailand' } },
     { id: 'ms', tag: 'MS', ru: 'Mahāsaṅgīti', en: 'Mahāsaṅgīti' },
     { id: 'mso', tag: 'MS05', ru: 'Mahāsaṅgīti 2005', en: 'Mahāsaṅgīti 2005' },
     { id: 'pts', tag: 'PTS', ru: 'Pali Text Society', en: 'Pali Text Society', country: { ru: 'Великобритания', en: 'UK' } },
