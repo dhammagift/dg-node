@@ -54,6 +54,9 @@ async function fastAnswer(query, scope, exact, langs) {
 }
 
 const READER = 'https://dhamma.gift/'; // a clean path opens the reader: /mn129, /mn129:21.3 (segment anchor)
+// The reader's Compare for a line or a sutta: every edition beside the reader's translation (owner 2026-11-24: an answer
+// gives the text and «сравнить», one link, not one per kind of comparison)
+const compareLink = target => READER + target + '?mode=multi';
 let mcpDb = null;
 function db() {
     if (!mcpDb) {
@@ -469,7 +472,7 @@ function getServer() {
             for (const sg of data.segments || []) if (stripSujato(sg.translations)) suppressed++;
         }
         for (const sg of data.segments || []) if (sg.segment) sg.link = READER + sg.segment;
-        data.link = READER + id;
+        data.link = READER + id; data.compare_link = compareLink(id);
         // Whole other editions, cut into the same segments (owner 2026-10-30: compare complete texts, not only the
         // variants). A segment an edition lacks is left out of its map; "editions_missing" counts them.
         const eds = (editions || []).includes('all') ? Object.keys(EDITIONS) : [...new Set(editions || [])];
@@ -555,6 +558,7 @@ function getServer() {
         const page = lines.slice(start, start + max);
         const out = {
             id: id.trim().toLowerCase(), link: READER + (t.from ? t.sutta + ':' + t.from : t.sutta),
+            compare_link: compareLink(t.from ? t.sutta + ':' + t.from : t.sutta),
             base: { id: 'ms', name: 'Mahāsaṅgīti Tipiṭaka (the site\'s Pali text)', license: 'CC0' },
             summary: Object.values(summary).filter(x => x.lines_present || x.lines_missing),
             lines_compared: compared, lines_shown: page.length, lines_with_differences: differing, lines_with_reading_differences: differingReading,
@@ -585,7 +589,7 @@ function getServer() {
             rows = rows.filter(r => !(r.kind === 'translation' && r.lang === 'en' && r.translator === 'sujato'));
             suppressed = before - rows.length;
         }
-        const out = { segment: seg, link: READER + seg, texts: rows.map(r => ({ kind: r.kind, lang: r.lang, translator: r.translator, text: r.txt })) };
+        const out = { segment: seg, link: READER + seg, compare_link: compareLink(seg), texts: rows.map(r => ({ kind: r.kind, lang: r.lang, translator: r.translator, text: r.txt })) };
         // the other Pali editions' wording of this line, after the Mahāsaṅgīti root and its variants
         const sid = seg.split(':')[0];
         const eds = editionRows(sid, Object.keys(EDITIONS));
@@ -765,7 +769,8 @@ const INSTRUCTIONS = `Dhamma.gift: the Pali Canon (Sutta and Vinaya), the Pali l
 - The canon's editions compared line by line (compare_editions): the Mahāsaṅgīti beside Buddha Jayanti (Sri Lanka), Chaṭṭha Saṅgāyana (Myanmar), Siam Rath (Thailand), the printed Mahāsaṅgīti of 2005 and PTS, for the whole canon (each edition's gaps: https://dhamma.gift/docs/compare, "Problems of each edition"); each differing word classed as a reading or a spelling. Name the edition when you quote.
 - Translations aligned with the Pali segment by segment. Russian: the project's own, from the Pali (translator "o", shown as Dhamma.Gift), A. Ya. Syrkin, SV (theravada.ru), Narinyani/Evmenenko, V. Toporov. English: Ṭhānissaro Bhikkhu (1,400+ suttas). Name the translator when you quote.
 7. Tools: dictionary gives a word's definition in the Suttas and the Vinaya, its similes, DPD and 20+ Sanskrit dictionaries; uposatha gives the Uposatha days by the Suttas at a place (lat, lon, tz). search is literal, not semantic — try the Pali word and its translations. Pali only by default; add langs ["ru","en"] for translations. Sujato only when named in translators. Ids: dn22, mn1, sn56.11, an4.41, snp1.1, dhp1-20, a line dn22:18.1. Commentaries and dictionary glosses are checked against the Suttas first and labeled as such.
-8. The corpus also holds the Abhidhamma books (scope "abhi") for a user who asks for them; by AN 4.180 they are not the criterion, and an answer is not built on them.`;
+8. Links, in every answer that quotes or names a text: under the quote one line of markdown links, never a bare URL, never left out: [SN 56.11:2.1](link) · [compare](compare_link), in the user's language (Russian: «сравнить»). Take the URLs from the tools' answers (get_text, compare_editions, compare_translations give both).
+9. The corpus also holds the Abhidhamma books (scope "abhi") for a user who asks for them; by AN 4.180 they are not the criterion, and an answer is not built on them.`;
 
 // Mounted as app.post('/mcp', mcpHandler) in dg-fastify.js — takes Fastify's (request, reply),
 // hands the raw Node req/res to the transport the same way the SDK's own Express examples do.
