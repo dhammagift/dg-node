@@ -13645,6 +13645,8 @@ var dpd_deconstructor = {
   "māyimāsaṃ": "mā + imāsaṃ",
   "māyime": "mā + ime",
   "māyūpamañca": "māyūpamaṃ + ca",
+  "māyyā": "mā + ayyā",
+  "māyyānampi": "mā + ayyānaṃ + api",
   "māyyāyo": "māye + ayo<br>māye + āyo",
   "māyye": "mā + ayye",
   "māyyo": "mā + ayyo",

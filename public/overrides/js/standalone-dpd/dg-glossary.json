@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-22",
+  "updatedAt": "2026-11-24",
   "source": {
     "sheetId": "1s7n7ogJhdtSIweVO9aad63_k7lWrZgyPRUFg34AobMg",
     "gid": "0",
@@ -6021,20 +6021,6 @@
           "pli-tv-bu-vb-pc45:2.1.13"
         ]
       },
-      "metaphors": [
-        {
-          "kind": "no formula",
-          "text": "samudda (cakkhu purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa rūpamayo vego)",
-          "refs": [
-            "sn35.228:1.4"
-          ]
-        }
-      ],
       "assada": [
         {
           "kind": "assāda",
@@ -8759,20 +8745,6 @@
           "sn38.11:1.11"
         ]
       },
-      "metaphors": [
-        {
-          "kind": "no formula",
-          "text": "samudda (ghānaṁ purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa gandhamayo vego)",
-          "refs": [
-            "sn35.228:2.2"
-          ]
-        }
-      ],
       "assada": [
         {
           "kind": "assāda",
@@ -9376,20 +9348,6 @@
           "sn35.228:2.5"
         ]
       },
-      "metaphors": [
-        {
-          "kind": "no formula",
-          "text": "samudda (jivhā purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa rasamayo vego)",
-          "refs": [
-            "sn35.228:2.3"
-          ]
-        }
-      ],
       "assada": [
         {
           "kind": "assāda",
@@ -10816,18 +10774,6 @@
             "rathā",
             "rathānaṁ"
           ]
-        },
-        {
-          "kind": "no formula",
-          "text": "samudda (kāyo purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa phoṭṭhabbamayo vego)",
-          "refs": [
-            "sn35.228:2.6"
-          ]
         }
       ],
       "assada": [
@@ -11961,18 +11907,6 @@
             "sn7.11:4.3",
             "sn45.4:8.3",
             "snp1.4:6.3"
-          ]
-        },
-        {
-          "kind": "no formula",
-          "text": "samudda (mano purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa dhammamayo vego)",
-          "refs": [
-            "sn35.228:2.7"
           ]
         }
       ],
@@ -20708,20 +20642,6 @@
       "pali": "sota",
       "ru": "ухо",
       "en": "ear",
-      "metaphors": [
-        {
-          "kind": "no formula",
-          "text": "samudda (sotaṁ purisassa samuddo",
-          "refs": []
-        },
-        {
-          "kind": "no formula",
-          "text": "tassa saddamayo vego)",
-          "refs": [
-            "sn35.228:2.2"
-          ]
-        }
-      ],
       "assada": [
         {
           "kind": "assāda",
