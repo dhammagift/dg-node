@@ -250,9 +250,14 @@ app.addHook('onRequest', (req, res, done) => {
 // open on F1 2026-11-08 (Apache's password covered unl on old.dhamma.gift only); owner: «убери ты их вообще».
 // Normalized, so /assets//texts/unl or /assets/texts/en/../unl cannot step around the pattern.
 const PRIVATE_TEXTS = /^\/(assets\/texts|data\/dhammagift)\/(unl|b|bw|ai|svEtc|backups)(\/|$)/i;
-app.addHook('onRequest', (req, res, done) => {
-    if (PRIVATE_TEXTS.test(path.posix.normalize(decodedPath(req.url)))) return res.code(404).send('Not found');
-    done();
+let mayReadAiRef = null; // set where mayReadAi is defined (inside the startup), read by the hook below
+app.addHook('onRequest', async (req, res) => {
+    const p = path.posix.normalize(decodedPath(req.url));
+    if (!PRIVATE_TEXTS.test(p)) return;
+    // the AI drafts go on to a signed-in translator: the Translation Editor reads them from the private unl clone (segmentFileFromDb)
+    if (/^\/assets\/texts\/ai\//i.test(p) && mayReadAiRef && (await mayReadAiRef(req))) return;
+    res.code(404).send('Not found');
+    return res;
 });
 // /bw (The Buddha's Words) is gone from the site (owner 2026-11-20: «bw не должно быть нигде», «можно пересылать»): its old
 // addresses, still asked for by ChatGPT (1175 times a week got 410) and search engines, go to our page of the same text.
@@ -4808,6 +4813,7 @@ const AI_DRAFTS_DIR = path.resolve(process.env.DG_AI_DRAFTS_DIR || '/var/www/unl
 async function mayReadAi(req) {
     return hasRestrictedAuth(req) || (await verifyLblToken(req.headers.authorization)).ok;
 }
+mayReadAiRef = mayReadAi;
 async function segmentFileFromDb(req) {
     let p;
     try { p = decodeURIComponent(req.url.split('?')[0]); } catch { return null; }
