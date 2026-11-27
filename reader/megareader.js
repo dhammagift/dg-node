@@ -1172,12 +1172,21 @@ function keepServerText(html) {
     const cur = suttaArea.cloneNode(true);
     cur.querySelector('#top-links-container')?.removeAttribute('style'); // the pinned row's offset, set on load
     cur.querySelectorAll('script').forEach(s => s.remove()); // the server's one-line padding call
+    cur.querySelectorAll('style').forEach(s => s.remove()); // the server's variants-hidden rule
+    // the title line's speaker and link icons the server draws (reader/common.js addIconsTo01 adds them after this render)
+    cur.querySelectorAll('.title-play-btn').forEach(b => b.remove());
+    cur.querySelectorAll('a.copy-Link-special').forEach(a => {
+        a.innerHTML = ''; a.classList.remove('copy-Link-special', 'trn-title-icon');
+        const start = document.createElement('a'); start.className = 'text-decoration-none copyLink copyLink-start'; start.setAttribute('role', 'none');
+        a.parentNode.insertBefore(start, a.parentNode.firstChild);
+    });
     // The warning depends on this browser (its × after 10 views, gone once closed): compared without it,
     // then only that box is swapped, so a returning reader keeps the server's text too.
     const warn = [...tpl.content.children].find(e => e.classList.contains('warning-container')); // :scope matches nothing in a fragment
     if (warn) warn.remove();
     cur.querySelector(':scope > .warning-container')?.remove();
     window.dgServerTextKept = norm(tpl.innerHTML) === norm(cur.innerHTML);
+    if (!window.dgServerTextKept && window.__dgSsrDebug) { const a = norm(tpl.innerHTML), b = norm(cur.innerHTML); let i = 0; while (i < a.length && a[i] === b[i]) i++; window.__dgSsrDiff = [a.slice(Math.max(0, i - 120), i + 200), b.slice(Math.max(0, i - 120), i + 200)]; } // test hook (window.__dgSsrDebug)
     if (window.dgServerTextKept) {
         const live = suttaArea.querySelector(':scope > .warning-container');
         if (live && warn) { if (norm(live.outerHTML) !== norm(warn.outerHTML)) live.replaceWith(warn); }

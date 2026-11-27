@@ -111,7 +111,9 @@ function addIconsTo01() {
         // динамик вместо ссылки «Голос»/«Voice» в шапке). Пали играет пали, каждый перевод —
         // себя; больше переводов — больше динамиков, шапка свободнее. Первый перевод — то, что
         // запускает Alt+R (settings.js: .voice-start-btn), поэтому класс только у него.
-        const playBtn = document.createElement('span');
+        // the server's text may already carry it (dg-fastify.js textBodyHtml): reuse, give it its handler
+        const drawn = span.querySelector(':scope > .title-play-btn');
+        const playBtn = drawn || document.createElement('span');
         playBtn.className = 'title-play-btn' + (index > 0 ? ' trn-play-btn' : '') + (index === 1 ? ' voice-start-btn' : '');
         playBtn.title = index === 0
             ? (window.isRuPath ? 'Слушать пали' : 'Listen in Pāḷi')

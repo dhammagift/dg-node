@@ -4128,14 +4128,14 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
             inner += t01
                 ? `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${play('', ru ? 'Слушать пали' : 'Listen in Pāḷi')}${pali[seg].trim()}${link('')}`
                 : `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${start}${pali[seg].trim()}${end}`;
-            // hidden, as the reader leaves them by default (its exact markup: the same size on screen, crawlers still read them)
-            if (variant[seg] !== undefined && variant[seg] !== '') inner += `<font class="variant hidden-variant" style=""><br>${start}${variant[seg].trim()}${end}</font>`;
+            // the reader's own markup; hidden while the server's text stands (the style below), as the reader hides them by default
+            if (variant[seg] !== undefined && variant[seg] !== '') inner += `<font class="variant"><br>${start}${variant[seg].trim()}${end}</font>`;
             inner += '</span>';
         }
         if (translatorKey && trans[seg] !== undefined) inner += t01
             ? `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${play(' trn-play-btn voice-start-btn', ru ? 'Слушать перевод' : 'Listen to the translation')}${trans[seg].trim()}${link(' trn-title-icon')}</span></span>`
             : `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${start}${trans[seg].trim()}${end}</span></span>`;
-        html += `${open}<span id="${anchor}"${t01 ? ' class="icons-added"' : ''}>${inner}</span>${close}\n\n`;
+        html += `${open}<span id="${anchor}">${inner}</span>${close}\n\n`;
     }
     const byline = `<div id="trn" class="byline">\n    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>\n    <span class="right-column">${translatorKey ? `<span class="${lang}-lang" lang="${lang}"> ${label}${name}</span>` : ''}</span></p></div>`;
     const page = segUrl('').replace(/'/g, '%27');
@@ -4149,7 +4149,7 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
         'if(h&&l&&!l.textContent){var t=h.innerText.replace(/\\s+/g," ").trim();l.textContent=t.charAt(0).toUpperCase()+t.slice(1)}})()</script>';
     const out = '<div id="top-links-container" class="min-h-24" style="display:none"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
         (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
-        byline + html + pill + '<div id="bottom-links-container" class="min-h-24"></div>' + audioLineHtml(dataId, lang);
+        byline + '<style>#sutta[data-ssr="1"] .variant{display:none}</style>' + html + pill + '<div id="bottom-links-container" class="min-h-24"></div>' + audioLineHtml(dataId, lang);
     if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
     textBodyCache.set(key, out);
     return out;
