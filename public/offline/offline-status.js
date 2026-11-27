@@ -931,12 +931,18 @@
     // "working" for a beat, not steal the screen like the download banner does.
     let loadingDot = null;
     let loadingTimer = null;
+    // Requests overlap (a search, then its enrich): count them. One timer per request used to be kept in one variable, so the
+    // first one's timer was lost, fired after both had ended and left the dot spinning for good (owner 2026-11-27, 2nd time).
+    let loadingCount = 0;
     window.addEventListener('dg:api-loading', function (e) {
         if (e.detail.active) {
+            loadingCount++;
+            clearTimeout(loadingTimer);
             // Delayed show — after the index/batching fix (build-offline-db.js,
             // buildApiTextResponse) most opens resolve well under this, so the common case is no
             // flash at all; only genuinely slow ones (first run, big sutta) show it.
             loadingTimer = setTimeout(function () {
+                if (loadingCount <= 0) return;
                 // The page already shows its own spinner: in the search field / top of the screen while a
                 // search or a text opens (body.dg-busy, home.css .dg-shell-spinner / #dg-busy-indicator), under
                 // the header on a cold text load (html.dg-eds-loading). A second one in the corner was the
@@ -950,6 +956,8 @@
                 loadingDot.classList.add('show');
             }, 150);
         } else {
+            loadingCount = Math.max(0, loadingCount - 1);
+            if (loadingCount > 0) return;
             clearTimeout(loadingTimer);
             if (loadingDot) loadingDot.classList.remove('show');
         }
