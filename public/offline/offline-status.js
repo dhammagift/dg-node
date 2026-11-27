@@ -70,18 +70,6 @@
 
     const style = document.createElement('style');
     style.textContent = `
-        #dgApiLoadingDot {
-            position: fixed; right: 16px; bottom: 16px; width: 28px; height: 28px;
-            border-radius: 50%; background: rgba(0,0,0,0.7); z-index: 10001;
-            opacity: 0; transition: opacity 0.15s ease; pointer-events: none;
-        }
-        #dgApiLoadingDot.show { opacity: 1; }
-        #dgApiLoadingDot::after {
-            content: ""; position: absolute; inset: 5px; border-radius: 50%;
-            border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff;
-            animation: dgApiLoadingSpin 0.7s linear infinite;
-        }
-        @keyframes dgApiLoadingSpin { to { transform: rotate(360deg); } }
 
         /* Consent sheet. Replaces window.confirm(), which Android draws as an AppCompat
            AlertDialog: square-ish, uppercase buttons, and the page origin ("https://localhost")
@@ -929,39 +917,8 @@
     // small persistent dot in the corner, not a bubble/toast: text opens are usually fast (see
     // app.js's withLoadingEvent + the index fix in build-offline-db.js), so this should read as
     // "working" for a beat, not steal the screen like the download banner does.
-    let loadingDot = null;
-    let loadingTimer = null;
-    // Requests overlap (a search, then its enrich): count them. One timer per request used to be kept in one variable, so the
-    // first one's timer was lost, fired after both had ended and left the dot spinning for good (owner 2026-11-27, 2nd time).
-    let loadingCount = 0;
-    window.addEventListener('dg:api-loading', function (e) {
-        if (e.detail.active) {
-            loadingCount++;
-            clearTimeout(loadingTimer);
-            // Delayed show — after the index/batching fix (build-offline-db.js,
-            // buildApiTextResponse) most opens resolve well under this, so the common case is no
-            // flash at all; only genuinely slow ones (first run, big sutta) show it.
-            loadingTimer = setTimeout(function () {
-                if (loadingCount <= 0) return;
-                // The page already shows its own spinner: in the search field / top of the screen while a
-                // search or a text opens (body.dg-busy, home.css .dg-shell-spinner / #dg-busy-indicator), under
-                // the header on a cold text load (html.dg-eds-loading). A second one in the corner was the
-                // owner's "two spinners" (2026-11-06, Trello hXzYMHvF).
-                if (document.body.classList.contains('dg-busy') || document.documentElement.classList.contains('dg-eds-loading')) return;
-                if (!loadingDot) {
-                    loadingDot = document.createElement('div');
-                    loadingDot.id = 'dgApiLoadingDot';
-                    document.body.appendChild(loadingDot);
-                }
-                loadingDot.classList.add('show');
-            }, 150);
-        } else {
-            loadingCount = Math.max(0, loadingCount - 1);
-            if (loadingCount > 0) return;
-            clearTimeout(loadingTimer);
-            if (loadingDot) loadingDot.classList.remove('show');
-        }
-    });
+    // No spinner of its own in the corner (owner 2026-11-27: «справа внизу не должно быть спиннера ни под каким соусом»):
+    // the search button turns into the page's one spinner. dg:api-loading is still sent by app.js for anyone who needs it.
 
     if (window.dgOfflineLibrary && typeof window.dgOfflineLibrary.then === 'function') {
         window.dgOfflineLibrary.then(function () {
