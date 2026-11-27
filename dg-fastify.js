@@ -4116,7 +4116,7 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
         const end = `<a class="text-decoration-none copyLink" role="none"></a>`;
         if (pali[seg] === undefined && trans[seg] === undefined) continue;
         let inner = '';
-        // The title line 0.1 as reader/common.js addIconsTo01 leaves it (speaker before, link icon after), and no variants
+        // The title line 0.1 as reader/common.js addIconsTo01 leaves it (speaker before, link icon after), variants hidden
         // (the reader's default, variantVisibility hidden): the server's text is shown at once and the reader draws the same
         // over it, nothing moves (owner 2026-11-27: the text waited hidden ~10 s on a slow phone).
         const t01 = anchor === '0.1' || anchor.endsWith(':0.1');
@@ -4128,6 +4128,8 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
             inner += t01
                 ? `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${play('', ru ? 'Слушать пали' : 'Listen in Pāḷi')}${pali[seg].trim()}${link('')}`
                 : `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${start}${pali[seg].trim()}${end}`;
+            // hidden, as the reader leaves them by default (its exact markup: the same size on screen, crawlers still read them)
+            if (variant[seg] !== undefined && variant[seg] !== '') inner += `<font class="variant hidden-variant" style=""><br>${start}${variant[seg].trim()}${end}</font>`;
             inner += '</span>';
         }
         if (translatorKey && trans[seg] !== undefined) inner += t01
@@ -4140,9 +4142,14 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
     const warning = (READER_WARNING[lang === 'ru' ? 'ru' : 'en'] || '').replace('{dUrl}', () => page.replace('/r/', '/d/')).replace('{thUrl}', () => page.replace('/r/', '/th/read/'));
     // the pinned rows' offsets before the text paints, again in the frame itself once styles settle (search/index.html
     // applyPadding; skipped by the reader's compare)
-    const out = '<div id="top-links-container" class="min-h-24"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
+    // The links row is the header's (dgPlaceReaderLinks hides this one) and the contents pill shows the text's title once
+    // the reader is up: both as they will be from the first paint, so the reader's own render moves nothing (2026-11-27:
+    // the text slid up 17 px at that moment on a slow phone, and Lighthouse counted the page as loaded only then).
+    const pill = '<script>(function(){var h=document.querySelector("#sutta h1"),l=document.getElementById("smart-toc-current");' +
+        'if(h&&l&&!l.textContent){var t=h.innerText.replace(/\\s+/g," ").trim();l.textContent=t.charAt(0).toUpperCase()+t.slice(1)}})()</script>';
+    const out = '<div id="top-links-container" class="min-h-24" style="display:none"></div><script>window.dgObserveTopLinks&&dgObserveTopLinks();window.dgObserveStack&&dgObserveStack();requestAnimationFrame(function(){window.dgApplyHeaderPadding&&dgApplyHeaderPadding()})</script>' +
         (warning ? `<div class="warning-container warning-box"><p class='warning'>${warning} </p></div>` : '') +
-        byline + html + '<div id="bottom-links-container" class="min-h-24"></div>' + audioLineHtml(dataId, lang);
+        byline + html + pill + '<div id="bottom-links-container" class="min-h-24"></div>' + audioLineHtml(dataId, lang);
     if (textBodyCache.size > 300) textBodyCache.clear(); // ponytail: wholesale clear; bodies are big, keep the hot few
     textBodyCache.set(key, out);
     return out;
