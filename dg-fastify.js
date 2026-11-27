@@ -4116,13 +4116,24 @@ function textBodyHtml(segments, lang, urlId, pageUrl, dataId) {
         const end = `<a class="text-decoration-none copyLink" role="none"></a>`;
         if (pali[seg] === undefined && trans[seg] === undefined) continue;
         let inner = '';
+        // The title line 0.1 as reader/common.js addIconsTo01 leaves it (speaker before, link icon after), and no variants
+        // (the reader's default, variantVisibility hidden): the server's text is shown at once and the reader draws the same
+        // over it, nothing moves (owner 2026-11-27: the text waited hidden ~10 s on a slow phone).
+        const t01 = anchor === '0.1' || anchor.endsWith(':0.1');
+        const ru = lang === 'ru';
+        const icon = (src) => `<img src="/assets/svg/${src}" class="title-svg-icon" alt="" aria-hidden="true">`;
+        const play = (cls, t) => `<span class="title-play-btn${cls}" title="${t}">${icon('volume-solid-full.svg')}</span>`;
+        const link = (cls) => `<a class="text-decoration-none copyLink copy-Link-special${cls}" role="none">${icon('link-solid-full.svg')}</a>`;
         if (pali[seg] !== undefined) {
-            inner += `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${start}${pali[seg].trim()}${end}`;
-            if (variant[seg] !== undefined && variant[seg] !== '') inner += `<font class="variant"><br>${start}${variant[seg].trim()}${end}</font>`;
+            inner += t01
+                ? `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${play('', ru ? 'Слушать пали' : 'Listen in Pāḷi')}${pali[seg].trim()}${link('')}`
+                : `<span class="pli-lang inputscript-ISOPali quote" lang="pi">${start}${pali[seg].trim()}${end}`;
             inner += '</span>';
         }
-        if (translatorKey && trans[seg] !== undefined) inner += `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${start}${trans[seg].trim()}${end}</span></span>`;
-        html += `${open}<span id="${anchor}">${inner}</span>${close}\n\n`;
+        if (translatorKey && trans[seg] !== undefined) inner += t01
+            ? `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${play(' trn-play-btn voice-start-btn', ru ? 'Слушать перевод' : 'Listen to the translation')}${trans[seg].trim()}${link(' trn-title-icon')}</span></span>`
+            : `<span class="right-column"><span class="${lang}-lang quote" lang="${lang}" data-translator="${translatorId}">${start}${trans[seg].trim()}${end}</span></span>`;
+        html += `${open}<span id="${anchor}"${t01 ? ' class="icons-added"' : ''}>${inner}</span>${close}\n\n`;
     }
     const byline = `<div id="trn" class="byline">\n    <p><span class="pli-lang" lang="pi">Pāḷi <a class="text-decoration-none text-reset" href="/assets/common/abbr.html?s=ms" title="Mahāsaṅgīti Pāḷi">MS</a></span>\n    <span class="right-column">${translatorKey ? `<span class="${lang}-lang" lang="${lang}"> ${label}${name}</span>` : ''}</span></p></div>`;
     const page = segUrl('').replace(/'/g, '%27');

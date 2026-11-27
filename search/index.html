@@ -1370,7 +1370,20 @@ https://dhamma.gift/nodejs/res/?q=pa%E1%B9%ADigh&lb=1&la=2&scope=dhamma,abhi
     // other editions it was even another text (2026-10-31: «то одно, то другое»). Until the reader's own render (it
     // removes the class) the text waits hidden, a spinner only if that takes long; 20 s at most. Crawlers run no script,
     // so they read the server's text as before.
-    if (/^\/[a-z-]{1,24}\d/i.test(path) && !hasQuery) {
+    // Shown at once when the reader will draw the same: the default view (lines, variants hidden, Pāḷi + translation, one
+    // translation in the page's language, no editions, no own set). Waiting hidden for everyone cost ~10 s of a blank page
+    // on a slow phone (owner 2026-11-27); only a reader with a view of their own still waits for the reader's text.
+    var dgDefaultView = (function () {
+      try {
+        var ls = localStorage, L = (document.documentElement.lang || 'en').slice(0, 2), q = ls.getItem('dgReaderApiQuery');
+        if (q ? q !== 'mode=single&lang=' + L : (/^ru/i.test(navigator.language || '') && L !== 'ru')) return false;
+        if (ls.getItem('viewMode') === 'columns' || ls.getItem('variantVisibility') === 'visible') return false;
+        if ((ls.getItem('paliToggle') || 'pli-2nd') !== 'pli-2nd') return false;
+        var st = ls.getItem('dgReadingStack');
+        return !(st && st !== '[]');
+      } catch (e) { return false; }
+    })();
+    if (/^\/[a-z-]{1,24}\d/i.test(path) && !hasQuery && !dgDefaultView) {
       document.documentElement.classList.add('dg-eds-loading');
       // the rule with the class: home.css's copy comes late once critical CSS is inlined, and this page's own <style>
       // blocks go into dg-all.css (the CSS bundle), late as well - the server's text painted before either
