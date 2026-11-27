@@ -151,7 +151,7 @@ function legacyReaderRedirect(url) {
     const params = new URLSearchParams(queryPart);
     if (page === '/history.php') return '/4as';
     if (page === '/read.php') return '/toc';
-    if (page === '/r.php') return '/toc?lang=ru';
+    if (page === '/r.php') return '/toc?lang=' + (/^(en|th|ru)$/.test(params.get('lang')) ? params.get('lang') : 'ru'); // /th/r.php keeps its language
     if (page === '/old.php' || page === '/t2s.html') return '/';
     if (page === '/cse.php') return '/cse' + (queryPart ? '?' + queryPart : ''); // the Google Custom Search page, now served here
     if (page === '/pm.php' || page === '/bipm.php') return '/toc/vinaya'; // the standalone pages are gone, the TOC shows the Patimokkha
@@ -231,7 +231,7 @@ function decodedPath(url) {
 app.addHook('onRequest', (req, res, done) => {
     const p = decodedPath(req.url);
     if (/\/\.(?!well-known(\/|$))/.test(p)) return res.code(404).send('Not found');
-    if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/ru(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php is a language prefix, not a folder
+    if (req.method === 'GET' && /^\/[^/]+\/.*\.php$/i.test(p.replace(/^\/(ru|th|en)(?=\/)/, '')) && !/^\/(ai|b)\//.test(p)) return res.code(404).send('Not found'); // /ru/w.php, /th/r.php: a language prefix, not a folder (bots got 404 on /th/r.php?q=sn22, F1 log 23-24.11)
     done();
 });
 // Removed by the owner (2026-10-21): the en.dhammadana.org mirror is gone from the site; 410 makes Google drop the old URLs.
