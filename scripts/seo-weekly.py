@@ -19,6 +19,7 @@ SITE = 'https://dhamma.gift'
 IP = os.environ.get('DG_SEO_IP', '127.0.0.1')          # this box serves dhamma.gift itself
 STATE_DIR = os.environ.get('DG_SEO_DIR', '/var/lib/dg-seo')
 GSC_KEY = '/root/.secrets/gsc.json'
+INDEX_STATE = '/var/lib/dg-seo/index-state.json'
 BOT_CONFIG = '/var/www/telegram_bot/config.dgift_bot.json'
 UA = 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)'
 SAMPLE = 40                                            # URL Inspection quota is 2000/day; ~220 per run
@@ -135,10 +136,18 @@ def gsc_report(parts):
         perf[name] = {'clicks': sum(x['clicks'] for x in rows), 'impressions': sum(x['impressions'] for x in rows), 'pages': len(rows)}
     random.seed(str(today))
     groups = {'docs': parts.get('docs', [])}
-    for name, us in parts.items():
-        if name.startswith('texts'):
-            groups[name] = random.sample(us, min(SAMPLE, len(us)))
     inspected = {}
+    # texts: the full index state the daily sweep keeps (/root/dg-seo/index-sweep.py), not a 40-URL sample
+    full = json.load(open(INDEX_STATE)) if os.path.exists(INDEX_STATE) else {}
+    for name, us in parts.items():
+        if not name.startswith('texts'): continue
+        known = [(u, full[u]['state']) for u in us if u in full]
+        if len(known) >= len(us) * 0.9:
+            c, ex = Counter(st for _, st in known), {}
+            for u, st in known: ex.setdefault(st, u)
+            inspected[name] = {'n': len(known), 'states': dict(c), 'examples': ex, 'full': True}
+        else:
+            groups[name] = random.sample(us, min(SAMPLE, len(us)))
     for g, us in groups.items():
         c, examples = Counter(), {}
         for u in us:
@@ -219,7 +228,7 @@ def render(run, prev):
     for g, r in inspected.items():
         was = prev.get('indexed', {}).get(g)
         trend = '' if was is None or was == r['pct'] else f', was {was}%'
-        sample = '' if g == 'docs' else ' sampled'
+        sample = '' if g == 'docs' or r.get('full') else ' sampled'
         out.append(f'• {GROUP_TEXT.get(g, g)}: {r["pct"]}% ({r["ok"]} of {r["n"]}{sample}{trend})')
     why = Counter()
     for g, r in inspected.items():
