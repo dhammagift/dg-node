@@ -89,17 +89,17 @@
               "star": true
             },
             {
-              "label": "BJT",
-              "title": "Sri Lankan Edition Buddha Jayanti",
-              "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon",
-              "href": "https://open.tipitaka.lk/",
-              "blank": true
-            },
-            {
               "label": "Thai",
               "title": "Thai Tipitaka at 84000.org",
               "desc": "The Thai edition, at 84000.org",
               "href": "https://84000.org/",
+              "blank": true
+            },
+            {
+              "label": "BJT",
+              "title": "Sri Lankan Edition Buddha Jayanti",
+              "desc": "Sri Lankan Buddha Jayanti edition of the Pāḷi canon",
+              "href": "https://open.tipitaka.lk/",
               "blank": true
             },
             {
@@ -114,13 +114,6 @@
               "title": "PTS Tipitaka at GRETIL",
               "desc": "The PTS edition, at GRETIL",
               "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit",
-              "blank": true
-            },
-            {
-              "label": "MS",
-              "title": "Mahāsaṅgīti Edition at SuttaCentral.net",
-              "desc": "The Mahāsaṅgīti edition, at SuttaCentral.net",
-              "href": "https://suttacentral.net/pitaka/sutta?lang=en",
               "blank": true
             }
           ]
@@ -273,6 +266,12 @@
                   "label": "Buddhadust.net",
                   "desc": "Translations by Micheal Olds + Glossolory",
                   "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Study.jhana.info",
+                  "desc": "Thanissaro, Bodhi, Sujato and PTS line by line with the Pāli",
+                  "href": "https://study.jhana.info/",
                   "blank": true
                 }
               ]
@@ -869,17 +868,17 @@
               "star": true
             },
             {
-              "label": "BJT",
-              "title": "Редакция Шри Ланки Buddha Jhayanti",
-              "desc": "Шри-ланкийское издание канона, Buddha Jayanti",
-              "href": "https://open.tipitaka.lk/",
-              "blank": true
-            },
-            {
               "label": "Thai",
               "title": "Тайская Типитака на 84000.org",
               "desc": "Тайское издание, на 84000.org",
               "href": "https://84000.org/",
+              "blank": true
+            },
+            {
+              "label": "BJT",
+              "title": "Редакция Шри Ланки Buddha Jhayanti",
+              "desc": "Шри-ланкийское издание канона, Buddha Jayanti",
+              "href": "https://open.tipitaka.lk/",
               "blank": true
             },
             {
@@ -894,13 +893,6 @@
               "title": "Типитака PTS на GRETIL",
               "desc": "Издание PTS, на GRETIL",
               "href": "https://gretil.sub.uni-goettingen.de/gretil.html#Suttapit",
-              "blank": true
-            },
-            {
-              "label": "MS",
-              "title": "Типитака Mahāsaṅgīti на SuttaCentral.net",
-              "desc": "Издание Mahāsaṅgīti, на SuttaCentral.net",
-              "href": "https://suttacentral.net/pitaka/sutta?lang=en",
               "blank": true
             }
           ]
@@ -1052,6 +1044,12 @@
                 {
                   "label": "Переводы Майкла Олдса",
                   "href": "https://buddhadust.net/dhamma-vinaya/bd/dhamma-vinaya.htm",
+                  "blank": true
+                },
+                {
+                  "label": "Study.jhana.info",
+                  "desc": "Тханиссаро, Бодхи, Суджато и PTS построчно с пали",
+                  "href": "https://study.jhana.info/",
                   "blank": true
                 }
               ]
