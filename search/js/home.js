@@ -15,6 +15,9 @@
  */
 (function () {
     'use strict';
+    // A page inside a popup (search results' text window, settings sheet) keeps no floating controls of its own:
+    // the page around it has the language pill, play and «up» already, two sets overlapped (owner 2026-11-27).
+    try { if (window.self !== window.top) document.documentElement.classList.add('dg-framed'); } catch (e) { /* cross-origin parent: framed too */ document.documentElement.classList.add('dg-framed'); }
 
     /* Page zoom (the size setting; 110% base on phones and in the app, index.html <head>).
        getBoundingClientRect/innerWidth/innerHeight/clientX/scrollY are screen px, while a px

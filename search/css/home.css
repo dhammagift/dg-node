@@ -4830,3 +4830,6 @@ body.dg-state-toc #dg-hero-band { z-index: 851; }
    lines and the words met only in them. The texts found only there are filtered out of the table (search-render.js). */
 body.dg-novar #search-pane .variant,
 body.dg-novar #search-pane .dg-var-word { display: none !important; }
+
+/* A page shown inside a popup: the page around it has these controls already (home.js dg-framed). */
+.dg-framed #dg-langpill, .dg-framed #scrollToTopBtn, .dg-framed .dynamic-tts-btn { display: none !important; }
