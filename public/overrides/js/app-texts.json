@@ -1,7 +1,7 @@
 {
  "_about": "The DG app's own words (dg-apps src/native-bridge.js window.dgAppText): the app bundles this file and refreshes it from the site, so a word changed here reaches the apps without a build. A key missing here = the words built into the app.",
  "ru": {
-  "the-library-is-ready-read-offline": "Библиотека готова. Читайте без сети.",
+  "the-library-is-ready-read-offline": "Библиотека готова: ищите, читайте и слушайте без сети.",
   "unpacking-and-applying": "Распаковка и применение…",
   "script-conversion-is-done-on-the-server": "Конвертация системы письма выполняется на сервере",
   "this-language-is-not-part-of-the-offline": "Этот язык не входит в офлайн-библиотеку",
@@ -21,7 +21,7 @@
   "privacy-policy": "Политика конфиденциальности"
  },
  "en": {
-  "the-library-is-ready-read-offline": "The library is ready. Read offline.",
+  "the-library-is-ready-read-offline": "The library is ready: search, read and listen offline.",
   "unpacking-and-applying": "Unpacking and applying…",
   "script-conversion-is-done-on-the-server": "Script conversion is done on the server",
   "this-language-is-not-part-of-the-offline": "This language is not part of the offline library",
