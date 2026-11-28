@@ -191,6 +191,33 @@ GROUP_TEXT = {'docs': 'docs', 'texts-en': 'texts, English', 'texts-ru': 'texts, 
 MONTHS = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split()
 
 
+def other_engines():
+    """Yandex (pages in search, last update) and Bing (clicks, impressions: this week vs the one before), each line on its
+    own: a failing API says so in the report instead of dropping the report (owner 2026-11-28: Yandex must not lie broken
+    for months unseen)."""
+    out = {}
+    try:
+        env = dict(re.findall(r"^(\w+)=['\"]?([^'\"\n]*)", open('/root/.secrets/tools.env').read(), re.M))
+        h = {'Authorization': 'OAuth ' + env['YANDEX_WEBMASTER_TOKEN']}
+        get = lambda u: json.load(urllib.request.urlopen(urllib.request.Request(u, headers=h), timeout=60))
+        uid = get('https://api.webmaster.yandex.net/v4/user')['user_id']
+        b = f'https://api.webmaster.yandex.net/v4/user/{uid}/hosts/https:dhamma.gift:443'
+        hist = get(b + '/search-urls/in-search/history?date_from=' + str(date.today() - timedelta(60)) + 'T00:00:00Z')['history']
+        out['yandex'] = {'in_search': hist[-1]['value'], 'updated': hist[-1]['date'][:10], 'before': hist[-2]['value'] if len(hist) > 1 else None}
+    except Exception as e:
+        out['yandex'] = {'error': str(e)[:120]}
+    try:
+        key = open('/root/.secrets/bing-webmaster.key').read().strip()
+        rows = json.load(urllib.request.urlopen(f'https://ssl.bing.com/webmaster/api.svc/json/GetRankAndTrafficStats?siteUrl=https://dhamma.gift/&apikey={key}', timeout=60))['d']
+        days = sorted((date.fromtimestamp(int(re.search(r'\d+', r['Date'])[0]) / 1000), r['Clicks'], r['Impressions']) for r in rows)
+        end = days[-1][0]
+        wk = lambda a, b: [sum(x[i] for x in days if a < x[0] <= b) for i in (1, 2)]
+        out['bing'] = {'week': wk(end - timedelta(7), end), 'prev': wk(end - timedelta(14), end - timedelta(7)), 'to': str(end)}
+    except Exception as e:
+        out['bing'] = {'error': str(e)[:120]}
+    return out
+
+
 def num(n):
     return (f'{n / 1000:.1f}'.replace('.0', '') + 'k') if n >= 1000 else str(n)
 
@@ -237,6 +264,13 @@ def render(run, prev):
                 why[STATE_TEXT.get(cs, cs)] += n
     if why:
         out.append('The rest: ' + ', '.join(f'{t} {n}' for t, n in why.most_common()))
+    y, b = run.get('engines', {}).get('yandex', {}), run.get('engines', {}).get('bing', {})
+    if y:
+        out += ['', ('⚠ Yandex: not read (' + y['error'] + ')') if 'error' in y else
+                f"Yandex: {num(y['in_search'])} pages in search (base updated {y['updated']}" + (f", before: {num(y['before'])})" if y.get('before') is not None else ')')]
+    if b:
+        out += [('⚠ Bing: not read (' + b['error'] + ')') if 'error' in b else
+                f"Bing this week: {s_(b['week'][0], 'click')}, {s_(b['week'][1], 'impression')} (week before: {num(b['prev'][0])}, {num(b['prev'][1])})"]
     out += ['', f'Site check ({num(run["urls"])} URLs in the sitemap):']
     for mark, title in (('🔴', 'Critical: pages broken'), ('🟠', 'Medium: keeps pages out of Google'), ('🟡', 'Minor: weakens pages in results')):
         group = [t for m, t in findings if m == mark]
@@ -273,7 +307,8 @@ def main():
         r['ok'] = r['states'].get('Submitted and indexed', 0)
         r['pct'] = r['ok'] * 100 // max(r['n'], 1)
     today = date.today()
-    run = {'date': str(today), 'period': [str(today - timedelta(9)), str(today - timedelta(3))], 'urls': len(res),
+    engines = other_engines()
+    run = {'engines': engines, 'date': str(today), 'period': [str(today - timedelta(9)), str(today - timedelta(3))], 'urls': len(res),
            'issues': dict(Counter(i for r in res.values() for i in r['issues'])), 'perf': perf, 'inspected': inspected}
     msg = render(run, prev)
     print(msg)
