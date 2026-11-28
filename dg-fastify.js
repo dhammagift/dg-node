@@ -1738,7 +1738,7 @@ async function buildSitemapCache() {
     add('pages', base + '/apps', 'apps'); add('pages', base + '/apps?lang=ru', 'apps');
     // the key terms' search results (SEO_TERMS), en and ru
     for (const t of SEO_TERMS.values()) {
-        const loc = base + '/' + encodeURIComponent(t.q);
+        const loc = base + termPath(t);
         add('pages', loc, 'term'); add('pages', loc + '?lang=ru', 'term');
     }
     // per text and language: rows and characters, one grouped scan (~2 s); a text page shows the root and its language
@@ -4200,6 +4200,7 @@ function withTextHead(html, h) {
         h.alternates.map(([l, href]) => `<link rel="alternate" hreflang="${l === 'jpn' ? 'ja' : l}" href="${htmlAttr(href)}">`).join('\n') +
         `\n<link rel="alternate" hreflang="x-default" href="${htmlAttr(h.alternates[0][1])}">\n` +
         (h.keywords ? `<meta name="keywords" content="${htmlAttr(h.keywords)}">\n` : '') +
+        (h.termQuery ? `<meta name="dg-term-query" data-slug="${htmlAttr(h.termQuery[0])}" content="${htmlAttr(h.termQuery[1])}">\n` : '') +
         (ld.length ? `<script type="application/ld+json">${JSON.stringify(ld).replace(/</g, '\\u003c')}</script>\n` : '');
     let out = html
         // the home slogan is the home page's heading only: on a text page the sutta's title is the one h1 (GSC 2026-11-20);
@@ -4423,12 +4424,17 @@ function bookLabel(code, lang) {
 // every other query stays noindex. count: texts found in the default scope, filled after start for the title.
 const SEO_TERMS_PATH = path.join(__dirname, 'configs', 'seo', 'search-terms.json');
 const SEO_TERMS = new Map();
+const SEO_TERM_SLUGS = new Map(); // a regex term's clean address (slug) -> the term
+const termPath = t => '/' + encodeURIComponent(t.slug || t.q);
 function loadSeoTerms() {
     let terms;
     try { terms = JSON.parse(fsSync.readFileSync(SEO_TERMS_PATH, 'utf8')).terms; }
     catch (e) { console.warn('configs/seo/search-terms.json:', e.message); return false; } // a half-saved file keeps the old list
-    SEO_TERMS.clear();
-    for (const t of terms.filter(t => t.index !== false)) SEO_TERMS.set(t.q.normalize('NFC').toLowerCase(), t);
+    SEO_TERMS.clear(); SEO_TERM_SLUGS.clear();
+    for (const t of terms.filter(t => t.index !== false)) {
+        SEO_TERMS.set(t.q.normalize('NFC').toLowerCase(), t);
+        if (t.slug) SEO_TERM_SLUGS.set(t.slug.normalize('NFC').toLowerCase(), t);
+    }
     return true;
 }
 loadSeoTerms();
@@ -4438,7 +4444,7 @@ fsSync.watchFile(SEO_TERMS_PATH, { interval: 5000 }, () => {
     console.log(`SEO terms reloaded: ${SEO_TERMS.size} indexed`);
     buildSitemapCache().then(countSeoTerms).then(() => { searchSsrCache.clear(); searchSsrBytes = 0; return warmSeoSsr(); }).catch(e => console.warn('SEO terms reload:', e.message));
 });
-const seoTerm = q => SEO_TERMS.get(String(q).normalize('NFC').toLowerCase());
+const seoTerm = q => { const k = String(q).normalize('NFC').toLowerCase(); return SEO_TERMS.get(k) || SEO_TERM_SLUGS.get(k); };
 // schema.org for the home page: the site's name and icon in Google's results, and who publishes it
 const SITE_LD = [
     { '@context': 'https://schema.org', '@type': 'WebSite', '@id': SITE + '/#website', name: 'Dhamma.Gift', alternateName: ['DG', 'Dhamma Gift'],
@@ -4542,7 +4548,7 @@ function siteHead(kind, arg, reqLang) {
     const lang = reqLang === 'ru' ? 'ru' : 'en';
     const term = kind === 'search' && seoTerm(arg);
     if (term) arg = term.q; // one canonical spelling of the path
-    const pathOf = kind === 'home' ? '/' : kind === 'toc' ? '/toc' + (arg ? '/' + encodeURIComponent(arg) : '') : '/' + encodeURIComponent(arg);
+    const pathOf = kind === 'home' ? '/' : kind === 'toc' ? '/toc' + (arg ? '/' + encodeURIComponent(arg) : '') : term ? termPath(term) : '/' + encodeURIComponent(arg);
     const url = l => SITE + pathOf + (l === 'ru' ? '?lang=ru' : '');
     let what = arg;
     if (kind === 'toc') what = !arg ? (lang === 'ru' ? 'Палийский канон' : 'Pali Canon')
@@ -4560,7 +4566,17 @@ function siteHead(kind, arg, reqLang) {
     };
 }
 async function sendSiteHtml(req, res, kind, arg) {
+    if (kind === 'search') {
+        // a regex term lives at its slug: the old /<regex> address moves there for good (browsers turned its \ into /)
+        const t = seoTerm(arg);
+        if (t && t.slug && String(arg).normalize('NFC').toLowerCase() !== t.slug.normalize('NFC').toLowerCase()) {
+            const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+            return res.redirect(termPath(t) + qs, 301);
+        }
+    }
     const h = siteHead(kind, arg, req.query.lang);
+    // the page runs the term's own query, not the slug (search/index.html reads this meta)
+    if (kind === 'search') { const t = seoTerm(arg); if (t && t.slug) h.termQuery = [t.slug, t.q]; }
     if (kind === 'search') {
         // the list goes to readers that are not a browser only; a person's page stays exactly as before, not a
         // millisecond longer (owner: «удлинять и влиять как-то вообще на клиентские запросы … категорически нельзя»)

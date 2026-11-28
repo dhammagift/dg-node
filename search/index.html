@@ -5260,6 +5260,9 @@ document.addEventListener('DOMContentLoaded', function () { $(function() {
             // decode it, same as URLSearchParams.get('q') already does automatically for the
             // legacy query-param path.
             keyword = decodeURIComponent(lastSegment);
+            // a key term's clean address (/indriya) runs the term's own query; the server names it in this meta
+            var termMeta = document.querySelector('meta[name="dg-term-query"]');
+            if (termMeta && termMeta.dataset.slug.normalize('NFC').toLowerCase() === keyword.normalize('NFC').toLowerCase()) keyword = termMeta.content;
         }
 
         let keywordElement = document.querySelector('.keyword');
